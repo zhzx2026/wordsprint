@@ -53,9 +53,14 @@ def sort_key(title):
     if '全册' in title: term = 2
     mh = re.search(r'高中英语(\d+)', title)
     extra = int(mh.group(1)) if mh else 0
-    for pat, v in (('选择性必修第四',41),('选择性必修第三',31),('选择性必修第二',21),('选择性必修第一',11),
-                   ('必修第四',14),('必修第三',13),('必修第二',12),('必修第一',11)):
-        if pat in title: extra = v
+    # 册次权重：高中先「必修」(1x) 再「选择性必修」(2x)。
+    # ⚠️ 必须「选择性必修」在前 + 命中即 break：'选择性必修第二册' 同时含 '必修第二'，
+    #    不 break 会被后面的规则覆盖成同分，必修/选必就交替排（v1.0.14 之前的实际 bug）。
+    for pat, v in (('选择性必修第一',21),('选择性必修第二',22),('选择性必修第三',23),('选择性必修第四',24),
+                   ('必修第一',11),('必修第二',12),('必修第三',13),('必修第四',14)):
+        if pat in title:
+            extra = v
+            break
     return (stage, series, g, term, extra)
 
 def clean_word(w):

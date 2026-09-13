@@ -114,6 +114,16 @@ PUSH_TOKEN=<用户临时提供的 fine-grained PAT> bash scripts/promote.sh 1.0.
     否则输出把未读完的输入盖掉）；`Window` 没有 `setWindowAnimationStyle()`（动画样式只能写
     `WindowManager.LayoutParams.windowAnimations`）。
 
+14. **`etl.py` 的 `sort_key()` 册次匹配必须「选择性必修在前 + 命中即 break」**：
+    `'选择性必修第二册'` 同时包含 `'必修第二'`，老代码那个循环**不 break**，先拿到 `选择性必修第二→21`
+    又被后面的 `必修第二→12` 覆盖，于是必修/选必同分、只能按标题排 → 词书库里高中变成
+    「必修一 → 选必一 → 必修二 → 选必二 → …」交替（v1.0.14 及之前的实际 bug，用户要求「先必修再选修」）。
+    现在权重是 必修一/二/三 = 11/12/13，选择性必修一~四 = 21/22/23/24。
+    沙箱里没有 `raw_xlsx/` + `path_index.json`（ETL 跑不动），要改**已打包**的 `res/raw/wdb.dat` 顺序用
+    `python3 scripts/fix_book_order.py`（`--check` 先看不动手）：只重排书目段，字符串池与词条索引逐字节保留、
+    尺寸不变，写完自解析校验内容指纹一致。进度按 `bookId`（md5(rel)）存取，与顺序无关 → 不会丢进度。
+    App 侧显示顺序 = pack 里的顺序（`MainActivity.buildRows()` 不做二次排序），改数据文件即可生效。
+
 ## 当前状态（2026-09-13 第五次更新）
 - 线上最新：**v1.0.14（code 15）** —— 2026-09-13 用户回「转正」后发布：`main` 快进到 `bb6a950`、tag `v1.0.14`、
   Release「刷单词 v1.0.14」资产 `wordsprint.apk`(558444B) + `update.json`(1453B) ✓，`releases/latest` 已指向它
