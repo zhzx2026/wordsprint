@@ -125,6 +125,10 @@ PUSH_TOKEN=<用户临时提供的 fine-grained PAT> bash scripts/promote.sh 1.0.
     App 侧显示顺序 = pack 里的顺序（`MainActivity.buildRows()` 不做二次排序），改数据文件即可生效。
 
 ## 当前状态（2026-09-13 第五次更新）
+- ⏳ **待用户实测：v1.0.15（code 16）** —— 分支 `arena/01a09b02-wordsprint`，只改了**词书库高中排序**
+  （先必修一/二/三，再选择性必修一~四，见坑清单 14）+ bump 版本 + 文档。staging CI 已 success
+  （run 34760865856：ALL HOST TESTS PASS、`PackTest` books=13 words=8824、签名证书仍是 `729793de…`、
+  apk 558444B），dev 通道 `update.json` 已指向它。**没有打 tag、没有发 Release**——按铁律等用户说「转正」。
 - 线上最新：**v1.0.14（code 15）** —— 2026-09-13 用户回「转正」后发布：`main` 快进到 `bb6a950`、tag `v1.0.14`、
   Release「刷单词 v1.0.14」资产 `wordsprint.apk`(558444B) + `update.json`(1453B) ✓，`releases/latest` 已指向它
   （所有 1.0.9/1.0.10… 老机器下次「检查更新」就会收到这版）。临时 dev 通道已删。
