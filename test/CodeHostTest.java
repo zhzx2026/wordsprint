@@ -68,7 +68,7 @@ public class CodeHostTest {
         // 微信/QQ/便签转发后的典型样子：折行 + 全角空格 + NBSP + 零宽 + 前后引号与说明
         StringBuilder sb = new StringBuilder("这是我导出的进度码：");
         sb.append(wrap(s, 76, "\n"));
-        sb.append("　").append(' ').append('').append("记得帮我导入呀");
+        sb.append('\u3000').append('\u00a0').append('\u200b').append("记得帮我导入呀");
         return sb.toString();
     }
 

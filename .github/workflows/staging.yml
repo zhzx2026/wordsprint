@@ -13,6 +13,7 @@ on:
     branches: ["arena/**", "staging/**", "dev-build"]
 permissions:
   contents: write          # 只用于把测试包推到孤儿分支 dev（raw 直链，供手机 App 内更新）
+  checks: write            # 只用于把失败日志写回 ci-diagnostics 检查（沙箱/无日志权限的一侧靠它自查）
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -85,6 +86,28 @@ jobs:
             echo
             echo "**没有**打 tag、**没有**发 Release：手机不会收到 OTA。"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # 助手侧/无日志权限的人读不到 Actions 日志下载链接，所以把日志全文塞进一个自建 check-run，
+      # 用 API 就能看：gh api /repos/<repo>/commits/<sha>/check-runs → ci-diagnostics 的 output.summary
+      - name: 诊断写回 check-run（成功失败都写）
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STATUS: ${{ job.status }}
+        run: |
+          { echo "===== scripts/run_tests.sh ====="; cat /tmp/t.log 2>/dev/null || echo "(无)";
+            echo; echo "===== build.sh ====="; cat /tmp/b.log 2>/dev/null || echo "(无)"; } > /tmp/diag.log
+          SUMMARY=$(python3 -c "
+          import json,sys
+          t=open('/tmp/diag.log',encoding='utf-8',errors='replace').read()
+          sys.stdout.write(json.dumps(t[-24000:])[1:-1])")
+          gh api --method POST "/repos/${{ github.repository }}/check-runs" \
+            -f name=ci-diagnostics -f head_sha="${{ github.sha }}" \
+            -f status=completed -f conclusion="$STATUS" \
+            -f "output[title]=staging 构建日志（$STATUS）" \
+            -f "output[summary]=$SUMMARY" \
+            -f "external_id=${{ github.run_id }}-diag" > /dev/null
+          echo "诊断已写入 check-run ci-diagnostics（$(wc -l < /tmp/diag.log) 行）"
 
       - name: Upload artifact（不是 Release）
         uses: actions/upload-artifact@v4
