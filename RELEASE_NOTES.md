@@ -1,6 +1,6 @@
-刷单词 v2.1
+刷单词 v2.0
 
-① 版本号切换到新方案：开发版 X.Y / 稳定版 X.0（本次为 dev 2.1；规则见 VERSIONING.md）。
+① 版本号切换到新方案：开发版 X.Y / 稳定版 X.0（规则见 VERSIONING.md）。
 ② 设置 → 更新源不再手填地址，只留两个选项：
    1. stable：正式版（GitHub Release）
    2. dev：开发测试通道
