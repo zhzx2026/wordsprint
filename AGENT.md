@@ -91,18 +91,25 @@ PUSH_TOKEN=<用户临时提供的 fine-grained PAT> bash scripts/promote.sh
 11. **每个测试包都必须 +1 `versionCode`**：`Update.check` 是 `dev.code > myCode` 严格大于，
     同一个 code 发第二次，手机上点「检查更新」会得到"已是最新版本"→ 永远装不到新修复（本轮踩过）。
     `AndroidManifest.xml` 是唯一版本源，改它即可，脚本（run_ci/release.yml）都从它读。
+13. **弹键盘会重建 Activity**：凡是页面上可能出现输入框/弹窗带输入的，`android:configChanges` 必须带上
+    `keyboard|keyboardHidden|navigation`（v1.0.13 装机实测「扫码页点粘贴进度码＝退出」就是这个：
+    扫码页只声明了 `orientation|screenSize`，弹窗里 EditText 一 `showSoftInput` → 配置变化 → 扫码页被销毁重建、
+    对话框随之消失，表现成"点了就退出"）。更稳的做法：**相机页上不要挂输入窗口**——
+    粘贴导入已改成独立 `PasteImportActivity`（`windowSoftInputMode=stateVisible|adjustResize`），
+    成功时用 `static imported` 标记让扫码页在 `onResume` 收尾，不靠弹窗回调。
 12. **Base64 的"能解"不等于"解对"**：`getUrlDecoder()` 对先过滤过的串几乎不报错，字母表选错时它照样吐出一串
     **错字节**，于是错误只在 inflate 那一步暴露——所以 `ProgressCode` 是"两套字母表各试一次，**以 inflate 成功为裁判**"，
     别退回"先选字母表再解压"。同族陷阱还有两处：`Inflater.setInput()` 只保存引用不拷贝（输入/输出必须两个数组，
     否则输出把未读完的输入盖掉）；`Window` 没有 `setWindowAnimationStyle()`（动画样式只能写
     `WindowManager.LayoutParams.windowAnimations`）。
 
-## 当前状态（2026-09-13 第四次更新）
-- 线上最新：**v1.0.9（code 10）**；装机测试包已到 **v1.0.12（code 13）**（dev 通道，未转正）。
+## 当前状态（2026-09-13 第五次更新）
+- 线上最新：**v1.0.9（code 10）**；装机测试包已到 **v1.0.14（code 15）**（dev 通道，未转正）。
 - 🚫 **UI 决定（用户明确要求，别再改回去）**：「粘贴导入进度码」**只有扫码页里那一个入口**
-  （`activity_scan.xml` 的 `btnPaste`）；设置页里那个重复的行已删除。点它必须**先弹出空输入框**
-  （聚焦 + 顶键盘 + `adjustResize`），粘贴/手输都由用户做——**不要自动读剪贴板、更不要自动导入**；
-  「读取剪贴板 / 清空」只作为框下方的小按钮兜底（有些 ROM 对话框里长按菜单弹不出来）。
+  （`activity_scan.xml` 的 `btnPaste`）；设置页里那个重复的行已删除。点它**打开独立页 `PasteImportActivity`**，
+  进去就是**空的输入框**（键盘自己弹起），粘贴/手输都由用户做——**不要自动读剪贴板、更不要自动导入**；
+  「读取剪贴板 / 清空」只是框下方的小按钮兜底（有些 ROM 长按菜单弹不出来）。失败时页面下方直接显示
+  诊断行并可「复制诊断信息」（`TransferUi.lastNote`）——用户只会回"还是不行"，这一行就是定位依据。
 - 用户第二轮仍然只回了一句「还是不能粘贴码」→ 因为没有设备日志，这轮把**"失败必须自证"**做进产品：
   `ProgressCode.Out.stage/detail` + 失败卡片上的**「复制诊断信息」**（原文长度/有效字符数/开头结尾 28 字符/卡在哪一步），
   下次用户贴那句回来就能直接定位。解析改自愈式找码起点（`wpx1` 标签后可跟任意/无分隔符，或取最长 base64 段），
