@@ -7,7 +7,7 @@ on:
     inputs:
       label: { description: "备注（只写进构建摘要）", required: false, default: "staging" }
 permissions:
-  contents: read
+  contents: write          # 只用于把测试包推到孤儿分支 dev（raw 直链，供手机 App 内更新）
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -88,3 +88,21 @@ jobs:
           path: wordsprint-v${{ steps.meta.outputs.ver }}.apk
           retention-days: 14
           if-no-files-found: error
+
+      # 开发者通道：同一份包推到孤儿分支 dev；手机「设置 → 更新源」填
+      # https://raw.githubusercontent.com/<owner>/<repo>/dev 就能用 App 内「检查更新」装机。
+      # 依然不建 tag / 不建 Release。撤销： git push origin --delete dev
+      - name: Publish dev channel（raw 直链 + update.json）
+        env:
+          DEV_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bash scripts/publish_dev.sh "CI staging v${{ steps.meta.outputs.ver }}（code ${{ steps.meta.outputs.vc }}）"
+          URLBASE="https://raw.githubusercontent.com/${{ github.repository }}/dev"
+          {
+            echo
+            echo "### 手机装机地址（开发者通道）"
+            echo
+            echo "设置 → 更新源填 \`$URLBASE\` → 点「检查」→「立即更新」（同签名，覆盖安装不丢进度）"
+            echo
+            echo "update.json： \`$URLBASE/update.json\`"
+          } >> "$GITHUB_STEP_SUMMARY"

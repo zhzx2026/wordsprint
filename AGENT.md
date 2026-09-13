@@ -94,7 +94,20 @@ PUSH_TOKEN=<用户临时提供的 fine-grained PAT> bash scripts/promote.sh
     复制失败自动弹全文卡片。
   - 工程侧：`.gitignore` 加 `tools/`；`push_release.sh` 拦 >2MB 误提交；`build.sh` 缺 keystore 时 exit 3（不再偷造新钥匙）；
     新增 `scripts/run_tests.sh`、`.github/workflows/staging.yml` + `scripts/staging_build.sh`（CI 出测试包，不发布）。
-- ⚠️ 未决：**沙箱出不了包**（见上文环境章节），v1.0.10 的装机测试包要靠 CI staging artifact；本地/新环境也别再自己装 SDK。
+- ⚠️ 沙箱出不了包（见上文环境章节）→ v1.0.10 的装机包由 **CI staging** 出，并同时发到「开发者通道」：
+  ```bash
+  bash scripts/staging_build.sh            # 推当前分支 + gh workflow run staging.yml
+  ```
+  CI 跑 `scripts/run_tests.sh`（主机测试）→ `build.sh`（真钥匙签名）→ ① artifact `wordsprint-staging-vX.Y.Z`
+  （zip，解压出 apk）② **孤儿分支 `dev`**：`wordsprint.apk` + `update.json`。
+  手机实测最省事的一条：设置 → 更新源填 `https://raw.githubusercontent.com/zhzx2026/wordsprint/dev`
+  → 检查 → 立即更新（同签名覆盖安装，进度不丢）。**这仍不是转正**：不建 tag、不建 Release，
+  手机内置源还是 releases/latest，别人不会收到这版。撤销：`git push origin --delete dev`。
+  助手侧看不到 Actions 日志（日志下载域被墙），但 staging.yml 会把失败前几行转成 `::error::` 注解，
+  用 `gh api /repos/<repo>/check-runs/<id>/annotations` 就能读到 javac 报错 → 自己迭代。
+- 📏 进度码实测规模（真实 13 册 8804 词）：文本码 **824~1650 字符**；已评估"再压小"（位图 gap/varint 或 RLE）
+  → 稀疏时只省 ~17%，密集时反而变大（Deflate 已经把 0xFF/0x00 连解压得很干净），**结论：不改格式**，
+  长度风险由"截断可恢复"兜住（`ProgressCode` + `CodeHostTest` 覆盖）。
 - 未了事项：等用户对 v1.0.10（粘贴导入 + 更新弹窗）的实测反馈 → 通过后 `bash scripts/promote.sh 1.0.10`。
 
 ## 与用户协作的习惯

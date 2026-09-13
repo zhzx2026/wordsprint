@@ -43,7 +43,12 @@
 `PackTest`（数据格式解析）、`EngineTest`（刷词引擎 + 回炉区间断言）、`QRHostTest`（渲染→解码→合并全链路）、
 `CodeHostTest`（进度码复制/粘贴容错，含截断恢复）。CI 的 `staging.yml` 也跑它；发版前必过。
 
-## 装机测试包（不发布）
+## 装机测试包 / 开发者 update.json（都不算发布）
+`bash scripts/staging_build.sh` → CI 用仓库 Secret 里的真钥匙签名，产出两样：
+① Actions 页 Artifacts 里的 `wordsprint-staging-vX.Y.Z`（zip 解压得 apk）；
+② 孤儿分支 `dev`（`wordsprint.apk` + `update.json`），手机「设置 → 更新源」填
+`https://raw.githubusercontent.com/zhzx2026/wordsprint/dev` 即可用 App 内检查更新覆盖安装。
+不建 tag、不建 Release，内置更新源仍是 `releases/latest`；撤销：`git push origin --delete dev`。
 本地没有 `wordsprint.keystore` 时 `build.sh` 会**直接失败**（绝不偷偷生成新钥匙——那会让你的老版本装不上、进度全丢）。
 要测试包就交给 CI（有仓库 Secret 里的真钥匙）：`bash scripts/staging_build.sh` → Actions 的 **Artifacts** 里下载解压 → 覆盖安装。
 **不打 tag、不发 Release**，手机不会收到 OTA。
