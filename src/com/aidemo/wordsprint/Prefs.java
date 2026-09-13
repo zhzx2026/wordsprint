@@ -18,8 +18,15 @@ public class Prefs {
     public static final String K_SPEAK = "s_speak", K_PHON = "s_phon", K_SOUND = "s_sound", K_ANIM = "s_anim";
     /** 主题：0 跟随系统 · 1 浅色 · 2 深色 */
     public static final String K_NIGHT = "g_night";
-    public static final String K_UP_URL = "u_url", K_UP_AUTO = "u_auto", K_UP_LAST = "u_last",
-            K_UP_SEEN = "u_seen";
+    public static final String K_UP_URL = "u_url", K_UP_CH = "u_ch", K_UP_AUTO = "u_auto",
+            K_UP_LAST = "u_last", K_UP_SEEN = "u_seen";
+    /** 0 正式版（Release）· 1 开发版（dev 分支） */
+    public int updateChannel() {
+        if (p.contains(K_UP_CH)) return p.getInt(K_UP_CH, 0) == 1 ? 1 : 0;
+        String old = p.getString(K_UP_URL, "");
+        return old != null && old.contains("/dev") ? 1 : 0;
+    }
+    public void setUpdateChannel(int ch) { p.edit().putInt(K_UP_CH, ch == 1 ? 1 : 0).apply(); }
     public String str(String key, String def) { return p.getString(key, def); }
     public void set(String key, String v) { p.edit().putString(key, v).apply(); }
     public int night() { return p.getInt(K_NIGHT, 0); }

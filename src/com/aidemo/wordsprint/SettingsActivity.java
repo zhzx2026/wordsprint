@@ -5,8 +5,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
-import android.view.inputmethod.InputMethodManager;
-import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -53,20 +51,17 @@ public class SettingsActivity extends Activity {
             }
         });
 
-        // —— 应用内更新 ——
-        final EditText etUrl = (EditText) findViewById(R.id.etUpdateUrl);
-        etUrl.setText(pr.str(Prefs.K_UP_URL, ""));
+        // —— 应用内更新：stable / dev ——
+        final LinearLayout srcRow = (LinearLayout) findViewById(R.id.srcChips);
+        String[] srcNames = {getString(R.string.update_src_stable), getString(R.string.update_src_dev)};
+        Ui.fillRowEqual(srcRow, srcNames, pr.updateChannel(), new Ui.ChipTap() {
+            @Override public void onTap(int idx, TextView chip) { pr.setUpdateChannel(idx); }
+        });
         final android.widget.TextView state = (android.widget.TextView) findViewById(R.id.tvUpdateState);
         state.setText(getString(R.string.update_cur_ver, Update.myName(this), Update.myCode(this)));
         bind(R.id.swUpdate, pr, Prefs.K_UP_AUTO, true);
         findViewById(R.id.btnUpdateCheck).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
-                pr.set(Prefs.K_UP_URL, etUrl.getText().toString().trim());
-                View unf = getCurrentFocus();
-                if (unf != null) {
-                    InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-                    imm.hideSoftInputFromWindow(unf.getWindowToken(), 0);
-                }
                 state.setText(R.string.update_checking);
                 Update.checkAsync(SettingsActivity.this, new Update.Cb() {
                     @Override public void onResult(Update.Info info, String err) {
@@ -94,12 +89,6 @@ public class SettingsActivity extends Activity {
             }
         });
 
-    }
-
-    @Override protected void onPause() {
-        super.onPause();
-        EditText et = (EditText) findViewById(R.id.etUpdateUrl);
-        if (et != null) Prefs.of(this).set(Prefs.K_UP_URL, et.getText().toString().trim());
     }
 
     private void bind(int id, final Prefs pr, final String key, final boolean def) {

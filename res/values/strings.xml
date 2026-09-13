@@ -116,9 +116,12 @@
     <string name="cam_fail">相机打开失败，可用「粘贴进度码」</string>
     <string name="update_title">检查更新</string>
     <string name="update_auto">自动检查更新</string>
-    <string name="update_src">更新源地址</string>
-    <string name="update_src_hint">留空=用内置 GitHub 源；也可填任意 update.json 地址</string>
+    <string name="update_src">更新源</string>
+    <string name="update_src_stable">stable</string>
+    <string name="update_src_dev">dev</string>
+    <string name="update_src_hint">stable = GitHub Release；dev = 开发分支</string>
     <string name="update_default_src" translatable="false">https://github.com/zhzx2026/wordsprint/releases/latest/download/update.json</string>
+    <string name="update_dev_src" translatable="false">https://raw.githubusercontent.com/zhzx2026/wordsprint/dev/update.json</string>
     <string name="update_check">检查</string>
     <string name="update_checking">正在检查…</string>
     <string name="update_latest_now">已是最新版本</string>
