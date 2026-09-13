@@ -352,6 +352,36 @@ public class Ui {
         }
     }
 
+    /**
+     * 读剪贴板：纯文本 → HTML → URI 依次兜底（微信/便签有时只给 htmlText，「分享文件」给的是
+     * file:// URI）。全程 catch 到 Throwable：某些 ROM 在无焦点/受限状态下会直接 SecurityException。
+     */
+    public static String readClipboard(android.content.Context c) {
+        try {
+            android.content.ClipboardManager cm = (android.content.ClipboardManager)
+                    c.getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+            if (cm == null || !cm.hasPrimaryClip()) return null;
+            android.content.ClipData cd = cm.getPrimaryClip();
+            if (cd == null || cd.getItemCount() == 0) return null;
+            android.content.ClipData.Item it = cd.getItemAt(0);
+            if (it == null) return null;
+            CharSequence cs = null;
+            try { cs = it.getText(); } catch (Throwable ignored) {}
+            if (cs == null || cs.length() == 0) {
+                try { if (it.getHtmlText() != null) cs = it.getHtmlText(); } catch (Throwable ignored) {}
+            }
+            if ((cs == null || cs.length() == 0) && it.getUri() != null) {
+                try { cs = it.getUri().toString(); } catch (Throwable ignored) {}
+            }
+            if (cs == null || cs.length() == 0) {
+                try { cs = it.coerceToText(c); } catch (Throwable ignored) {}
+            }
+            return cs == null ? null : cs.toString();
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
     /** 写剪贴板：个别 ROM（后台无焦点、超长文本）会抛异常，绝不让它带走进程 */
     public static boolean copyText(android.content.Context c, CharSequence s) {
         try {

@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/bg">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/bg_header"
+        android:fitsSystemWindows="true"
+        android:paddingStart="14dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="16dp">
+
+        <ImageView
+            android:id="@+id/btnBack"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:padding="10dp"
+            android:background="@drawable/bg_pill_white20"
+            android:src="@drawable/ic_back"
+            android:tint="#FFFFFFFF"
+            android:contentDescription="@null"/>
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="10dp"
+            android:text="@string/manual_import"
+            android:textColor="#FFFFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold"/>
+
+        <TextView
+            android:id="@+id/tvVer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#66FFFFFF"
+            android:textSize="11sp"
+            android:fontFamily="monospace"/>
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true"
+        android:padding="20dp"
+        android:clipToPadding="false">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/paste_manual_tip"
+                android:textColor="@color/text_secondary"
+                android:textSize="11.5sp"
+                android:lineSpacingExtra="3dp"/>
+
+            <EditText
+                android:id="@+id/etCode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="200dp"
+                android:layout_marginTop="12dp"
+                android:gravity="top|start"
+                android:background="@drawable/bg_card_field"
+                android:padding="12dp"
+                android:inputType="textMultiLine|textNoSuggestions"
+                android:typeface="monospace"
+                android:fontFamily="monospace"
+                android:textSize="12sp"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_secondary"
+                android:hint="@string/paste_hint"
+                android:scrollbars="vertical"
+                android:textIsSelectable="true"
+                android:importantForAutofill="no"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/btnRead"
+                    android:layout_width="0dp"
+                    android:layout_height="42dp"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:background="@drawable/bg_card_field"
+                    android:text="@string/paste_read_clip"
+                    android:textColor="@color/brand1"
+                    android:textSize="12.5sp"/>
+
+                <View
+                    android:layout_width="8dp"
+                    android:layout_height="1dp"/>
+
+                <TextView
+                    android:id="@+id/btnClear"
+                    android:layout_width="0dp"
+                    android:layout_height="42dp"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:background="@drawable/bg_card_field"
+                    android:text="@string/paste_clear"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12.5sp"/>
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/btnImport"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="16dp"
+                android:gravity="center"
+                android:background="@drawable/bg_btn_gradient"
+                android:text="@string/do_import"
+                android:textColor="#FFFFFFFF"
+                android:textSize="15sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:id="@+id/tvStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:padding="10dp"
+                android:background="@drawable/bg_card_field"
+                android:textColor="@color/text_secondary"
+                android:textSize="11sp"
+                android:fontFamily="monospace"
+                android:lineSpacingExtra="2dp"
+                android:textIsSelectable="true"
+                android:visibility="gone"/>
+
+            <TextView
+                android:id="@+id/btnCopyDiag"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:padding="6dp"
+                android:text="@string/diag_copy"
+                android:textColor="@color/brand1"
+                android:textSize="12sp"
+                android:visibility="gone"/>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

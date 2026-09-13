@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.aidemo.wordsprint"
-    android:versionCode="14"
-    android:versionName="1.0.13">
+    android:versionCode="15"
+    android:versionName="1.0.14">
 
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.INTERNET"/>
@@ -34,9 +34,14 @@
             android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".SettingsActivity" android:exported="false" />
         <activity android:name=".ExportActivity" android:exported="false" />
+        <!-- keyboard/keyboardHidden 必须自己吃掉：否则弹窗/输入框一弹键盘 Activity 就被重建（v1.0.13 装机实测"点粘贴就退出"） -->
         <activity android:name=".ScanActivity" android:exported="false"
             android:theme="@style/Theme.WordsPrint.Scan" android:screenOrientation="portrait"
-            android:configChanges="orientation|screenSize" />
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation"
+            android:windowSoftInputMode="stateHidden|adjustResize" />
+        <activity android:name=".PasteImportActivity" android:exported="false"
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation"
+            android:windowSoftInputMode="stateVisible|adjustResize" />
         <provider
             android:name=".ApkProvider"
             android:authorities="com.aidemo.wordsprint.update"

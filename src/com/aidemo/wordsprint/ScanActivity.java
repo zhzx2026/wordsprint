@@ -83,16 +83,12 @@ public class ScanActivity extends Activity implements android.view.SurfaceHolder
             @Override public void onClick(View v) { autoFocusOnce(); }
         });
 
+        // 粘贴导入 = 打开独立页（不再在相机窗口上挂对话框，见 PasteImportActivity 类注释）。
+        // 相机交给 onPause/onResume 的正常路径：本页被盖住时 stopCam，回来时 startCam。
         findViewById(R.id.btnPaste).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
-                // 粘贴导入：只暂停送帧，不释放相机（见类注释·教训二）
-                done = true;
-                TransferUi.showPasteDialog(ScanActivity.this, new TransferUi.Done() {
-                    @Override public void done(boolean ok) {
-                        if (ok) { stopCamAsync(); finish(); }
-                        else resumeScanSoon();          // 用户取消 / 这次没成 → 继续取景
-                    }
-                }, false);      // 不可点外部关闭：否则取景会一直黑着
+                try { startActivity(new android.content.Intent(ScanActivity.this, PasteImportActivity.class)); }
+                catch (Throwable t) { Toast.makeText(ScanActivity.this, "打不开粘贴导入页", Toast.LENGTH_LONG).show(); }
             }
         });
 
@@ -305,7 +301,15 @@ public class ScanActivity extends Activity implements android.view.SurfaceHolder
     }
 
     @Override protected void onPause() { super.onPause(); if (!done) stopCam(); }
-    @Override protected void onResume() { super.onResume(); if (!done) startCam(); }
+    @Override protected void onResume() {
+        super.onResume();
+        if (PasteImportActivity.consumeImported()) {   // 独立页里导入成功了 → 扫码页直接收尾
+            stopCamAsync();
+            finish();
+            return;
+        }
+        if (!done) startCam();
+    }
     @Override protected void onDestroy() {
         super.onDestroy();
         done = true;

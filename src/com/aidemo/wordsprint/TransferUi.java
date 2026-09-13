@@ -31,23 +31,8 @@ public class TransferUi {
     /** ok=true：已合并（调用方可收尾/关页）；ok=false：这次没成 */
     public interface Done { void done(boolean ok); }
 
-    /** 设置页用：没有相机要收尾，允许点外面/返回键关掉 */
-    public static void showPasteDialog(final Activity a, final Done onDone) {
-        showPasteDialog(a, onDone, true);
-    }
-
-    /**
-     * cancelable=false 给扫码页用：打开粘贴框时已经暂停了送帧，
-     * 用户要是用返回键把弹窗刮掉、又没有明确出口，取景就一路黑到底。
-     * 所以那条路上只留「导入 / 取消」两个按钮。
-     */
-    public static void showPasteDialog(final Activity a, final Done onDone, boolean cancelable) {
-        try {
-            PasteSheet.show(a, onDone, cancelable);
-        } catch (Throwable t) {
-            safeToast(a, "弹窗创建失败：" + msgOf(t));
-        }
-    }
+    /** 失败诊断（供宿主页面直接显示/复制；同一时刻只有一个导入在跑，够用） */
+    public static volatile String lastNote;
 
     /** 扫码页解出文本后也走这里：只解析 + 合并，完全不碰相机 */
     public static void importText(final Activity a, final String raw, final Done onDone) {
@@ -118,6 +103,7 @@ public class TransferUi {
 
     private static void success(Activity a, int[] res, Transfer.Decoded dec, boolean truncated,
                                  final Done onDone) {
+        lastNote = null;
         vibrate(a);
         LinearLayout col = new LinearLayout(a);
         col.setOrientation(LinearLayout.VERTICAL);
@@ -193,12 +179,11 @@ public class TransferUi {
                 }
             });
         }
+        lastNote = diag;
         Ui.cardDialogEx(a, str(a, R.string.import_fail_title), Ui.scrollable(col, 300),
-                str(a, R.string.import_retry), new Runnable() {
-                    @Override public void run() { showPasteDialog(a, onDone, cancelable); }
-                }, str(a, R.string.import_back), new Runnable() {
-                    @Override public void run() { call(onDone, false); }
-                }, true);
+                str(a, R.string.import_close), new Runnable() {
+                    @Override public void run() { call(onDone, false); }   // 宿主页面自己还留着输入框，直接改再试
+                }, null, null, cancelable);
     }
 
     private static void call(Done d, boolean ok) {
