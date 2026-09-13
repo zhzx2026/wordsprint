@@ -97,10 +97,8 @@ jobs:
         run: |
           { echo "===== scripts/run_tests.sh ====="; cat /tmp/t.log 2>/dev/null || echo "(无)";
             echo; echo "===== build.sh ====="; cat /tmp/b.log 2>/dev/null || echo "(无)"; } > /tmp/diag.log
-          SUMMARY=$(python3 -c "
-          import json,sys
-          t=open('/tmp/diag.log',encoding='utf-8',errors='replace').read()
-          sys.stdout.write(json.dumps(t[-24000:])[1:-1])")
+          tail -c 24000 /tmp/diag.log | iconv -f utf-8 -t utf-8 -c > /tmp/diag.trim || cp /tmp/diag.log /tmp/diag.trim
+          SUMMARY=$(cat /tmp/diag.trim)
           gh api --method POST "/repos/${{ github.repository }}/check-runs" \
             -f name=ci-diagnostics -f head_sha="${{ github.sha }}" \
             -f status=completed -f conclusion="$STATUS" \

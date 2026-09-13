@@ -155,7 +155,7 @@ public class ProgressCode {
     }
 
     /** 手工 inflate：允许中途出错，返回已经解出来的部分（可能为 null = 一个字节都没成功） */
-    private static byte[] inflate(byte[] src, boolean lenient, Out o) {
+    private static byte[] inflate(byte[] src, boolean lenient, Out o) throws IOException {
         Inflater inf = new Inflater(false);
         try {
             // 注意：不要在这里先 setInput(src)——下面的循环会从同一个 ByteArrayInputStream
