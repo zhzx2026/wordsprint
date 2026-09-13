@@ -2,10 +2,15 @@
 # 转正之前用户要先装机实测（见 AGENT.md 发版铁律），所以这条流刻意不碰 Releases。
 # 用仓库 Secret KEYSTORE_B64（与线上同一个签名证书）→ 这个包可以直接覆盖安装，进度不丢。
 name: staging
+# ⚠️ workflow_dispatch 要求 workflow 文件存在于**默认分支**，新分支上没法手动触发；
+# 所以这里同时挂 push 触发（push 事件用的是被推分支里的那份 workflow 文件，立刻可用）。
+# 安全性：只挂自己人推的分支，**别加 pull_request**——fork PR 拿不到仓库 Secret。
 on:
   workflow_dispatch:
     inputs:
       label: { description: "备注（只写进构建摘要）", required: false, default: "staging" }
+  push:
+    branches: ["arena/**", "staging/**", "dev-build"]
 permissions:
   contents: write          # 只用于把测试包推到孤儿分支 dev（raw 直链，供手机 App 内更新）
 jobs:
