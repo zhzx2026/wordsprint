@@ -230,14 +230,6 @@
                     </LinearLayout>
                     <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_chevron" android:tint="@color/text_secondary" android:contentDescription="@null"/>
                 </LinearLayout>
-                <View style="@style/SettingDivider"/>
-                <LinearLayout style="@style/SettingRow" android:id="@+id/btnPasteImport">
-                    <LinearLayout style="@style/SettingRowText">
-                        <TextView style="@style/SettingTitle" android:text="@string/paste_import"/>
-                        <TextView style="@style/SettingDesc" android:text="@string/paste_import_desc"/>
-                    </LinearLayout>
-                    <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_chevron" android:tint="@color/text_secondary" android:contentDescription="@null"/>
-                </LinearLayout>
             </LinearLayout>
 
             <TextView

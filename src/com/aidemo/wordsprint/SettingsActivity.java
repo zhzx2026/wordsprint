@@ -33,17 +33,6 @@ public class SettingsActivity extends Activity {
         findViewById(R.id.btnScan).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { startActivity(new Intent(SettingsActivity.this, ScanActivity.class)); }
         });
-        // 直接在本页粘贴导入：完全不开摄像头，扫码/相机有问题的机器用这条
-        findViewById(R.id.btnPasteImport).setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                TransferUi.showPasteDialog(SettingsActivity.this, new TransferUi.Done() {
-                    @Override public void done(boolean ok) {
-                        if (ok) android.widget.Toast.makeText(SettingsActivity.this,
-                                R.string.import_ok_title, android.widget.Toast.LENGTH_SHORT).show();
-                    }
-                });
-            }
-        });
         Db.ensureLoaded(this);
         ((TextView) findViewById(R.id.tvAbout)).setText(
                 getString(R.string.about_line, Db.I.books().size(), Db.I.totalWords()));

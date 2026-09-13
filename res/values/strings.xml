@@ -98,6 +98,7 @@
     <string name="copy_code">复制文本码</string>
     <string name="share_code">分享码图</string>
     <string name="manual_import">手动导入进度码</string>
+    <string name="paste_need_input">先把进度码粘贴进来（或手输）再点导入；也可以点下面的「读取剪贴板」</string>
     <string name="paste_read_clip">读取剪贴板</string>
     <string name="paste_clear">清空</string>
     <string name="paste_empty">剪贴板是空的：先在对方手机「导出进度」点复制（或在微信里长按那条消息→复制），再回来点导入。</string>
@@ -105,7 +106,7 @@
     <string name="paste_clip_none">剪贴板读不到内容（系统限制/内容为空），请长按输入框手动粘贴</string>
     <string name="diag_copy">复制诊断信息</string>
     <string name="diag_copied">诊断信息已复制，贴给开发者就能定位</string>
-    <string name="paste_hint">粘贴 WPX1. 开头的进度码文本</string>
+    <string name="paste_hint">长按此处 → 粘贴（或手动输入）WPX1. 开头的进度码</string>
     <string name="do_import">导入</string>
     <string name="cancel">取消</string>
     <string name="import_ok_title">导入成功</string>
@@ -142,8 +143,6 @@
     <string name="import_oom">进度码太长，这台机器内存不够</string>
     <string name="paste_loaded">已自动读入剪贴板里的 %1$d 个字符，可直接导入</string>
     <string name="paste_manual_tip">在对方手机「导出进度」页点「复制文本码」，回来长按下面的输入框粘贴即可</string>
-    <string name="paste_import">粘贴导入进度码</string>
-    <string name="paste_import_desc">不用摄像头，直接贴文本码</string>
     <string name="copied_chars">已复制 %1$d 个字符，去另一台手机「粘贴导入」即可</string>
     <string name="copy_fail">系统剪贴板没写成功，请长按下面的文本码手动全选</string>
     <string name="code_full_title">进度码全文（长按可全选复制）</string>

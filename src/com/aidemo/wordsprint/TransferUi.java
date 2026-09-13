@@ -93,14 +93,6 @@ public class TransferUi {
         }, "wp-import").start();
     }
 
-    /** 框里/剪贴板都是空的：这不是"码无效"，说清楚下一步该点什么 */
-    public static void pasteEmpty(final Activity a, final Done onDone) {
-        try {
-            if (a != null && !a.isFinishing())
-                Toast.makeText(a, str(a, R.string.paste_empty), Toast.LENGTH_LONG).show();
-        } catch (Throwable ignored) {}
-        call(onDone, false);
-    }
 
     // ---------------- 结果卡片 ----------------
 
