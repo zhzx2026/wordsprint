@@ -27,8 +27,15 @@ wordsprint/
 ## 沙箱环境重建（新 session 里 /var/tmp 是空的！）
 > ⚠️ 2026-09-13 实测：Arena 沙箱的出网是**白名单**制——`pypi.org`/`registry.npmjs.org`/`github.com`/`api.github.com`/`codeload` 通，
 > 但 `dl.google.com`（Android SDK）、`api.adoptium.net`（JDK）、`storage.googleapis.com`、`repo1.maven.org`、`deb.debian.org`、
-> `raw.githubusercontent.com`、Actions 的日志下载域**全都不通**。→ **沙箱里装不出 build.sh 需要的工具链，也没有 wordsprint.keystore，
-> 本地根本出不了"能覆盖安装"的测试包。** 别再在沙箱里试 `setup_tools.sh`（会 SSL_ERROR_SYSCALL 卡住），走下面第 3 条 CI 路子。
+> `raw.githubusercontent.com`、Actions 日志域、artifact 域（`*.blob.core.windows.net`）**全都不通**。
+> → **沙箱里装不出 build.sh 需要的工具链（连 javac 都没有：jdk4py 那套只带 JRE，无 jdk.compiler 模块），
+> 也没有 wordsprint.keystore，本地根本出不了"能覆盖安装"的测试包。** 别再在沙箱里试 `setup_tools.sh`/装 SDK（SSL_ERROR_SYSCALL）。
+>
+> 助手侧**能**用的口子：
+> - `api.github.com` 全量可用 → **把 CI 当 javac 用**（见下面「日志怎么读」）、读/写仓库文件、发 Release。
+> - 取小文件/测试包：`gh api "/repos/zhzx2026/wordsprint/contents/<path>?ref=<branch>" --jq .content | base64 -d`
+>   （554KB 的 apk 实测可取，比走 artifact 靠谱）；releases 资产（`objects.githubusercontent.com`）也通。
+> - `raw.githubusercontent.com` **不通**（403）→ 它是**手机上**填的更新源地址，不是给你自己 curl 的。
 ```bash
 # 1) 工具链（约 250MB；只有在能直连 google/adoptium 的机器上才有效）
 cd wordsprint && bash scripts/setup_tools.sh        # 下到 ./tools/（已进 .gitignore，push_release 也有 >2MB 误提交拦截）
@@ -103,8 +110,16 @@ PUSH_TOKEN=<用户临时提供的 fine-grained PAT> bash scripts/promote.sh
   手机实测最省事的一条：设置 → 更新源填 `https://raw.githubusercontent.com/zhzx2026/wordsprint/dev`
   → 检查 → 立即更新（同签名覆盖安装，进度不丢）。**这仍不是转正**：不建 tag、不建 Release，
   手机内置源还是 releases/latest，别人不会收到这版。撤销：`git push origin --delete dev`。
-  助手侧看不到 Actions 日志（日志下载域被墙），但 staging.yml 会把失败前几行转成 `::error::` 注解，
-  用 `gh api /repos/<repo>/check-runs/<id>/annotations` 就能读到 javac 报错 → 自己迭代。
+  **CI 日志怎么读**（沙箱看不到 Actions 日志页）：staging.yml 无论成败都把 `run_tests.sh`+`build.sh` 全文
+  写进自建 check-run `ci-diagnostics`，另外把 `error:` 前几行转成 annotations：
+  ```bash
+  SHA=$(git rev-parse HEAD); REPO=zhzx2026/wordsprint
+  ID=$(gh api "/repos/$REPO/commits/$SHA/check-runs" --jq '.check_runs[]|select(.name=="ci-diagnostics").id')
+  gh api "/repos/$REPO/check-runs/$ID" --jq .output.summary
+  ```
+  2026-09-13 就是这么连着抓出 3 个沙箱绝对发现不了的错：CodeHostTest 里的裸零宽字符字面量、
+  `ProgressCode.inflate()` 漏 `throws IOException`、以及**不存在的 API `Window.setWindowAnimationStyle()`**
+  （动画样式只能写 `WindowManager.LayoutParams.windowAnimations`）。推分支 → 等 ~1 分钟 → 读 summary → 改 → 再推。
 - 📏 进度码实测规模（真实 13 册 8804 词）：文本码 **824~1650 字符**；已评估"再压小"（位图 gap/varint 或 RLE）
   → 稀疏时只省 ~17%，密集时反而变大（Deflate 已经把 0xFF/0x00 连解压得很干净），**结论：不改格式**，
   长度风险由"截断可恢复"兜住（`ProgressCode` + `CodeHostTest` 覆盖）。
