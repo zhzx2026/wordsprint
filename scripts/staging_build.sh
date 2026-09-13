@@ -19,5 +19,5 @@ cat <<HELP
 构建完成后取包（用户侧，浏览器里点即可）：
   https://github.com/$(git remote get-url origin | sed -E 's#(https://|git@)(github\.com[:/])##; s#\.git$##')/actions/workflows/staging.yml
   → 最新一条 run → 页面底部 Artifacts → wordsprint-staging-v$VER（zip）→ 解压出 apk → 覆盖安装。
-测好了再谈转正：bash scripts/promote.sh $VER   （需要用户明确同意 + 临时 PAT）
+测好了再谈转正：bash scripts/promote.sh   （需用户明确同意；自动 X.Y→X.0、等 staging 变绿再推 tag，见 VERSIONING.md）
 HELP

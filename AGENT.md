@@ -6,6 +6,13 @@
 - 用户没点头之前：只做 `SKIP_PUSH=1` 暂存构建，把 APK 交给用户装机实测。
 - 任何"看起来肯定没问题"的理由都不构成跳过测试的许可，包括：只改了一行、纯文档、时间紧。
 
+## 📌 版本迭代管理（用户 2026-09-13 定版，与发版铁律同级）
+规则全文见 [VERSIONING.md](VERSIONING.md)，执行器是 `scripts/version.sh`（版本号**只许它改**，不许手写 sed）：
+- **dev**：`X.Y`（Y≥1），如 2.1→2.2→2.3；每轮迭代交付前 `bash scripts/version.sh bump-dev`（+0.1、code 取 max+1、同步标识）。
+- **stable**：`X.0`（如 2.0）；用户确认后 `bash scripts/promote.sh`（自动 X.Y→X.0、等 staging 变绿、打 tag 推 main），或合 PR 自动转正。
+- dev 不合 main、不打 tag；tag 只打 stable（`v2.0`…）；旧 `1.0.x` 三段号已退役（`check` 判 legacy，CI 拒绝）。
+- `promote.sh` 新用法**不带版本号参数**（自动从当前 dev 推导）；`push_release.sh` 改为 dev 迭代（bump→构建→commit，不 tag 不 push）。
+
 ## 项目一句话
 「刷单词」：纯离线 Android 背词 App（人教版初高中 12 册 + 高考 3500，共 8824 词），
 无 Gradle、无第三方 UI 库，`bash build.sh` 直接出签名 APK；进度经 GitHub Releases OTA。
@@ -135,6 +142,11 @@ PUSH_TOKEN=<用户临时提供的 fine-grained PAT> bash scripts/promote.sh 1.0.
     App 侧显示顺序 = pack 里的顺序（`MainActivity.buildRows()` 不做二次排序），改数据文件即可生效。
 
 ## 当前状态（2026-09-13 第六次更新）
+- 🆕 **新版本方案落地（本分支）**：`VERSIONING.md` + `scripts/version.sh`（status/bump-dev/promote/sync/check），
+  `push_release.sh`/`promote.sh` 已按新方案重写，`staging.yml` 加版本门禁，`auto_release.yml` 只发 X.0。
+  当前 manifest 已迁入新方案：**dev v2.1（code 19）**，由旧 1.0.17/code 18 经 bump-dev 迁移
+  （用户选定从 2.1 起步，旧 1.0.x 视为第 1 代；旧 tag `v1.0.8/9/14/17` 不动）。
+  main 仍是 v1.0.17（code 18，已发布）；本分支合 main 前必须先 promote 到 stable 2.0。
 - ⏳ **待用户实测：v1.0.16（code 17）** —— 分支 `arena/01a09b02-wordsprint`，已 **merge `origin/main`（PR #1）**，
   所以这个包 = 小学 8 册 768 词 + 详情遮罩可关 + **词书库高中排序修复**（先必修一/二/三，再选择性必修一~四，见坑 14）。
   数据：`res/raw/wdb.dat` 21 本 / 9592 词 / 401529B（尺寸与 main 一致，只重排了高中段）。

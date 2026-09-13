@@ -8,7 +8,8 @@
 #    tag 已存在时本流直接跳过（也就自动兼容「PR 没 bump 版本号」和「已经手动发过」两种情况）。
 #
 # 每个 PR 自己的义务（不满足就不会发布，并会在检查里留一条 ::error:: 说明）：
-#   ① AndroidManifest.xml 的 versionCode/versionName 已 bump —— 取「dev 通道 / main / 已有 tag」三者最大值 +1
+#   ① AndroidManifest.xml 已是 stable 号 X.0（dev 版 X.Y 合 main 会被跳过：先 version.sh promote 转正再合；
+#      versionCode 取「dev 通道 / main」最大值 +1 由 version.sh 自动做；规则见 VERSIONING.md）
 #   ② RELEASE_NOTES.md 写的是这一版的人话文案（它会原样成为 Release 页正文与 update.json 的 notes）
 #   ③ 合并前该分支的 staging CI 已变绿（本流也会再跑一次 run_tests.sh，红了就不发）
 #
@@ -55,6 +56,13 @@ jobs:
           echo "vc=$VC" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "== main 上的版本：$TAG（code $VC）"
+          # 新版本方案（VERSIONING.md）：只有 stable（X.0）能发布；dev（X.Y）合 main 直接跳过
+          if ! printf '%s' "$VER" | grep -Eq '^[0-9]+\.0$'; then
+            echo "go=no" >> "$GITHUB_OUTPUT"
+            echo "reason=当前版本 v$VER 不是 stable 号（X.0）：dev 版合 main 不会发布" >> "$GITHUB_OUTPUT"
+            echo "::error::合并即发布已跳过：v$VER 是 dev 版。转正流程：bash scripts/version.sh promote（X.Y→X.0）→ 提交 → 再合 PR（规则见 VERSIONING.md）"
+            exit 0
+          fi
 
           case "$PR_TITLE" in *"[skip release]"*)
             echo "go=no" >> "$GITHUB_OUTPUT"
@@ -224,9 +232,10 @@ jobs:
               echo "**未发布** ⏸ —— ${REASON:-闸门未通过或前序步骤失败}"
               echo
               echo "main 上没有新 tag，手机不会收到 OTA。要发就："
-              echo "① 确认 \`AndroidManifest.xml\` 已 bump（dev/main/tag 三者最大值 +1）+ \`RELEASE_NOTES.md\` 已更新，再合一个 PR；"
-              echo "② 或手动打 tag：\`git tag -a $TAG -m '…' && git push origin $TAG\`（走 release.yml）；"
-              echo "③ 或在 Actions 页手动 run 本 workflow（workflow_dispatch）。"
+              echo "① 若是 dev 版（X.Y）：先 \`bash scripts/version.sh promote\` 转为 X.0、提交、再合 PR；"
+              echo "② 若已是 stable（X.0）仍被跳过：确认 \`RELEASE_NOTES.md\` 人话文案已更新，再合一个 PR；"
+              echo "③ 或手动打 tag：\`git tag -a $TAG -m '…' && git push origin $TAG\`（走 release.yml）；"
+              echo "④ 或在 Actions 页手动 run 本 workflow（workflow_dispatch）。"
             fi
             [ -n "$DISPATCH_REASON" ] && { echo; echo "手动触发备注：$DISPATCH_REASON"; }
           } >> "$GITHUB_STEP_SUMMARY"

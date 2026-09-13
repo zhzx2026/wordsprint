@@ -1,5 +1,6 @@
 # 暂存测试包：只构建 + 上传 artifact。**不打 tag、不发 Release、不动 main** ——
 # 转正之前用户要先装机实测（见 AGENT.md 发版铁律），所以这条流刻意不碰 Releases。
+# 版本格式门禁：dev 须 X.Y（Y>=1），stable 须 X.0（见 VERSIONING.md）；旧 1.0.x 三段号直接失败。
 # 用仓库 Secret KEYSTORE_B64（与线上同一个签名证书）→ 这个包可以直接覆盖安装，进度不丢。
 name: staging
 # ⚠️ workflow_dispatch 要求 workflow 文件存在于**默认分支**，新分支上没法手动触发；
@@ -21,6 +22,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: "17" }
+
+      - name: 版本格式门禁（VERSIONING.md）
+        run: bash scripts/version.sh check
 
       # 沙箱/助手侧经常读不到 Actions 的日志下载链接（外网白名单），
       # 所以把失败输出的前几行转成 ::error:: 注解 —— API 能查到，助手才能自己迭代。
