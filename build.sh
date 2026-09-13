@@ -4,9 +4,11 @@ set -e
 cd "$(dirname "$0")"
 export LANG=C.UTF-8
 export LC_ALL=C.UTF-8
+if [ -z "${SDK_ROOT:-}" ] && [ -d "$(dirname "$0")/tools/android-sdk" ]; then SDK_ROOT="$(cd "$(dirname "$0")/tools" && pwd)/android-sdk"; fi
 SDK=${SDK_ROOT:-/var/tmp/android-sdk}
 BT=$SDK/build-tools/34.0.0
 if [ -n "${JDK_HOME:-}" ]; then export JAVA_HOME=$JDK_HOME; export PATH=$JAVA_HOME/bin:$PATH
+elif [ -x "$(dirname "$0")/tools/jdk17/bin/java" ]; then export JAVA_HOME="$(cd "$(dirname "$0")/tools/jdk17" && pwd)"; export PATH=$JAVA_HOME/bin:$PATH
 elif [ -x /var/tmp/jdk17/bin/java ]; then export JAVA_HOME=/var/tmp/jdk17; export PATH=$JAVA_HOME/bin:$PATH
 fi
 export PATH=$BT:$PATH
