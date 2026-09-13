@@ -4,6 +4,10 @@ wordsprint.keystore
 wordsprint-v*.apk
 *.log
 __pycache__/
+tools/
+tools*.zip
+*.tgz
+
 test/out/
 test/src/
 raw_xlsx/

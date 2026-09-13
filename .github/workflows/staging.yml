@@ -1,0 +1,90 @@
+# 暂存测试包：只构建 + 上传 artifact。**不打 tag、不发 Release、不动 main** ——
+# 转正之前用户要先装机实测（见 AGENT.md 发版铁律），所以这条流刻意不碰 Releases。
+# 用仓库 Secret KEYSTORE_B64（与线上同一个签名证书）→ 这个包可以直接覆盖安装，进度不丢。
+name: staging
+on:
+  workflow_dispatch:
+    inputs:
+      label: { description: "备注（只写进构建摘要）", required: false, default: "staging" }
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "17" }
+
+      # 沙箱/助手侧经常读不到 Actions 的日志下载链接（外网白名单），
+      # 所以把失败输出的前几行转成 ::error:: 注解 —— API 能查到，助手才能自己迭代。
+      - name: Host tests（与本地同一条命令、同一份源码）
+        run: |
+          set +e
+          bash scripts/run_tests.sh > /tmp/t.log 2>&1; ec=$?
+          cat /tmp/t.log
+          if [ $ec -ne 0 ]; then
+            grep -E "error:|FAIL|Exception|找不到" /tmp/t.log | head -8 | cut -c1-380 \
+              | while IFS= read -r l; do echo "::error::[tests] $l"; done
+            echo "::error::主机侧测试未通过（exit $ec）"
+            exit $ec
+          fi
+
+      - name: Install Android SDK pieces
+        run: |
+          mkdir -p $RUNNER_TEMP/sdk/build-tools $RUNNER_TEMP/sdk/platforms
+          curl -sSL -o bt.zip https://dl.google.com/android/repository/build-tools_r34-linux.zip
+          unzip -q bt.zip -d btX && mv btX/android-14 $RUNNER_TEMP/sdk/build-tools/34.0.0
+          curl -sSL -o p.zip https://dl.google.com/android/repository/platform-34-ext7_r02.zip
+          unzip -q p.zip -d pX && mv pX/android-34 $RUNNER_TEMP/sdk/platforms/android-34
+
+      - name: Restore keystore
+        env: { KEYSTORE_B64: "${{ secrets.KEYSTORE_B64 }}" }
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::缺 Secret KEYSTORE_B64：CI 无法用线上同一把钥匙签名，测试包会装不上老版本"
+            exit 1
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > wordsprint.keystore
+
+      - name: Build
+        env: { SDK_ROOT: "${{ runner.temp }}/sdk", KS_PASS: "${{ secrets.KS_PASS }}" }
+        run: |
+          set +e
+          bash build.sh > /tmp/b.log 2>&1; ec=$?
+          cat /tmp/b.log
+          if [ $ec -ne 0 ]; then
+            grep -E "error:|错误|Exception|✗" /tmp/b.log | head -8 | cut -c1-380 \
+              | while IFS= read -r l; do echo "::error::[build] $l"; done
+            echo "::error::build.sh 失败（exit $ec）"
+            exit $ec
+          fi
+
+      - name: Meta
+        id: meta
+        run: |
+          VER=$(grep -oE 'versionName="[^"]*"' AndroidManifest.xml | sed 's/versionName="//;s/"//')
+          VC=$(grep -oE 'versionCode="[0-9]*"' AndroidManifest.xml | sed 's/[^0-9]//g')
+          echo "ver=$VER" >> "$GITHUB_OUTPUT"
+          echo "vc=$VC" >> "$GITHUB_OUTPUT"
+
+      - name: 摘要
+        run: |
+          {
+            echo "## 暂存测试包 v${{ steps.meta.outputs.ver }}（code ${{ steps.meta.outputs.vc }}）"
+            echo
+            echo "备注：${{ github.event.inputs.label }}"
+            echo
+            echo "本页底部 **Artifacts** → 下载 \`wordsprint-staging-v${{ steps.meta.outputs.ver }}\`"
+            echo "（是个 zip，解压得到 \`wordsprint-v${{ steps.meta.outputs.ver }}.apk\`）→ 覆盖安装，同签名、进度不丢。"
+            echo
+            echo "**没有**打 tag、**没有**发 Release：手机不会收到 OTA。"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload artifact（不是 Release）
+        uses: actions/upload-artifact@v4
+        with:
+          name: wordsprint-staging-v${{ steps.meta.outputs.ver }}
+          path: wordsprint-v${{ steps.meta.outputs.ver }}.apk
+          retention-days: 14
+          if-no-files-found: error

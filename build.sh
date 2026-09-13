@@ -36,12 +36,29 @@ cd $B && zip -q -X app.unsigned.apk -j dex/classes.dex && cd ..
 echo "== zipalign"
 $BT/zipalign -f 4 $B/app.unsigned.apk $B/app.aligned.apk
 echo "== sign"
-if [ ! -f wordsprint.keystore ]; then
-  keytool -genkeypair -v -keystore wordsprint.keystore -storepass "$KS_PASS" -keypass "$KS_PASS" \
-    -alias wordsprint -keyalg RSA -keysize 2048 -validity 10000 \
-    -dname "CN=WordsPrint, OU=Demo, O=WordsPrint, L=Beijing, C=CN" > /dev/null 2>&1
+# 签名钥匙必须是用户备份的那把（与线上 Release 同一个证书）。
+# 悄悄生成新钥匙 = 出一个"装不上老版本、还会骗用户说可以覆盖安装"的包 —— 宁可失败。
+KS=${KS_FILE:-wordsprint.keystore}
+if [ ! -f "$KS" ]; then
+  if [ "${ALLOW_FRESH_KEY:-0}" = "1" ]; then
+    echo "!! 本地没有 $KS，按 ALLOW_FRESH_KEY=1 现造一把测试钥匙（只能全新安装，不能覆盖安装）"
+    mkdir -p $B
+    keytool -genkeypair -v -keystore $B/fresh.keystore -storepass "$KS_PASS" -keypass "$KS_PASS" \
+      -alias wordsprint -keyalg RSA -keysize 2048 -validity 10000 \
+      -dname "CN=WordsPrint Dev, OU=Demo, O=WordsPrint, L=Beijing, C=CN" > /dev/null 2>&1
+    KS=$B/fresh.keystore
+  else
+    cat <<HELP
+✗ 缺 $KS —— 拒绝用新钥匙签名（新证书 = 老设备无法覆盖安装，用户进度会丢）。
+  · 正常发版走 CI：仓库 Secret KEYSTORE_B64 里有真钥匙，build.sh 只负责产物；
+  · 想要本地测试包：把备份的 wordsprint.keystore 放回仓库根（已在 .gitignore，别提交），
+    或者用 CI：bash scripts/staging_build.sh（只上传 artifact、不打 tag、不发 Release）；
+  · 只想验证能不能编出来（明知装不上）：ALLOW_FRESH_KEY=1 bash build.sh
+HELP
+    exit 3
+  fi
 fi
-$BT/apksigner sign --ks wordsprint.keystore --ks-pass pass:$KS_PASS --key-pass pass:$KS_PASS \
+$BT/apksigner sign --ks "$KS" --ks-pass pass:$KS_PASS --key-pass pass:$KS_PASS \
   --v1-signing-enabled true --v2-signing-enabled true --out $B/wordsprint-signed.apk $B/app.aligned.apk
 cp $B/wordsprint-signed.apk wordsprint-v$VER.apk
 $BT/apksigner verify --print-certs $B/wordsprint-signed.apk | head -3

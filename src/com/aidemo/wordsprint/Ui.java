@@ -88,6 +88,17 @@ public class Ui {
     public static android.app.AlertDialog cardDialog(Activity a, CharSequence title, View content,
                                                      CharSequence posLabel, final Runnable onPos,
                                                      CharSequence negLabel) {
+        return cardDialogEx(a, title, content, posLabel, onPos, negLabel, null, true);
+    }
+
+    /**
+     * 同上，多两个旋钮：negLabel 也能挂动作、以及是否允许点外部/返回键关闭。
+     * 下载进度这类"要一直挂着、但要能取消"的弹窗用它。
+     */
+    public static android.app.AlertDialog cardDialogEx(Activity a, CharSequence title, View content,
+                                                       CharSequence posLabel, final Runnable onPos,
+                                                       CharSequence negLabel, final Runnable onNeg,
+                                                       boolean cancelable) {
         float d = a.getResources().getDisplayMetrics().density;
         android.widget.LinearLayout card = new android.widget.LinearLayout(a);
         card.setOrientation(android.widget.LinearLayout.VERTICAL);
@@ -132,7 +143,10 @@ public class Ui {
             neg.setTextColor(a.getResources().getColor(R.color.text_secondary));
             row.addView(neg, new android.widget.LinearLayout.LayoutParams(0, (int) (48 * d), 1));
             neg.setOnClickListener(new View.OnClickListener() {
-                @Override public void onClick(View v) { dialogRef[0].dismiss(); }
+                @Override public void onClick(View v) {
+                    dialogRef[0].dismiss();
+                    safeRun(onNeg);
+                }
             });
             if (hasPos) {
                 View vd = new View(a);
@@ -153,7 +167,7 @@ public class Ui {
             pos.setOnClickListener(new View.OnClickListener() {
                 @Override public void onClick(View v) {
                     dialogRef[0].dismiss();
-                    onPos.run();
+                    safeRun(onPos);
                 }
             });
         }
@@ -162,11 +176,164 @@ public class Ui {
                 android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
 
         dialogRef[0] = new android.app.AlertDialog.Builder(a).setView(card).create();
-        dialogRef[0].setCanceledOnTouchOutside(true);
-        if (dialogRef[0].getWindow() != null)
+        dialogRef[0].setCancelable(cancelable);
+        dialogRef[0].setCanceledOnTouchOutside(cancelable);
+        if (dialogRef[0].getWindow() != null) {
             dialogRef[0].getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0x00000000));
+            try { dialogRef[0].getWindow().setWindowAnimationStyle(R.style.Anim_Dialog_Card); } catch (Exception ignored) {}
+        }
         dialogRef[0].show();
+        stripDialogPanel(dialogRef[0], card);
         return dialogRef[0];
+    }
+
+    /**
+     * 强调版卡片弹窗：主操作是一整条渐变按钮（更新/确认这类"要走一步"的场景），
+     * 次操作是下方居中的小字。配色仍是暖纸风：surface 卡 + brand1 渐变 + text_secondary。
+     */
+    public static android.app.AlertDialog cardDialogPrimary(Activity a, CharSequence title, View content,
+                                                            CharSequence primaryLabel, final Runnable onPrimary,
+                                                            CharSequence negLabel, final Runnable onNeg,
+                                                            boolean cancelable) {
+        float d = a.getResources().getDisplayMetrics().density;
+        android.widget.LinearLayout card = new android.widget.LinearLayout(a);
+        card.setOrientation(android.widget.LinearLayout.VERTICAL);
+        card.setBackgroundResource(R.drawable.bg_card_28);
+        int pad = (int) (20 * d);
+        card.setPadding(pad, pad, pad, (int) (12 * d));
+
+        android.widget.TextView tv = new android.widget.TextView(a);
+        tv.setText(title);
+        tv.setTextSize(17f);
+        tv.setTypeface(tv.getTypeface(), android.graphics.Typeface.BOLD);
+        tv.setTextColor(a.getResources().getColor(R.color.text_primary));
+        card.addView(tv, new android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        if (content != null) {
+            android.widget.LinearLayout.LayoutParams clp = new android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
+            clp.topMargin = (int) (12 * d);
+            card.addView(content, clp);
+        }
+
+        final android.app.AlertDialog[] dialogRef = new android.app.AlertDialog[1];
+        if (primaryLabel != null) {
+            android.widget.TextView go = new android.widget.TextView(a);
+            go.setText(primaryLabel);
+            go.setGravity(android.view.Gravity.CENTER);
+            go.setTextSize(15f);
+            go.setTypeface(go.getTypeface(), android.graphics.Typeface.BOLD);
+            go.setTextColor(0xFFFFFFFF);
+            go.setBackgroundResource(R.drawable.bg_btn_gradient);
+            android.widget.LinearLayout.LayoutParams glp = new android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT, (int) (48 * d));
+            glp.topMargin = (int) (16 * d);
+            card.addView(go, glp);
+            go.setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) {
+                    dialogRef[0].dismiss();
+                    safeRun(onPrimary);
+                }
+            });
+        }
+        if (negLabel != null) {
+            android.widget.TextView neg = new android.widget.TextView(a);
+            neg.setText(negLabel);
+            neg.setGravity(android.view.Gravity.CENTER);
+            neg.setTextSize(13.5f);
+            neg.setTextColor(a.getResources().getColor(R.color.text_secondary));
+            android.widget.LinearLayout.LayoutParams nlp = new android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT, (int) (40 * d));
+            nlp.topMargin = (int) (2 * d);
+            card.addView(neg, nlp);
+            neg.setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) {
+                    dialogRef[0].dismiss();
+                    safeRun(onNeg);
+                }
+            });
+        }
+
+        dialogRef[0] = new android.app.AlertDialog.Builder(a).setView(card).create();
+        dialogRef[0].setCancelable(cancelable);
+        dialogRef[0].setCanceledOnTouchOutside(cancelable);
+        if (dialogRef[0].getWindow() != null) {
+            dialogRef[0].getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0x00000000));
+            try { dialogRef[0].getWindow().setWindowAnimationStyle(R.style.Anim_Dialog_Card); } catch (Exception ignored) {}
+        }
+        dialogRef[0].show();
+        stripDialogPanel(dialogRef[0], card);
+        return dialogRef[0];
+    }
+
+    /**
+     * 下载/安装这类"要一直更新内容"的弹窗：卡片由调用方拼好，这里只负责去白底 + 动画 + 显示。
+     * （必须走这里，别自己 new AlertDialog.Builder：否则圆角外会露出系统白面板。）
+     */
+    public static android.app.AlertDialog presentCard(Activity a, View card, boolean cancelable) {
+        android.app.AlertDialog dlg = new android.app.AlertDialog.Builder(a).setView(card).create();
+        dlg.setCancelable(cancelable);
+        dlg.setCanceledOnTouchOutside(cancelable);
+        if (dlg.getWindow() != null) {
+            dlg.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0x00000000));
+            try { dlg.getWindow().setWindowAnimationStyle(R.style.Anim_Dialog_Card); } catch (Exception ignored) {}
+        }
+        dlg.show();
+        stripDialogPanel(dlg, card);
+        return dlg;
+    }
+
+    /**
+     * 抹掉系统 AlertDialog 自己那层白底：只清 window 背景不够——部分 ROM（含原生 Material 的
+     * dialog_full_material）会在卡片外层再画一层"白底 + 2dp 小圆角"的面板，于是 28dp 大圆角
+     * 四周就会露出一圈白角。show() 之后从卡片往上逐层清 background，直到 DecorView 为止。
+     */
+    static void stripDialogPanel(android.app.Dialog dlg, View card) {
+        try {
+            View root = dlg.getWindow() == null ? null : dlg.getWindow().getDecorView();
+            android.view.ViewParent vp = card == null ? null : card.getParent();
+            while (vp instanceof View) {
+                View v = (View) vp;
+                if (v == root) break;
+                v.setBackground(null);
+                vp = v.getParent();
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    /** 弹窗按钮回调兜底：回调里任何异常都不许把 App 带走（v1.0.8/1.0.9 的闪退教训） */
+    static void safeRun(Runnable r) {
+        if (r == null) return;
+        try { r.run(); } catch (Throwable ignored) {}
+    }
+
+    /** 内容可能超高的弹窗（长文本码、更新说明）套一层"最多这么高、超出可滚动"的容器，
+     *  否则按钮会被顶出屏幕外，用户点不到（表现就是"粘贴了却没反应"）。 */
+    public static android.widget.ScrollView scrollable(View content, int maxDp) {
+        float d = content.getContext().getResources().getDisplayMetrics().density;
+        CappedScroll sv = new CappedScroll(content.getContext(), maxDp <= 0 ? 0 : (int) (maxDp * d));
+        sv.setVerticalScrollBarEnabled(true);
+        sv.setFillViewport(false);
+        sv.addView(content, new android.widget.ScrollView.LayoutParams(
+                android.widget.ScrollView.LayoutParams.MATCH_PARENT,
+                android.widget.ScrollView.LayoutParams.WRAP_CONTENT));
+        sv.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
+        return sv;
+    }
+
+    static class CappedScroll extends android.widget.ScrollView {
+        private final int maxH;
+        CappedScroll(android.content.Context c, int maxPx) { super(c); maxH = maxPx; }
+        @Override protected void onMeasure(int wSpec, int hSpec) {
+            if (maxH > 0 && android.view.View.MeasureSpec.getMode(hSpec) != android.view.View.MeasureSpec.EXACTLY)
+                hSpec = android.view.View.MeasureSpec.makeMeasureSpec(maxH, android.view.View.MeasureSpec.AT_MOST);
+            super.onMeasure(wSpec, hSpec);
+        }
     }
 
     /** 状态栏图标保持浅色（头部是深色渐变/纯色 status_bar） */

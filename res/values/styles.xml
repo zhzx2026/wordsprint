@@ -58,6 +58,12 @@
         <item name="android:windowExitAnimation">@anim/sheet_out</item>
     </style>
 
+    <!-- 卡片弹窗的进出场（Ui.cardDialog 用）：弹出微回弹 + 干净淡出 -->
+    <style name="Anim.Dialog.Card" parent="@android:style/Animation.Dialog">
+        <item name="android:windowEnterAnimation">@anim/pop_in</item>
+        <item name="android:windowExitAnimation">@android:anim/fade_out</item>
+    </style>
+
     <style name="Label">
         <item name="android:textSize">11sp</item>
         <item name="android:textColor">@color/text_secondary</item>

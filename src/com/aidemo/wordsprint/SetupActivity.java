@@ -2,7 +2,6 @@ package com.aidemo.wordsprint;
 
 import android.app.Activity;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
@@ -131,16 +130,18 @@ public class SetupActivity extends Activity {
 
         findViewById(R.id.btnReset).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
-                new android.app.AlertDialog.Builder(SetupActivity.this)
-                        .setTitle(R.string.reset_progress)
-                        .setMessage(getString(R.string.reset_confirm, book.display()))
-                        .setNegativeButton(R.string.reset_no, null)
-                        .setPositiveButton(R.string.reset_yes, new DialogInterface.OnClickListener() {
-                            @Override public void onClick(DialogInterface d, int w) {
+                android.widget.TextView body = new android.widget.TextView(SetupActivity.this);
+                body.setText(getString(R.string.reset_confirm, book.display()));
+                body.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f);
+                body.setTextColor(getResources().getColor(R.color.text_secondary));
+                body.setLineSpacing(Ui.dp(SetupActivity.this, 4), 1f);
+                Ui.cardDialog(SetupActivity.this, getString(R.string.reset_progress), body,
+                        getString(R.string.reset_yes), new Runnable() {
+                            @Override public void run() {
                                 prefs.clearBook(book.id);
                                 refresh();
                             }
-                        }).show();
+                        }, getString(R.string.reset_no));
             }
         });
 

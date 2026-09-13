@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 更新下载进度条：圆角与卡片一致，轨道用 chip_bg，进度用品牌渐变（暖纸风配色） -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@android:id/background">
+        <shape><solid android:color="@color/chip_bg"/><corners android:radius="5dp"/></shape>
+    </item>
+    <item android:id="@android:id/secondaryProgress">
+        <clip><shape>
+            <solid android:color="@color/brand_soft"/><corners android:radius="5dp"/>
+        </shape></clip>
+    </item>
+    <item android:id="@android:id/progress">
+        <clip><shape>
+            <gradient android:angle="0" android:startColor="@color/brand1" android:endColor="@color/brand2"/>
+            <corners android:radius="5dp"/>
+        </shape></clip>
+    </item>
+</layer-list>

@@ -8,6 +8,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
 import android.util.TypedValue;
+import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -116,15 +117,18 @@ public class Update {
             notes.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
             notes.setTextColor(a.getResources().getColor(R.color.text_secondary));
             notes.setLineSpacing(Ui.dp(a, 4), 1f);
+            notes.setBackgroundResource(R.drawable.bg_card_field);
+            int np = (int) Ui.dp(a, 11);
+            notes.setPadding(np, np, np, np);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             lp.topMargin = (int) Ui.dp(a, 10);
             col.addView(notes, lp);
         }
-        Ui.cardDialog(a, a.getString(R.string.update_title), col,
+        Ui.cardDialogPrimary(a, a.getString(R.string.update_title), Ui.scrollable(col, 300),
                 a.getString(R.string.update_go), new Runnable() {
                     @Override public void run() { begin(a, info); }
-                }, a.getString(R.string.update_later));
+                }, a.getString(R.string.update_later), null, true);
     }
 
     /** 安装权限检查 → 下载 → 拉起安装器 */
@@ -156,31 +160,59 @@ public class Update {
     }
 
     private static void download(final Activity a, final Info info) {
-        final android.widget.ProgressBar pb = new android.widget.ProgressBar(a, null,
+        final File f = new File(a.getExternalFilesDir(null), "update.apk");
+        final boolean[] cancel = {false};
+        final android.app.AlertDialog[] ref = new android.app.AlertDialog[1];
+        float d = a.getResources().getDisplayMetrics().density;
+        android.widget.ProgressBar pb = new android.widget.ProgressBar(a, null,
                 android.R.attr.progressBarStyleHorizontal);
         pb.setMax(100);
-        pb.setProgressDrawable(a.getResources().getDrawable(R.drawable.progress_line));
+        try { pb.setProgressDrawable(a.getResources().getDrawable(R.drawable.progress_update)); } catch (Throwable ignored) {}
         final TextView st = new TextView(a);
-        st.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
+        st.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
         st.setTextColor(a.getResources().getColor(R.color.text_secondary));
         st.setText(R.string.update_downloading);
         LinearLayout col = new LinearLayout(a);
         col.setOrientation(LinearLayout.VERTICAL);
-        int pad = (int) Ui.dp(a, 20);
-        col.setPadding(pad, pad, pad, pad);
-        col.addView(st, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, (int) Ui.dp(a, 14));
-        plp.topMargin = (int) Ui.dp(a, 12);
-        col.addView(pb, plp);
         col.setBackgroundResource(R.drawable.bg_card_28);
-        final AlertDialog dlg = new AlertDialog.Builder(a).setView(col).create();
-        dlg.setCancelable(false);
-        dlg.show();
+        int pad = (int) (18 * d);
+        col.setPadding(pad, pad, pad, (int) (10 * d));
+        TextView title = new TextView(a);
+        title.setText(a.getString(R.string.update_downloading_title, info.name));
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16.5f);
+        title.setTypeface(title.getTypeface(), android.graphics.Typeface.BOLD);
+        title.setTextColor(a.getResources().getColor(R.color.text_primary));
+        col.addView(title, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        slp.topMargin = (int) (10 * d);
+        col.addView(st, slp);
+        LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, (int) (8 * d));
+        plp.topMargin = (int) (10 * d);
+        col.addView(pb, plp);
+        TextView cancelBtn = new TextView(a);
+        cancelBtn.setText(R.string.update_cancel);
+        cancelBtn.setGravity(android.view.Gravity.CENTER);
+        cancelBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f);
+        cancelBtn.setTextColor(a.getResources().getColor(R.color.text_secondary));
+        cancelBtn.setBackgroundResource(R.drawable.bg_btn_outline);
+        LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, (int) (40 * d));
+        clp.topMargin = (int) (14 * d);
+        col.addView(cancelBtn, clp);
+        cancelBtn.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                cancel[0] = true;
+                try { if (ref[0] != null) ref[0].dismiss(); } catch (Throwable ignored) {}
+                try { Toast.makeText(a, R.string.update_cancelled, Toast.LENGTH_SHORT).show(); } catch (Throwable ignored) {}
+            }
+        });
+        // 走 Ui.presentCard：统一去掉系统对话框那层白面板（圆角外不再露白），且不可点外部误关
+        final AlertDialog dlg = Ui.presentCard(a, col, false);
+        ref[0] = dlg;
 
-        final File f = new File(a.getExternalFilesDir(null), "update.apk");
-        final boolean[] cancel = {false};
         final int curCode = myCode(a);
         new Thread(new Runnable() {
             @Override public void run() {
@@ -217,10 +249,13 @@ public class Update {
                         }
                     }
                     out.flush(); out.close(); in.close();
-                    if (cancel[0]) return;
+                    if (cancel[0]) {
+                        try { if (f.exists()) f.delete(); } catch (Throwable ignored) {}
+                        return;
+                    }
                     a.runOnUiThread(new Runnable() {
                         @Override public void run() {
-                            dlg.dismiss();
+                            try { dlg.dismiss(); } catch (Throwable ignored) {}
                             install(a, f, info);
                         }
                     });
@@ -229,7 +264,8 @@ public class Update {
                     final String em = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
                     a.runOnUiThread(new Runnable() {
                         @Override public void run() {
-                            dlg.dismiss();
+                            try { dlg.dismiss(); } catch (Throwable ignored) {}
+                            if (cancel[0] || a.isFinishing()) return;
                             Toast.makeText(a, a.getString(R.string.update_fail, em), Toast.LENGTH_LONG).show();
                         }
                     });

@@ -20,6 +20,22 @@ sed -i "s/android:versionName=\"[^\"]*\"/android:versionName=\"$VER\"/; s/androi
 bash build.sh
 cp "wordsprint-v$VER.apk" "../刷单词-v$VER.apk" && echo "已拷出 ../刷单词-v$VER.apk（可顺手 adb install -r）"
 git add -A
+# 兜底：工具链/大产物一旦被 git add -A 吞进来，仓库会当场胖 250MB 且 CI 检出都变慢
+BIG=$(git diff --cached --name-only | python3 -c "
+import sys, os
+for line in sys.stdin:
+    p = line.strip().strip(\"'\")
+    try:
+        sz = os.path.getsize(p) if os.path.isfile(p) else 0
+    except Exception:
+        sz = 0
+    if sz > 2000000: print('%9d  %s' % (sz, p))
+" | head -3)
+if [ -n "$BIG" ]; then
+  echo "!! 暂存区里有 >2MB 的文件，先确认是不是误提交（tools/ 已在 .gitignore）："
+  echo "$BIG"
+  [ "${ALLOW_BIGFILES:-0}" = "1" ] || { echo "   中止。确认没问题就 ALLOW_BIGFILES=1 重跑。"; exit 4; }
+fi
 git commit -qm "$NOTES" || true
 git tag -f "v$VER"
 if [ "${SKIP_PUSH:-0}" = "1" ]; then

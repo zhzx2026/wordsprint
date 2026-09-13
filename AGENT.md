@@ -10,25 +10,37 @@
 「刷单词」：纯离线 Android 背词 App（人教版初高中 12 册 + 高考 3500，共 8824 词），
 无 Gradle、无第三方 UI 库，`bash build.sh` 直接出签名 APK；进度经 GitHub Releases OTA。
 
-## 目录速览
+## 目录速览（就是仓库根，别套 vocab-apk/ 这层目录）
 ```
-vocab-apk/
+wordsprint/
   AndroidManifest.xml        版本号的唯一来源（build.sh 从这里读 versionName/Code）
   build.sh                   aapt2→javac→d8→zipalign→apksigner；认 $SDK_ROOT/$JDK_HOME，兜底 ./tools 和 /var/tmp
   src/com/aidemo/wordsprint/ 全部 Java 源码（无依赖库，libs/ 只有 zxing-core.jar）
   res/                       布局/配色/字符串；values-night/ 是深色配对
   libs/zxing-core.jar        3.5.3（仅用于解码 + 主机侧校验）
-  test/                      主机侧 JVM 测试（EngineTest/QRHostTest/Sweep2 等）
+  test/                      主机侧 JVM 测试（EngineTest/QRHostTest/CodeHostTest/Sweep2 等）
+                             统一入口：bash scripts/run_tests.sh（本地与 CI 同一条命令）
   scripts/                   构建/发布/发布 GitHub 化 的辅助脚本
   wordsprint.keystore        ⚠️ 签名钥匙：不入 git（.gitignore 已挡），但必须异地备份！丢了=以后所有版本无法覆盖安装（用户数据全丢）
 ```
 
 ## 沙箱环境重建（新 session 里 /var/tmp 是空的！）
+> ⚠️ 2026-09-13 实测：Arena 沙箱的出网是**白名单**制——`pypi.org`/`registry.npmjs.org`/`github.com`/`api.github.com`/`codeload` 通，
+> 但 `dl.google.com`（Android SDK）、`api.adoptium.net`（JDK）、`storage.googleapis.com`、`repo1.maven.org`、`deb.debian.org`、
+> `raw.githubusercontent.com`、Actions 的日志下载域**全都不通**。→ **沙箱里装不出 build.sh 需要的工具链，也没有 wordsprint.keystore，
+> 本地根本出不了"能覆盖安装"的测试包。** 别再在沙箱里试 `setup_tools.sh`（会 SSL_ERROR_SYSCALL 卡住），走下面第 3 条 CI 路子。
 ```bash
-# 1) 工具链（约 250MB，装到 /var/tmp 或项目 ./tools 均可）
-cd vocab-apk && bash scripts/setup_tools.sh        # 自动下到 ./tools/
+# 1) 工具链（约 250MB；只有在能直连 google/adoptium 的机器上才有效）
+cd wordsprint && bash scripts/setup_tools.sh        # 下到 ./tools/（已进 .gitignore，push_release 也有 >2MB 误提交拦截）
+#    沙箱外想省空间：装到 /var/tmp/{jdk17,android-sdk}，build.sh 会自动兜到这个路径
 # 2) 验证
-bash build.sh
+bash scripts/run_tests.sh                           # 主机测试（Engine/QR/CodeHost/Pack），发版必跑
+bash build.sh                                       # 缺 wordsprint.keystore 时现在直接 exit 3（不再偷偷生成新钥匙）
+# 3) 沙箱里给用户测试包的正路：CI 出暂存包（真钥匙签名、只传 artifact、不打 tag 不发 Release）
+bash scripts/staging_build.sh [分支]                 # 推分支 + gh workflow run staging.yml
+```
+```bash
+# （旧笔记，保留）
 cd test && export PATH=../../tools/jdk17/bin:$PATH  # 或系统 java≥11
 cp ../src/com/aidemo/wordsprint/{Engine,QREnc,QRUtil,Transfer}.java src/com/aidemo/wordsprint/
 javac -encoding UTF-8 -d out -cp ../libs/zxing-core.jar src/com/aidemo/wordsprint/*.java T.java EngineTest.java QRHostTest.java
@@ -60,11 +72,30 @@ PUSH_TOKEN=<用户临时提供的 fine-grained PAT> bash scripts/promote.sh
 6. **BitSet**：host 测试里没有 `cardCount()`，用 `cardinality()`。
 7. **环境**：中文文件名要 `LANG=C.UTF-8`；`/tmp` 很小用 `/var/tmp`；javac 中文源码要 `-encoding UTF-8`。
 8. **git 分支名**：本地是 `master`，远端是 `main`——一律 `git push <url> HEAD:refs/heads/main`（脚本已内置）。
+9. **弹窗一律走 `Ui.cardDialog / cardDialogEx / cardDialogPrimary / presentCard`**，别自己 `new AlertDialog.Builder(...)`：
+   系统 Material 对话框在卡片外面还有一层"白底 + 2dp 小圆角"的面板，28dp 大圆角四周必然露出一圈白角
+   （v1.0.9 用户就是嫌"更新的界面圆角处有白色"——下载进度框当时是手搓的 Builder）。
+   `Ui.stripDialogPanel()` 在 `show()` 之后从卡片往上逐层清 background，四个入口都已调用；新弹窗请复用这四个。
+10. **进度码解析只认 `ProgressCode.parse(raw, true)`**（纯 java.*，`CodeHostTest` 覆盖）。别在 Activity 里再写
+    `replaceAll("\\s+")` + `startsWith("WPX1.")` 那套：Java 的 `\\s` 不认全角空格/NBSP/零宽，微信转发一次就整码作废。
+    Camera1 的另一条命门：**不要在弹窗按钮回调里同步 `stopCam()`**——主线程 `release()` 与相机线程 `autoFocus`
+    抢同一个 native 对象，是 `catch(Throwable)` 拦不住的进程级崩溃；现在统一 `camLock` + `stopCamAsync()`（在相机线程里释放）。
 
-## 当前状态（2026-09-13）
-- 线上最新：**v1.0.9（versionCode 10）** 已发布，含扫码三连修（补 setParameters / letterbox / 粘贴容错+防闪退）。用户装机验证中。
-- 仓库公开：github.com/zhzx2026/wordsprint；CI 正常；Secret 已配。
-- 未了事项：等用户对 v1.0.9 的扫码/粘贴结果反馈；若有问题按其反馈修复后走「暂存→转正」流程。
+## 当前状态（2026-09-13 第二次更新）
+- 线上最新：**v1.0.9（code 10）**。用户装机反馈两件事：① 「粘贴进度码」还是不行且**会闪退**；② 更新弹窗"太丑，圆角处有白色"。
+- 本轮改动（**manifest 已 bump 到 v1.0.10 / code 11**，等用户装机点头后才转正）：
+  - 新增 `ProgressCode`（容错解析：前缀可缺/大小写、中文说明与引号包围、折行、NBSP/全角/零宽、两套 base64 字母表、
+    **复制被截断时把写完整的那部分先合并**）+ 主机测试 `test/CodeHostTest.java`。
+  - 新增 `TransferUi`/`PasteSheet`：粘贴导入与相机彻底解耦（解析在子线程、弹窗限高可滚动、自动读一次剪贴板、
+    失败给可读详情而不是 2 秒 Toast）；`ScanActivity` 相机改动全部收进 `camLock` + `stopCamAsync()`。
+  - 更新 UI：下载进度框改走 `Ui.presentCard`（白角没了）+ 渐变主按钮 + 「取消下载」+ 圆角进度条 `progress_update.xml`；
+    `SetupActivity` 的重置确认框也从裸 Builder 换成卡片弹窗；所有卡片弹窗加 `pop_in` 入场动画。
+  - 设置页「进度互传」多一行**粘贴导入进度码**（完全不开相机，相机有问题的机器的兜底）；导出页文本码常驻可见、可长按全选、
+    复制失败自动弹全文卡片。
+  - 工程侧：`.gitignore` 加 `tools/`；`push_release.sh` 拦 >2MB 误提交；`build.sh` 缺 keystore 时 exit 3（不再偷造新钥匙）；
+    新增 `scripts/run_tests.sh`、`.github/workflows/staging.yml` + `scripts/staging_build.sh`（CI 出测试包，不发布）。
+- ⚠️ 未决：**沙箱出不了包**（见上文环境章节），v1.0.10 的装机测试包要靠 CI staging artifact；本地/新环境也别再自己装 SDK。
+- 未了事项：等用户对 v1.0.10（粘贴导入 + 更新弹窗）的实测反馈 → 通过后 `bash scripts/promote.sh 1.0.10`。
 
 ## 与用户协作的习惯
 - 用户报 bug 用真机现象描述（"扫不出来""强制退出"），先复现思路→定位根因→修复→**给他 APK 实测**→他说行才算完。
