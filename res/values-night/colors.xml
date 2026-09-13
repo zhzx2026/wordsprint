@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#101827</color>
+    <color name="surface">#1A2436</color>
+    <color name="text_primary">#EDF1F7</color>
+    <color name="text_secondary">#8A94A6</color>
+    <color name="brand1">#5E76FF</color>
+    <color name="brand2">#7E92FF</color>
+    <color name="green_grad1">#12B36C</color>
+    <color name="green_grad2">#1EC97B</color>
+    <color name="status_bar">#101827</color>
+    <color name="green">#2EBD85</color>
+    <color name="green_bg">#17332A</color>
+    <color name="red">#FF6B6B</color>
+    <color name="red_bg">#3A2226</color>
+    <color name="amber">#F5A524</color>
+    <color name="line">#22304A</color>
+    <color name="card_stroke">#2A3548</color>
+    <color name="chip_bg">#22304A</color>
+    <color name="track">#2A3548</color>
+    <color name="header_grad_start">#0F1626</color>
+    <color name="header_grad_end">#1E2C4E</color>
+    <color name="brand_soft">#24345C</color>
+    <color name="scrim">#C00B1220</color>
+    <color name="nav_scrim">#B3000000</color>
+</resources>

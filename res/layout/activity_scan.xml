@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0B0E14">
+
+    <SurfaceView
+        android:id="@+id/preview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+
+    <View
+        android:id="@+id/scrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#660B0E14"/>
+
+    <View
+        android:id="@+id/scanFrame"
+        android:layout_width="250dp"
+        android:layout_height="250dp"
+        android:layout_gravity="center"
+        android:layout_marginBottom="40dp"
+        android:background="@drawable/bg_scan_frame"/>
+
+    <View
+        android:id="@+id/scanLine"
+        android:layout_width="220dp"
+        android:layout_height="2.5dp"
+        android:layout_gravity="center"
+        android:layout_marginBottom="160dp"
+        android:background="@drawable/bg_scanline"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="120dp"
+        android:gravity="center"
+        android:text="@string/scan_hint"
+        android:textColor="#D9FFFFFF"
+        android:textSize="13sp"
+        android:fitsSystemWindows="true"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:padding="24dp">
+
+        <TextView
+            android:id="@+id/btnBack"
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/bg_pill_white20"
+            android:gravity="center"
+            android:text="@string/back"
+            android:textColor="#FFFFFFFF"
+            android:textSize="15sp"/>
+
+        <TextView
+            android:id="@+id/btnPaste"
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bg_btn_gradient"
+            android:gravity="center"
+            android:text="@string/paste_code"
+            android:textColor="#FFFFFFFF"
+            android:textSize="15sp"
+            android:textStyle="bold"/>
+    </LinearLayout>
+</FrameLayout>

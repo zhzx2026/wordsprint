@@ -1,0 +1,51 @@
+# 打 tag（vX.Y.Z）或手动触发 → 构建、签名、发布 GitHub Release（assets: wordsprint.apk + update.json）
+# 需要的 Secret: KEYSTORE_B64 = base64 -w0 wordsprint.keystore
+# 可选 Secret:   KS_PASS（默认 wordsprint，与 keystore 一致）
+name: release
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      notes: { description: "更新说明", required: false, default: "优化与修复" }
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "17" }
+      - name: Install Android SDK pieces
+        run: |
+          mkdir -p $RUNNER_TEMP/sdk/build-tools $RUNNER_TEMP/sdk/platforms
+          curl -sSL -o bt.zip https://dl.google.com/android/repository/build-tools_r34-linux.zip
+          unzip -q bt.zip -d btX && mv btX/android-14 $RUNNER_TEMP/sdk/build-tools/34.0.0
+          curl -sSL -o p.zip https://dl.google.com/android/repository/platform-34-ext7_r02.zip
+          unzip -q p.zip -d pX && mv pX/android-34 $RUNNER_TEMP/sdk/platforms/android-34
+      - name: Restore keystore
+        env: { KEYSTORE_B64: "${{ secrets.KEYSTORE_B64 }}" }
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::请先设置 Secret KEYSTORE_B64（base64 -w0 wordsprint.keystore），否则每次 CI 都会生成新签名，老设备无法覆盖安装"
+            exit 1
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > wordsprint.keystore
+      - name: Build
+        env: { SDK_ROOT: "${{ runner.temp }}/sdk", KS_PASS: "${{ secrets.KS_PASS }}" }
+        run: bash build.sh
+      - name: Assemble release assets
+        id: meta
+        env:
+          RELEASE_NOTES: "${{ github.event.inputs.notes }}"
+        run: bash scripts/make_release_manifest.sh
+      - name: Publish
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          python3 -c "import json;print(json.load(open('dist/update.json'))['notes'])" > notes.txt
+          TAG="${{ steps.meta.outputs.tag }}"
+          gh release view "$TAG" >/dev/null 2>&1 \
+            && gh release upload "$TAG" dist/wordsprint.apk dist/update.json --clobber \
+            || gh release create "$TAG" dist/wordsprint.apk dist/update.json --title "刷单词 $TAG" --notes-file notes.txt

@@ -1,0 +1,16 @@
+build/
+dist/
+wordsprint.keystore
+wordsprint-v*.apk
+*.log
+__pycache__/
+test/out/
+test/src/
+raw_xlsx/
+刷单词*.apk
+artifacts/
+tree.json
+download_list.json
+gen_qrtab.txt
+path_index.json
+rs_m_table.txt
