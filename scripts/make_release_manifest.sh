@@ -7,7 +7,11 @@ VER=$(grep -oE 'versionName="[^"]*"' AndroidManifest.xml | sed 's/.*="//;s/"//')
 VC=$(grep -oE 'versionCode="[0-9]*"' AndroidManifest.xml | sed 's/.*="//;s/"//')
 TAG="${GITHUB_REF_NAME:-v$VER}"
 REPO="${GITHUB_REPOSITORY:-zhzx2026/wordsprint}"
-NOTES="${RELEASE_NOTES:-$(git log -1 --pretty=%s 2>/dev/null || echo 更新与修复)}"
+# 说明优先级：环境变量 > 仓库里的 RELEASE_NOTES.md（人写的发布文案）> 最后一条提交标题
+# （tag 触发时 RELEASE_NOTES 是空的，只用提交标题会把技术提交信息发到 Release 页上）
+if [ -n "${RELEASE_NOTES:-}" ]; then NOTES="$RELEASE_NOTES"
+elif [ -f RELEASE_NOTES.md ]; then NOTES="$(cat RELEASE_NOTES.md)"
+else NOTES="$(git log -1 --pretty=%s 2>/dev/null || echo 更新与修复)"; fi
 mkdir -p dist
 cp "wordsprint-v$VER.apk" dist/wordsprint.apk
 export _VC="$VC" _VER="$VER" _TAG="$TAG" _REPO="$REPO" _NOTES="$NOTES"
