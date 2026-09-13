@@ -3,7 +3,7 @@ package com.aidemo.wordsprint;
 import android.Manifest;
 import android.app.Activity;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
+import android.graphics.ImageFormat;
 import android.hardware.Camera;
 import android.os.Bundle;
 import android.os.Handler;
@@ -35,12 +35,13 @@ import java.util.Map;
 
 /**
  * 相机扫码导入：Camera1 + zxing。
- * 注意：zxing 的 QR 检测本身旋转不变，Y 平面直接送解码，不做逐像素旋转（旧实现旋转索引越界导致永远扫不出）。
+ * 教训：setPreviewSize/setFocusMode 之后必须 setParameters，且之后要读回“实际生效”的尺寸，
+ * 否则一切参数都没应用（预览变形、收不到帧、buffer 大小不匹配导致闪退）。
  */
 public class ScanActivity extends Activity implements android.view.SurfaceHolder.Callback {
     private Camera cam;
     private android.view.SurfaceHolder holder;
-    private int previewW = 640, previewH = 480;
+    private int previewW = 0, previewH = 0;              // 实际生效值
     private boolean continuousFocus;
     private HandlerThread ht; private Handler hw;
     private volatile boolean busy, done, surfaceReady, camOpen;
@@ -63,7 +64,7 @@ public class ScanActivity extends Activity implements android.view.SurfaceHolder
         holder = sv.getHolder();
         holder.addCallback(this);
 
-        // 扫描线在取景框内往复（按实际帧高，像素）
+        // 扫描线在取景框内往复（按实际帧高）
         final View scanLine = findViewById(R.id.scanLine);
         final View frame = findViewById(R.id.scanFrame);
         frame.post(new Runnable() {
@@ -81,7 +82,9 @@ public class ScanActivity extends Activity implements android.view.SurfaceHolder
         // 点按取景区 = 强制对焦一次
         findViewById(R.id.scrim).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
-                if (cam != null && !continuousFocus) try { cam.autoFocus(null); } catch (Exception ignored) {}
+                if (cam != null && !continuousFocus) {
+                    try { cam.autoFocus(null); } catch (Exception ignored) {}
+                }
             }
         });
 
@@ -109,13 +112,11 @@ public class ScanActivity extends Activity implements android.view.SurfaceHolder
         int pd = (int) Ui.dp(this, 12);
         et.setPadding(pd, pd, pd, pd);
         FrameLayout wrap = new FrameLayout(this);
-        int m = (int) Ui.dp(this, 4);
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        wrap.addView(et, lp);
+        wrap.addView(et, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         Ui.cardDialog(this, getString(R.string.manual_import), wrap,
                 getString(R.string.do_import), new Runnable() {
-                    @Override public void run() { applyCode(et.getText().toString().trim()); }
+                    @Override public void run() { applyCode(et.getText().toString()); }
                 }, getString(R.string.cancel));
     }
 
@@ -127,7 +128,9 @@ public class ScanActivity extends Activity implements android.view.SurfaceHolder
     }
 
     @Override public void surfaceCreated(android.view.SurfaceHolder h) { surfaceReady = true; startCam(); }
-    @Override public void surfaceChanged(android.view.SurfaceHolder h, int f, int w, int hh) {}
+    @Override public void surfaceChanged(android.view.SurfaceHolder h, int f, int w, int hh) {
+        if (cam != null) { try { cam.stopPreview(); cam.startPreview(); } catch (Exception ignored) {} }
+    }
     @Override public void surfaceDestroyed(android.view.SurfaceHolder h) { surfaceReady = false; stopCam(); }
 
     private void startCam() {
@@ -136,58 +139,58 @@ public class ScanActivity extends Activity implements android.view.SurfaceHolder
         try {
             cam = Camera.open(findBack());
             Camera.Parameters p = cam.getParameters();
-            java.util.List<int[]> sizes = new java.util.ArrayList<>();
-            for (Camera.Size s : p.getSupportedPreviewSizes()) sizes.add(new int[]{s.width, s.height});
-            // 目标 ~640×480：够清晰、解码快
-            int[] best = null;
-            long bestDiff = Long.MAX_VALUE;
-            for (int[] s : sizes) {
-                long area = (long) s[0] * s[1];
-                if (s[0] < s[1]) continue;                       // 要横向尺寸
-                long diff = Math.abs(area - 640L * 480L);
-                if (diff < bestDiff) { bestDiff = diff; best = s; }
-            }
-            if (best == null) best = sizes.get(sizes.size() - 1);
-            previewW = best[0]; previewH = best[1];
-            p.setPreviewSize(previewW, previewH);
+            // 选 ~640×480：够清晰、解码快
+            try {
+                java.util.List<Camera.Size> sizes = p.getSupportedPreviewSizes();
+                Camera.Size best = null; long bestDiff = Long.MAX_VALUE;
+                for (Camera.Size s : sizes) {
+                    if (s.width < s.height) continue;
+                    long diff = Math.abs((long) s.width * s.height - 640L * 480L);
+                    if (diff < bestDiff) { bestDiff = diff; best = s; }
+                }
+                if (best != null) p.setPreviewSize(best.width, best.height);
+            } catch (Exception ignored) {}
+            try { p.setPreviewFormat(ImageFormat.NV21); } catch (Exception ignored) {}
             try {
                 java.util.List<String> fm = p.getSupportedFocusModes();
                 continuousFocus = fm != null && fm.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
                 if (continuousFocus) p.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
             } catch (Exception ignored) {}
+            cam.setParameters(p);                       // ← 必须！应用以上全部参数
+            // 读回实际生效值（个别驱动会自行调整）
+            Camera.Parameters eff = cam.getParameters();
+            previewW = eff.getPreviewSize().width;
+            previewH = eff.getPreviewSize().height;
             cam.setDisplayOrientation(90);
             cam.setPreviewDisplay(holder);
-            cam.setPreviewCallbackWithBuffer(new Camera.PreviewCallback() {
+            cam.setPreviewCallback(new Camera.PreviewCallback() {   // 不用手动 buffer，杜绝尺寸不匹配
                 @Override public void onPreviewFrame(byte[] data, Camera c) {
-                    if (done || data == null) return;
-                    if (busy) { rebuffer(); return; }
+                    if (done || data == null || busy) return;
                     final byte[] frame = data;
+                    busy = true;
                     hw.post(new Runnable() { @Override public void run() { decodeFrame(frame); } });
                 }
             });
-            rebuffer(); rebuffer();
             cam.startPreview();
             camOpen = true;
             fitPreviewSurface();
             if (!continuousFocus) startFocusPulse();
-        } catch (Exception e) {
+        } catch (Throwable t) {
             stopCam();
-            Toast.makeText(this, R.string.cam_fail, Toast.LENGTH_LONG).show();
+            try { Toast.makeText(this, R.string.cam_fail, Toast.LENGTH_LONG).show(); } catch (Exception ignored) {}
         }
     }
 
-    private void rebuffer() {
-        try { if (cam != null) cam.addCallbackBuffer(new byte[previewW * previewH * 3 / 2]); } catch (Exception ignored) {}
-    }
-
-    /** 预览按相机宽高比 letterbox，避免拉伸变形 */
+    /** 相机帧经 setDisplayOrientation(90) 后在屏幕上为 previewH:previewW（竖），按此 letterbox */
     private void fitPreviewSurface() {
+        if (previewW <= 0 || previewH <= 0) return;
         View sv = findViewById(R.id.preview);
         int sw = getResources().getDisplayMetrics().widthPixels;
         int sh = getResources().getDisplayMetrics().heightPixels;
-        int h = (int) (sw * (previewH / (float) previewW));
-        if (h < sh * 2 / 3) h = (int) (sh * 2 / 3f);   // 屏幕很高时按高兜底
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(sw, h, Gravity.CENTER);
+        float screenRatio = previewW / (float) previewH;    // 高/宽
+        int w = sw, h = (int) (sw * screenRatio);
+        if (h > sh) { h = sh; w = (int) (sh / screenRatio); }
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(w, h, Gravity.CENTER);
         sv.setLayoutParams(lp);
     }
 
@@ -213,46 +216,52 @@ public class ScanActivity extends Activity implements android.view.SurfaceHolder
     }
 
     private void decodeFrame(byte[] yuv) {
-        if (done) return;
-        busy = true;
         try {
+            if (done) return;
+            int w = previewW, h = previewH;
+            if (yuv.length < w * h) return;              // 驱动没按声明尺寸给帧：跳过
+            // 中央 85% 方形区域（取景框对准处），提高每模块像素密度与速度
+            int side = (int) (Math.min(w, h) * 0.85f) & ~1;
+            int left = (w - side) / 2 & ~1, top = (h - side) / 2 & ~1;
             PlanarYUVLuminanceSource src =
-                    new PlanarYUVLuminanceSource(yuv, previewW, previewH, 0, 0, previewW, previewH, false);
+                    new PlanarYUVLuminanceSource(yuv, w, h, left, top, side, side, false);
             BinaryBitmap bb = new BinaryBitmap(new HybridBinarizer(src));
             Result r = new MultiFormatReader().decode(bb, hints);
             final String text = r.getText();
             runOnUiThread(new Runnable() { @Override public void run() { applyCode(text); } });
         } catch (NotFoundException nf) {
             // 这帧没码
-        } catch (Exception e) {
-            // 解码异常忽略，继续下一帧
+        } catch (Throwable ignored) {
         } finally {
             busy = false;
-            rebuffer();
         }
     }
 
-    void applyCode(String text) {
-        if (text == null || text.isEmpty()) return;
+    void applyCode(String raw) {
+        if (raw == null) return;
+        final String text = raw.replaceAll("\\s+", "").trim();   // 容忍复制时带入的换行/空格
+        if (text.isEmpty()) return;
         done = true;
         stopCam();
         try {
-            if (text.startsWith("WPX1.")) text = text.substring(5);
-            byte[] z = Base64.decode(text.trim(), Base64.NO_WRAP | Base64.URL_SAFE);
+            String body = text.startsWith("WPX1.") ? text.substring(5) : text;
+            byte[] z = Base64.decode(body, Base64.NO_WRAP | Base64.URL_SAFE);
             Transfer.Decoded d = Transfer.decode(z);
             final int[] res = Prefs.of(this).importDecoded(d);
             try {
                 Vibrator vb = (Vibrator) getSystemService(VIBRATOR_SERVICE);
                 vb.vibrate(VibrationEffect.createOneShot(60, VibrationEffect.DEFAULT_AMPLITUDE));
-            } catch (Exception ignored) {}
-            findViewById(R.id.scrim).animate().alpha(0.92f).setDuration(200).start();
+            } catch (Throwable ignored) {}
             android.widget.TextView msg = new android.widget.TextView(this);
             msg.setText(getString(R.string.import_ok, res[0], res[1], d.days.size()));
             msg.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
             msg.setTextColor(getResources().getColor(R.color.text_secondary));
             msg.setLineSpacing(Ui.dp(this, 4), 1f);
-            Ui.cardDialog(this, getString(R.string.import_ok_title), msg, null, null, null);
-        } catch (Exception e) {
+            Ui.cardDialog(this, getString(R.string.import_ok_title), msg,
+                    getString(R.string.import_done), new Runnable() {
+                        @Override public void run() { finish(); }
+                    }, null);
+        } catch (Throwable t) {
             done = false;
             Toast.makeText(this, R.string.bad_code, Toast.LENGTH_LONG).show();
             startCam();
@@ -261,9 +270,12 @@ public class ScanActivity extends Activity implements android.view.SurfaceHolder
 
     private void stopCam() {
         camOpen = false;
-        if (focusPulse != null) hw.removeCallbacks(focusPulse);
-        try { if (cam != null) { cam.setPreviewCallbackWithBuffer(null); cam.stopPreview(); cam.release(); } } catch (Exception ignored) {}
-        cam = null;
+        if (focusPulse != null) { try { hw.removeCallbacks(focusPulse); } catch (Exception ignored) {} }
+        Camera c = cam; cam = null;
+        if (c != null) {
+            try { c.setPreviewCallback(null); c.stopPreview(); } catch (Throwable ignored) {}
+            try { c.release(); } catch (Throwable ignored) {}
+        }
     }
 
     @Override protected void onPause() { super.onPause(); if (!done) stopCam(); }

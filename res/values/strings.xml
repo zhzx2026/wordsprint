@@ -123,4 +123,5 @@
     <string name="update_need_perm">请在系统页允许「安装未知应用」，返回后自动继续</string>
     <string name="update_perm_manual">请在系统设置中允许本应用安装应用</string>
     <string name="update_install_fail">无法拉起安装器，文件已存至 %1$s</string>
+    <string name="import_done">完成</string>
 </resources>
