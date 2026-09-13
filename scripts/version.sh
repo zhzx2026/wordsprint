@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # 版本迭代管理执行器（规则见 VERSIONING.md，用户 2026-09-13 定版）：
 #   dev    版：主版本.次版本（次版本>=1），如 1.1、1.2…；每完成一轮修改 +0.1
-#   stable 版：主版本.0，如 1.0、2.0；由 dev 经用户确认后转正（同主版本，次版本归零）
+#   stable 版：主版本.0，如 2.0、3.0；由 dev 经用户确认后转正（主版本 +1：1.x 转 2.0、2.x 转 3.0）
 # 版本标识同步范围：AndroidManifest.xml（唯一来源）→ RELEASE_NOTES.md 首行 → README.md 当前版本行
 #   App 内页脚/更新页读的是 manifest（PackageManager），自动同步，无需改代码。
 # versionCode：与显示名解耦，永远单调 +1（OTA 只认 code），bump/转正都取 max(本地,dev通道,main)+1。
 #
 # 用法：
 #   bash scripts/version.sh status     查看当前版本/通道/code（含下一步预测）
-#   bash scripts/version.sh bump-dev   一轮 dev 迭代：X.Y→X.(Y+1)；stable X.0→(X+1).1；legacy→M.1
-#   bash scripts/version.sh promote    转正：dev X.Y→stable X.0（只改文件，不打 tag 不 push）
+#   bash scripts/version.sh bump-dev   一轮 dev 迭代：X.Y→X.(Y+1)（stable X.0 也回到同主版本 X.1）；legacy→M.1
+#   bash scripts/version.sh promote    转正：dev X.Y→stable (X+1).0（只改文件，不打 tag 不 push）
 #   bash scripts/version.sh sync       幂等修复：把 manifest 版本重写到各版本标识
 #   bash scripts/version.sh check      校验格式（供 CI 门禁，非法则 exit 1）
 # 环境变量：VERSION_NEW_MAJOR（legacy 迁移进新方案时的起始主版本，默认 1，仅迁移那一次有效）
@@ -103,7 +103,7 @@ cmd_promote() {
   cur="$(cur_ver)"; vc="$(cur_code)"; ch="$(channel_of "$cur")"
   if [ "$ch" != dev ]; then
     echo "!! 只有 dev 版本（X.Y，Y>=1）能转正；当前 v$cur 是 $ch" >&2
-    if [ "$ch" = stable ]; then echo "   已是 stable：下一轮迭代请 bump-dev（→ v$(( ${cur%%.*} + 1 )).1）" >&2; fi
+    if [ "$ch" = stable ]; then echo "   已是 stable：下一轮迭代请 bump-dev（→ v${cur%%.*}.1）" >&2; fi
     exit 1
   fi
   next="$(( ${cur%%.*} + 1 )).0"

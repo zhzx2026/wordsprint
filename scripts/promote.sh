@@ -44,4 +44,4 @@ URL="https://github.com/$REPO.git"
 git push "$URL" "HEAD:refs/heads/main" "refs/tags/v$VER"
 [ -n "${PUSH_TOKEN:-}" ] && unset PUSH_TOKEN
 echo "== 完成。约 1 分钟后 Release 就绪：https://github.com/$REPO/releases/latest"
-echo "   下一轮 dev：bash scripts/version.sh bump-dev（→ v$(( ${VER%%.*} + 1 )).1）"
+echo "   下一轮 dev：bash scripts/version.sh bump-dev（→ v${VER%%.*}.1）"

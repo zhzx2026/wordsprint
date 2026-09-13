@@ -142,11 +142,14 @@ PUSH_TOKEN=<用户临时提供的 fine-grained PAT> bash scripts/promote.sh 1.0.
     App 侧显示顺序 = pack 里的顺序（`MainActivity.buildRows()` 不做二次排序），改数据文件即可生效。
 
 ## 当前状态（2026-09-13 第六次更新）
-- 🆕 **新版本方案落地（本分支）**：`VERSIONING.md` + `scripts/version.sh`（status/bump-dev/promote/sync/check），
-  `push_release.sh`/`promote.sh` 已按新方案重写，`staging.yml` 加版本门禁，`auto_release.yml` 只发 X.0。
-  当前 manifest 已迁入新方案：**dev v2.1（code 19）**，由旧 1.0.17/code 18 经 bump-dev 迁移
-  （用户选定从 2.1 起步，旧 1.0.x 视为第 1 代；旧 tag `v1.0.8/9/14/17` 不动）。
-  main 仍是 v1.0.17（code 18，已发布）；本分支合 main 前必须先 promote 到 stable 2.0。
+- 🆕 **新版本方案已落地并首发 stable v2.0（code 20，2026-09-13 用户确认直发）**：`VERSIONING.md` + `scripts/version.sh`
+  （status/bump-dev/promote/sync/check），`push_release.sh`/`promote.sh` 已按新方案重写，`staging.yml` 加版本门禁，
+  `auto_release.yml` 只发 X.0。tag `v2.0` 已推、Release 资产 apk+update.json 正常、`main` 已快进、`releases/latest` 已指向它。
+  规则（用户澄清后）：dev `X.Y` 每轮 +0.1；**确认转正 = 主版本 +1 → stable (X+1).0**（1.x 转 2.0、2.x 转 3.0，不是同主版本归零）；
+  下一轮 dev 从新 stable 同主版本的 `.1` 继续（2.0 之后是 2.1、2.2…）。
+  本次 v2.0 = 第 1 代（1.0.x）的转正版（内容为 1.0.x 世代积累①~⑤）；旧 tag `v1.0.8/9/14/17` 不动。
+  当前位置：下一轮 `bump-dev` → dev 2.1（code 自 21 起）；下次用户确认转正 → **v3.0**。
+  历史残留：`v1.0.17` 有 tag 无 Release；误用 tag `main` 建的旧 Release 已不是 latest（是否删除待用户示下）。
 - ⏳ **待用户实测：v1.0.16（code 17）** —— 分支 `arena/01a09b02-wordsprint`，已 **merge `origin/main`（PR #1）**，
   所以这个包 = 小学 8 册 768 词 + 详情遮罩可关 + **词书库高中排序修复**（先必修一/二/三，再选择性必修一~四，见坑 14）。
   数据：`res/raw/wdb.dat` 21 本 / 9592 词 / 401529B（尺寸与 main 一致，只重排了高中段）。
