@@ -34,7 +34,12 @@ wordsprint/
 > 助手侧**能**用的口子：
 > - `api.github.com` 全量可用 → **把 CI 当 javac 用**（见下面「日志怎么读」）、读/写仓库文件、发 Release。
 > - 取小文件/测试包：`gh api "/repos/zhzx2026/wordsprint/contents/<path>?ref=<branch>" --jq .content | base64 -d`
->   （554KB 的 apk 实测可取，比走 artifact 靠谱）；releases 资产（`objects.githubusercontent.com`）也通。
+>   （554KB 的 apk 实测可取，比走 artifact 靠谱）。
+> - ⚠️ 2026-09-13 再实测：**`release-assets.githubusercontent.com` / `objects.githubusercontent.com` 也 TLS 直接被掐**
+>   （curl 报 SSL_ERROR_SYSCALL）→ 别 curl Release 资产。验证发布物改用 API 元数据：
+>   `gh api /repos/<repo>/releases/tags/vX.Y.Z --jq '.assets[]|{name,size,digest}'`
+>   （Release 资产与本地那份**同尺寸但 sha256 不同**是正常的：APK 里 zip 存了 mtime，两次构建不逐字节相同；
+>   要确认签名对不对，看 CI 日志里 `Signer #1 certificate SHA-256 digest` 是否仍是 729793de…）
 > - `raw.githubusercontent.com` **不通**（403）→ 它是**手机上**填的更新源地址，不是给你自己 curl 的。
 ```bash
 # 1) 工具链（约 250MB；只有在能直连 google/adoptium 的机器上才有效）
@@ -60,8 +65,14 @@ java -cp out:../libs/zxing-core.jar QRHostTest      # 期望：ALL QR/TRANSFER T
 # ① 暂存（可随便做，不碰 GitHub）：bump 版本→构建→本地 commit+tag
 SKIP_PUSH=1 bash scripts/push_release.sh "" "本次改动说明"
 #   → 把 ../刷单词-vX.Y.Z.apk 交给用户，让他实测（尤其改动涉及的交互）
-# ② 转正（用户明确同意后，仅此一步需要凭证）：
-PUSH_TOKEN=<用户临时提供的 fine-grained PAT> bash scripts/promote.sh
+# ② 转正（用户明确同意后，仅此一步需要凭证）。注意 promote.sh 要求 **tag 已经建好**，它只做"快进 main + 推 tag"：
+git tag -a v1.0.14 -m "……"                                  # 先打本地附注 tag（tag 必须指向已 CI 变绿的提交）
+PUSH_TOKEN=<用户临时提供的 fine-grained PAT> bash scripts/promote.sh 1.0.14
+#    沙箱里 gh 已登录时不必问 PAT，直接：git push origin HEAD:refs/heads/main refs/tags/v1.0.14
+#    tag 推送即触发 release.yml：SDK→签名→build.sh→make_release_manifest.sh→gh release create
+#    ⚠️ 发布文案来源优先级：RELEASE_NOTES 环境变量 > 仓库根 **RELEASE_NOTES.md** > 最后一条提交标题
+#       （tag 触发时环境变量是空的，所以每版都要先更新 RELEASE_NOTES.md，否则 Release 页会贴一串技术提交信息）
+#    ✅ 转正前必做：该 commit 的 staging CI 必须已 success（别在 main 已快进后才 discovering 编译不过）
 ```
 - 凭证：向用户要 **fine-grained PAT**（只勾 wordsprint 仓库、Contents:RW、7 天），用完提醒撤销；
   绝不把 token 写进任何文件/仓库内容/README。
@@ -104,7 +115,9 @@ PUSH_TOKEN=<用户临时提供的 fine-grained PAT> bash scripts/promote.sh
     `WindowManager.LayoutParams.windowAnimations`）。
 
 ## 当前状态（2026-09-13 第五次更新）
-- 线上最新：**v1.0.9（code 10）**；装机测试包已到 **v1.0.14（code 15）**（dev 通道，未转正）。
+- 线上最新：**v1.0.14（code 15）** —— 2026-09-13 用户回「转正」后发布：`main` 快进到 `bb6a950`、tag `v1.0.14`、
+  Release「刷单词 v1.0.14」资产 `wordsprint.apk`(558444B) + `update.json`(1453B) ✓，`releases/latest` 已指向它
+  （所有 1.0.9/1.0.10… 老机器下次「检查更新」就会收到这版）。临时 dev 通道已删。
 - 🚫 **UI 决定（用户明确要求，别再改回去）**：「粘贴导入进度码」**只有扫码页里那一个入口**
   （`activity_scan.xml` 的 `btnPaste`）；设置页里那个重复的行已删除。点它**打开独立页 `PasteImportActivity`**，
   进去就是**空的输入框**（键盘自己弹起），粘贴/手输都由用户做——**不要自动读剪贴板、更不要自动导入**；
@@ -148,7 +161,9 @@ PUSH_TOKEN=<用户临时提供的 fine-grained PAT> bash scripts/promote.sh
 - 📏 进度码实测规模（真实 13 册 8804 词）：文本码 **824~1650 字符**；已评估"再压小"（位图 gap/varint 或 RLE）
   → 稀疏时只省 ~17%，密集时反而变大（Deflate 已经把 0xFF/0x00 连解压得很干净），**结论：不改格式**，
   长度风险由"截断可恢复"兜住（`ProgressCode` + `CodeHostTest` 覆盖）。
-- 未了事项：等用户对 v1.0.10（粘贴导入 + 更新弹窗）的实测反馈 → 通过后 `bash scripts/promote.sh 1.0.10`。
+- 未了事项：① ② 那条「扫码页点粘贴进度码＝退出」的修复（独立页方案）用户**尚未回过实测结果**——
+  若复现，直接做 v1.0.15（**code 16**，坑 11）走同一套流程；② 下一版可考虑把 `RELEASE_NOTES.md` 的
+  写法在 `staging.yml` 摘要里也打印出来，方便装机前先看文案。
 
 ## 与用户协作的习惯
 - 用户报 bug 用真机现象描述（"扫不出来""强制退出"），先复现思路→定位根因→修复→**给他 APK 实测**→他说行才算完。
