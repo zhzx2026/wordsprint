@@ -157,6 +157,51 @@ public class CodeHostTest {
             check(e.getMessage() != null && e.getMessage().contains("空"), "空码提示：" + e.getMessage());
         }
 
+        // 10) 真实聊天/便签转发场景：前后夹中文、括号计数、markdown 反引号、全角句号前缀、无分页头
+        for (int seed = 1; seed <= 4; seed++) {
+            Data d = fake(seed, 13);
+            String code = encode(d, true);
+            String body = code.substring(5);
+            String[] messy = {
+                "【刷单词进度码】(1/1) " + code + " 请在今天 21:00 前导入，勿转发！",
+                "进度码如下：\n" + code.replace("WPX1.", "WPX1\u3002") + "\n\u2014\u2014来自小米便签",
+                "```" + code.replace("WPX1.", "WPX1\uff1a") + "```",
+                "收到码：\n" + body + "\n（本机没有 WPX 前缀也行）",
+                "WPX1." + wrap(body, 76, "\n"),
+                code + "\n\n这行是我瞎写的说明 abc 123",
+                code + code,                                             // 手滑复制了两遍
+            };
+            for (int k = 0; k < messy.length; k++) {
+                ProgressCode.Out o = ProgressCode.parse(messy[k], true);
+                check(same(o.decoded, d), "seed" + seed + " 脏文本场景 #" + k + " 应能挖出码");
+            }
+        }
+
+        // 11) 标准字母表（+ /）与 URL（- _）混在一段话里也不能串字符集
+        {
+            Data d = fake(9, 13);
+            String std = encode(d, false);                       // 含 + / 的标准码
+            String url = encode(d, true);                        // 同一负载的 URL_SAFE 版
+            check(!std.equals(url), "两种字母表应当真的不同（否则这条用例没意义）");
+            check(same(ProgressCode.parse("进度码：" + std, true).decoded, d), "标准字母表混在中文里");
+            check(same(ProgressCode.parse("进度码：" + url, true).decoded, d), "URL 字母表混在中文里");
+        }
+
+        // 12) 失败必须给得出"卡在哪一步"，否则用户只会回一句"还是不行"
+        try {
+            ProgressCode.parse("WPX1." + rep('A', 400), true);
+            check(false, "全 A 的假码应当失败");
+        } catch (Exception e) {
+            String m = e.getMessage() == null ? "" : e.getMessage();
+            check(m.indexOf('\u00b7') >= 0 || m.indexOf("·") >= 0, "失败信息要带诊断行：" + m.split("\n")[0]);
+        }
+        try {
+            ProgressCode.parse("", true);
+            check(false, "空串应当失败");
+        } catch (Exception e) {
+            check(e.getMessage() != null && e.getMessage().length() > 4, "空剪贴板要说人话");
+        }
+
         System.out.println("ALL PROGRESSCODE TESTS PASS (" + checks + " checks, 真实码长≈"
                 + encode(fake(1, 13), true).length() + " 字符)");
     }

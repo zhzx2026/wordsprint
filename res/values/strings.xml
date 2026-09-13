@@ -98,6 +98,13 @@
     <string name="copy_code">复制文本码</string>
     <string name="share_code">分享码图</string>
     <string name="manual_import">手动导入进度码</string>
+    <string name="paste_read_clip">读取剪贴板</string>
+    <string name="paste_clear">清空</string>
+    <string name="paste_empty">剪贴板是空的：先在对方手机「导出进度」点复制（或在微信里长按那条消息→复制），再回来点导入。</string>
+    <string name="paste_clip_chars">已读取剪贴板 %1$d 个字符</string>
+    <string name="paste_clip_none">剪贴板读不到内容（系统限制/内容为空），请长按输入框手动粘贴</string>
+    <string name="diag_copy">复制诊断信息</string>
+    <string name="diag_copied">诊断信息已复制，贴给开发者就能定位</string>
     <string name="paste_hint">粘贴 WPX1. 开头的进度码文本</string>
     <string name="do_import">导入</string>
     <string name="cancel">取消</string>

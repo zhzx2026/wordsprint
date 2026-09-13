@@ -56,39 +56,64 @@ public class TransferUi {
 
     public static void importText(final Activity a, final String raw, final Done onDone, final boolean cancelable) {
         if (a == null) return;
+        final String text = raw == null ? "" : raw;
         new Thread(new Runnable() {
             @Override public void run() {
-                Transfer.Decoded dec = null;
-                int[] res = null;
-                boolean truncated = false;
-                String err = null;
+                final ProgressCode.Out[] holder = new ProgressCode.Out[1];
+                final String[] err = new String[1];
                 try {
-                    ProgressCode.Out o = ProgressCode.parse(raw, true);
-                    dec = o.decoded;
-                    truncated = o.truncated;
-                    res = Prefs.of(a).importDecoded(dec);
+                    holder[0] = ProgressCode.parse(text, true);
                 } catch (OutOfMemoryError e) {
-                    err = str(a, R.string.import_oom);
+                    err[0] = str(a, R.string.import_oom);
                 } catch (Throwable t) {
-                    err = msgOf(t);
+                    err[0] = msgOf(t);
                 }
-                result(a, res, dec, truncated, err, onDone, cancelable);
+                final ProgressCode.Out o = holder[0];
+                final String failure = err[0];
+                try {
+                    a.runOnUiThread(new Runnable() {
+                        @Override public void run() {
+                            // 合并必须在主线程做（Prefs 与页面共用同一份内存态），
+                            // 耗时的解析才放子线程；两半分开，才不会一边卡 UI 一边踩线程。
+                            Transfer.Decoded dec = o == null ? null : o.decoded;
+                            int[] res = null;
+                            String e2 = failure;
+                            if (dec != null) {
+                                try { res = Prefs.of(a).importDecoded(dec); }
+                                catch (Throwable t) { e2 = msgOf(t); res = null; }
+                            }
+                            result(a, res, res == null ? null : dec, o != null && o.truncated,
+                                    e2, o, onDone, cancelable);
+                        }
+                    });
+                } catch (Throwable t) {
+                    safeToast(a, msgOf(t));
+                }
             }
         }, "wp-import").start();
+    }
+
+    /** 框里/剪贴板都是空的：这不是"码无效"，说清楚下一步该点什么 */
+    public static void pasteEmpty(final Activity a, final Done onDone) {
+        try {
+            if (a != null && !a.isFinishing())
+                Toast.makeText(a, str(a, R.string.paste_empty), Toast.LENGTH_LONG).show();
+        } catch (Throwable ignored) {}
+        call(onDone, false);
     }
 
     // ---------------- 结果卡片 ----------------
 
     private static void result(final Activity a, final int[] res, final Transfer.Decoded dec,
-                               final boolean truncated, final String err, final Done onDone,
-                               final boolean cancelable) {
+                               final boolean truncated, final String err, final ProgressCode.Out po,
+                               final Done onDone, final boolean cancelable) {
         try {
             a.runOnUiThread(new Runnable() {
                 @Override public void run() {
                     try {
                         if (a.isFinishing()) return;
                         if (res != null && dec != null) success(a, res, dec, truncated, onDone);
-                        else fail(a, err, onDone, cancelable);
+                        else fail(a, err, po, onDone, cancelable);
                     } catch (Throwable t) {
                         safeToast(a, msgOf(t));
                     }
@@ -127,13 +152,56 @@ public class TransferUi {
                 }, null);
     }
 
-    private static void fail(final Activity a, String err, final Done onDone, final boolean cancelable) {
+    private static void fail(final Activity a, String err, ProgressCode.Out po,
+                             final Done onDone, final boolean cancelable) {
+        LinearLayout col = new LinearLayout(a);
+        col.setOrientation(LinearLayout.VERTICAL);
         TextView tv = new TextView(a);
         tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
         tv.setTextColor(a.getResources().getColor(R.color.text_secondary));
         tv.setLineSpacing(Ui.dp(a, 4), 1f);
         tv.setText(str(a, R.string.import_fail_body) + (err == null ? "" : "\n\n" + err));
-        Ui.cardDialogEx(a, str(a, R.string.import_fail_title), Ui.scrollable(tv, 240),
+        col.addView(tv, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        // 诊断行：把"卡在哪一步"写成一行小字，用户可以一键复制发回来（"还是不行"也能被定位）
+        final String diag = diagOf(po, err);
+        if (diag.length() > 0) {
+            TextView d = new TextView(a);
+            d.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f);
+            d.setTypeface(android.graphics.Typeface.MONOSPACE);
+            d.setTextColor(a.getResources().getColor(R.color.text_secondary));
+            d.setText(diag);
+            d.setBackgroundResource(R.drawable.bg_card_field);
+            int pd = (int) Ui.dp(a, 8);
+            d.setPadding(pd, pd, pd, pd);
+            d.setTextIsSelectable(true);
+            LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            dlp.topMargin = (int) Ui.dp(a, 8);
+            col.addView(d, dlp);
+
+            TextView cp = new TextView(a);
+            cp.setText(str(a, R.string.diag_copy));
+            cp.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
+            cp.setGravity(android.view.Gravity.CENTER);
+            cp.setTextColor(a.getResources().getColor(R.color.brand1));
+            cp.setBackgroundResource(R.drawable.bg_card_field);
+            LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, (int) Ui.dp(a, 34));
+            clp.topMargin = (int) Ui.dp(a, 8);
+            col.addView(cp, clp);
+            cp.setOnClickListener(new android.view.View.OnClickListener() {
+                @Override public void onClick(android.view.View v) {
+                    boolean ok = Ui.copyText(a, diag);
+                    try {
+                        Toast.makeText(a, ok ? str(a, R.string.diag_copied) : str(a, R.string.copy_fail),
+                                Toast.LENGTH_LONG).show();
+                    } catch (Throwable ignored) {}
+                }
+            });
+        }
+        Ui.cardDialogEx(a, str(a, R.string.import_fail_title), Ui.scrollable(col, 300),
                 str(a, R.string.import_retry), new Runnable() {
                     @Override public void run() { showPasteDialog(a, onDone, cancelable); }
                 }, str(a, R.string.import_back), new Runnable() {
@@ -150,6 +218,21 @@ public class TransferUi {
 
     static String str(Activity a, int res) {
         try { return a.getString(res); } catch (Throwable t) { return ""; }
+    }
+
+    private static String diagOf(ProgressCode.Out o, String err) {
+        try {
+            StringBuilder sb = new StringBuilder();
+            if (o != null && o.detail != null && o.detail.length() > 0) sb.append(o.detail);
+            else if (o != null) sb.append("原文 ").append(o.totalChars).append(" 字符 · ").append(o.stage);
+            if (err != null && err.length() > 0) {
+                if (sb.length() > 0) sb.append("\n");
+                sb.append(err);
+            }
+            return sb.toString();
+        } catch (Throwable t) {
+            return "";
+        }
     }
 
     private static String msgOf(Throwable t) {

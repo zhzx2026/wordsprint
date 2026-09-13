@@ -144,7 +144,7 @@ public class Ui {
             row.addView(neg, new android.widget.LinearLayout.LayoutParams(0, (int) (48 * d), 1));
             neg.setOnClickListener(new View.OnClickListener() {
                 @Override public void onClick(View v) {
-                    dialogRef[0].dismiss();
+                    try { if (dialogRef[0] != null) dialogRef[0].dismiss(); } catch (Throwable ignored) {}
                     safeRun(onNeg);
                 }
             });
@@ -166,7 +166,7 @@ public class Ui {
             row.addView(pos, new android.widget.LinearLayout.LayoutParams(0, (int) (48 * d), 1));
             pos.setOnClickListener(new View.OnClickListener() {
                 @Override public void onClick(View v) {
-                    dialogRef[0].dismiss();
+                    try { if (dialogRef[0] != null) dialogRef[0].dismiss(); } catch (Throwable ignored) {}
                     safeRun(onPos);
                 }
             });
@@ -236,7 +236,7 @@ public class Ui {
             card.addView(go, glp);
             go.setOnClickListener(new View.OnClickListener() {
                 @Override public void onClick(View v) {
-                    dialogRef[0].dismiss();
+                    try { if (dialogRef[0] != null) dialogRef[0].dismiss(); } catch (Throwable ignored) {}
                     safeRun(onPrimary);
                 }
             });
@@ -253,7 +253,7 @@ public class Ui {
             card.addView(neg, nlp);
             neg.setOnClickListener(new View.OnClickListener() {
                 @Override public void onClick(View v) {
-                    dialogRef[0].dismiss();
+                    try { if (dialogRef[0] != null) dialogRef[0].dismiss(); } catch (Throwable ignored) {}
                     safeRun(onNeg);
                 }
             });
@@ -339,6 +339,19 @@ public class Ui {
             if (maxH > 0 && android.view.View.MeasureSpec.getMode(hSpec) != android.view.View.MeasureSpec.EXACTLY)
                 hSpec = android.view.View.MeasureSpec.makeMeasureSpec(maxH, android.view.View.MeasureSpec.AT_MOST);
             super.onMeasure(wSpec, hSpec);
+        }
+    }
+
+    /** 写剪贴板：个别 ROM（后台无焦点、超长文本）会抛异常，绝不让它带走进程 */
+    public static boolean copyText(android.content.Context c, CharSequence s) {
+        try {
+            android.content.ClipboardManager cm =
+                    (android.content.ClipboardManager) c.getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+            if (cm == null) return false;
+            cm.setPrimaryClip(android.content.ClipData.newPlainText("wp-diag", s));
+            return true;
+        } catch (Throwable t) {
+            return false;
         }
     }
 
