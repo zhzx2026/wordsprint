@@ -1,0 +1,251 @@
+# 合并即转正：PR 合进 main → 自动打 tag + 构建签名 + 发 GitHub Release（手机随后收到 OTA）
+# 用户 2026-09-13 定的新规矩：**合并 PR 这个动作本身就是「转正」授权**（以前要另外口头说「转正」）。
+#
+# ⚠️ 为什么这条流自己做完整发布，而不是「只建个 tag，让 release.yml 去发」：
+#    用 GITHUB_TOKEN 推的 tag **不会触发别的 workflow**（GitHub 的防递归机制），release.yml 收不到。
+#    所以这里复用同一套 build.sh + scripts/make_release_manifest.sh 自己发完；
+#    手动路径（git tag + push → release.yml、scripts/promote.sh）**依然保留**，两条路互不打架：
+#    tag 已存在时本流直接跳过（也就自动兼容「PR 没 bump 版本号」和「已经手动发过」两种情况）。
+#
+# 每个 PR 自己的义务（不满足就不会发布，并会在检查里留一条 ::error:: 说明）：
+#   ① AndroidManifest.xml 的 versionCode/versionName 已 bump —— 取「dev 通道 / main / 已有 tag」三者最大值 +1
+#   ② RELEASE_NOTES.md 写的是这一版的人话文案（它会原样成为 Release 页正文与 update.json 的 notes）
+#   ③ 合并前该分支的 staging CI 已变绿（本流也会再跑一次 run_tests.sh，红了就不发）
+#
+# 刹车（想合并但暂时不发布）：给 PR 打标签 `no-release`，或 PR 标题里写 `[skip release]`
+# 注：fork 来的 PR 拿不到写权限的 token（也拿不到 Secret），本流会在推 tag 那步失败——本仓库的 PR 都是内部分支，不受影响。
+name: auto-release
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      reason: { description: "备注（只写进构建摘要）", required: false, default: "手动补发 main 当前版本" }
+permissions:
+  contents: write          # 推 tag + 建 Release
+jobs:
+  promote:
+    # PR 被关掉但没合并 → 不发布
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main            # 事件发生在合并之后，main 头就是合并提交
+          fetch-depth: 0       # 打附注 tag 需要历史
+
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "17" }
+
+      # ---------- 闸门：决定这一版要不要发 ----------
+      - name: Gate（读版本号 / 判断是否跳过）
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ' ') }}
+          DISPATCH_REASON: ${{ github.event.inputs.reason }}
+        run: |
+          set -e
+          VER=$(grep -oE 'versionName="[^"]*"' AndroidManifest.xml | sed 's/.*="//;s/"//')
+          VC=$(grep -oE 'versionCode="[0-9]*"' AndroidManifest.xml | sed 's/[^0-9]//g')
+          TAG="v$VER"
+          echo "ver=$VER" >> "$GITHUB_OUTPUT"
+          echo "vc=$VC" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "== main 上的版本：$TAG（code $VC）"
+
+          case "$PR_TITLE" in *"[skip release]"*)
+            echo "go=no" >> "$GITHUB_OUTPUT"
+            echo "reason=PR 标题带 [skip release]，用户主动刹车" >> "$GITHUB_OUTPUT"; exit 0 ;; esac
+          case " $PR_LABELS " in *" no-release "*)
+            echo "go=no" >> "$GITHUB_OUTPUT"
+            echo "reason=PR 带 no-release 标签，用户主动刹车" >> "$GITHUB_OUTPUT"; exit 0 ;; esac
+
+          # tag 是否已存在：列出远端 tag 后做**整行精确匹配**（附注 tag 会多一行 v1.0.16^{}，一起认）
+          # 不用 `git ls-remote --exit-code`：它的退出码是 0=找到 / 2=没有 / 128=出错（不是 1！），
+          # 语义容易记错；也不用 gh api 的 refs 端点：出错与「不存在」都靠退出码二分，分不清就会误判成可发布。
+          REMOTE_TAGS=$(git ls-remote --tags origin 2>/dev/null) || REMOTE_TAGS="__LS_REMOTE_FAILED__"
+          if [ -z "$REMOTE_TAGS" ]; then REMOTE_TAGS="__EMPTY__"; fi
+          if [ "$REMOTE_TAGS" = "__LS_REMOTE_FAILED__" ]; then
+            echo "go=no" >> "$GITHUB_OUTPUT"
+            echo "reason=git ls-remote 失败（网络/权限），无法确认 tag 是否已存在 → 保守不发布" >> "$GITHUB_OUTPUT"
+            echo "::error::git ls-remote 失败：无法确认 tag $TAG 是否已存在 → 已中止自动发布（宁可不发，也不要重复发布或覆盖已发布版本）"
+            exit 0
+          fi
+          if printf '%s\n' "$REMOTE_TAGS" | awk '{print $2}' | grep -Fxq -e "refs/tags/$TAG" -e "refs/tags/$TAG^{}"; then
+            echo "go=no" >> "$GITHUB_OUTPUT"
+            echo "reason=tag $TAG 已存在（这个 PR 没 bump 版本号，或该版本已发布过）" >> "$GITHUB_OUTPUT"
+            echo "::error::合并即发布已跳过：tag $TAG 已存在。每个 PR 必须把 AndroidManifest.xml 的 versionCode/versionName +1（取 dev 通道 / main / 已有 tag 三者最大值 +1），否则手机点「检查更新」只会得到「已是最新版本」"
+            exit 0
+          fi
+          echo "go=yes" >> "$GITHUB_OUTPUT"
+          echo "reason=发布 $TAG（code $VC）" >> "$GITHUB_OUTPUT"
+          echo "== 闸门通过：远端没有 $TAG，准备发布（code $VC）"
+
+      # ---------- 发布前必过：主机侧测试（与本地/ staging 同一条命令） ----------
+      - name: Host tests（红就不发）
+        if: steps.gate.outputs.go == 'yes'
+        run: |
+          set +e
+          bash scripts/run_tests.sh > /tmp/t.log 2>&1; ec=$?
+          cat /tmp/t.log
+          if [ $ec -ne 0 ]; then
+            grep -E "error:|FAIL|Exception|找不到" /tmp/t.log | head -8 | cut -c1-380 \
+              | while IFS= read -r l; do echo "::error::[tests] $l"; done
+            echo "::error::主机侧测试未通过（exit $ec）→ 已中止自动发布，main 上没有 tag，手机不会收到坏包"
+            exit $ec
+          fi
+
+      - name: Install Android SDK pieces
+        if: steps.gate.outputs.go == 'yes'
+        run: |
+          mkdir -p $RUNNER_TEMP/sdk/build-tools $RUNNER_TEMP/sdk/platforms
+          curl -sSL -o bt.zip https://dl.google.com/android/repository/build-tools_r34-linux.zip
+          unzip -q bt.zip -d btX && mv btX/android-14 $RUNNER_TEMP/sdk/build-tools/34.0.0
+          curl -sSL -o p.zip https://dl.google.com/android/repository/platform-34-ext7_r02.zip
+          unzip -q p.zip -d pX && mv pX/android-34 $RUNNER_TEMP/sdk/platforms/android-34
+
+      - name: Restore keystore
+        if: steps.gate.outputs.go == 'yes'
+        env: { KEYSTORE_B64: "${{ secrets.KEYSTORE_B64 }}" }
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::缺 Secret KEYSTORE_B64：无法用线上那把钥匙签名，发出去老设备就再也覆盖安装不了"
+            exit 1
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > wordsprint.keystore
+
+      - name: Build
+        if: steps.gate.outputs.go == 'yes'
+        env: { SDK_ROOT: "${{ runner.temp }}/sdk", KS_PASS: "${{ secrets.KS_PASS }}" }
+        run: |
+          set +e
+          bash build.sh > /tmp/b.log 2>&1; ec=$?
+          cat /tmp/b.log
+          if [ $ec -ne 0 ]; then
+            grep -E "error:|错误|Exception|✗" /tmp/b.log | head -8 | cut -c1-380 \
+              | while IFS= read -r l; do echo "::error::[build] $l"; done
+            echo "::error::build.sh 失败（exit $ec）→ 已中止自动发布"; exit $ec
+          fi
+
+      # 发版最后一道保险：证书必须是线上那把。签错了 = 所有老设备永远装不上后续更新（用户数据全丢级别）
+      - name: Verify signing certificate
+        if: steps.gate.outputs.go == 'yes'
+        env: { SDK_ROOT: "${{ runner.temp }}/sdk" }
+        run: |
+          set -e
+          VER="${{ steps.gate.outputs.ver }}"
+          EXPECTED=729793defab0876c4460815db652eb4127686e596197d4de92567888ca3904ac
+          "$SDK_ROOT/build-tools/34.0.0/apksigner" verify --print-certs "wordsprint-v$VER.apk" > /tmp/certs.txt
+          cat /tmp/certs.txt
+          GOT=$(grep -oE 'certificate SHA-256 digest: [0-9a-f]{64}' /tmp/certs.txt | head -1 | awk '{print $NF}')
+          if [ "$GOT" != "$EXPECTED" ]; then
+            echo "::error::签名证书不是线上那把（got=${GOT:-空} expected=$EXPECTED）→ 已中止发布，没建 tag、没发 Release"
+            exit 1
+          fi
+          echo "✓ 签名证书与线上一致（$GOT）"
+
+      - name: Tag（附注 tag，指向 main 头）
+        if: steps.gate.outputs.go == 'yes'
+        env:
+          PR_NUM: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -e
+          VER="${{ steps.gate.outputs.ver }}"; VC="${{ steps.gate.outputs.vc }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          MSG="刷单词 v$VER（code $VC）"
+          [ -n "$PR_NUM" ] && MSG="$MSG — 合并 PR #$PR_NUM 自动转正：$PR_TITLE"
+          git tag -a "v$VER" -m "$MSG"
+          git push origin "refs/tags/v$VER"
+          echo "✓ 已推 tag v$VER（GITHUB_TOKEN 推的 tag 不会再触发 release.yml，发布在本 job 内完成）"
+
+      - name: Assemble release assets
+        if: steps.gate.outputs.go == 'yes'
+        id: meta
+        env:
+          GITHUB_REF_NAME: ${{ steps.gate.outputs.tag }}    # make_release_manifest.sh 用它拼 update.json 的下载直链
+        run: bash scripts/make_release_manifest.sh
+
+      - name: Publish Release
+        if: steps.gate.outputs.go == 'yes'
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          set -e
+          python3 -c "import json;print(json.load(open('dist/update.json'))['notes'])" > notes.txt
+          TAG="${{ steps.meta.outputs.tag }}"
+          gh release view "$TAG" >/dev/null 2>&1 \
+            && gh release upload "$TAG" dist/wordsprint.apk dist/update.json --clobber \
+            || gh release create "$TAG" dist/wordsprint.apk dist/update.json --title "刷单词 $TAG" --notes-file notes.txt
+          echo "✓ Release 已发布：https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG"
+
+      # 沙箱/助手侧 curl 不到 release-assets 域，所以用 API 元数据自证发布物存在且尺寸正常
+      - name: Verify published assets
+        if: steps.gate.outputs.go == 'yes'
+        id: verify
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          set -e
+          TAG="${{ steps.gate.outputs.tag }}"
+          gh api "/repos/$GITHUB_REPOSITORY/releases/tags/$TAG" \
+            --jq '{tag:.tag_name,name:.name,latest_draft:.draft,assets:[.assets[]|{name,size,digest}]}' | tee /tmp/rel.json
+          APK_SIZE=$(python3 -c "import json;a=json.load(open('/tmp/rel.json'))['assets'];print([x['size'] for x in a if x['name']=='wordsprint.apk'][0])")
+          if [ "${APK_SIZE:-0}" -lt 400000 ]; then
+            echo "::error::Release 里的 wordsprint.apk 只有 ${APK_SIZE:-0} 字节，明显不对（正常 ~570KB）"
+            exit 1
+          fi
+          echo "apk_size=$APK_SIZE" >> "$GITHUB_OUTPUT"
+          echo "✓ 发布物已核验：wordsprint.apk ${APK_SIZE}B + update.json"
+
+      - name: 摘要（发布与跳过都写）
+        if: always()
+        env:
+          GO: ${{ steps.gate.outputs.go }}
+          REASON: ${{ steps.gate.outputs.reason }}
+          TAG: ${{ steps.gate.outputs.tag }}
+          VC: ${{ steps.gate.outputs.vc }}
+          APK_SIZE: ${{ steps.verify.outputs.apk_size }}
+          DISPATCH_REASON: ${{ github.event.inputs.reason }}
+        run: |
+          {
+            echo "## 合并即转正：${TAG:-?}（code ${VC:-?}）"
+            echo
+            if [ "$GO" = "yes" ]; then
+              echo "**已发布** ✅ —— $REASON"
+              echo
+              echo "- Release: https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG"
+              echo "- 资产：\`wordsprint.apk\`（${APK_SIZE:-?} 字节）+ \`update.json\`"
+              echo "- \`releases/latest\` 指向它之后，手机内置更新源（releases/latest/download/update.json）"
+              echo "  下次「检查更新」就会收到这一版，覆盖安装、进度不丢。"
+            else
+              echo "**未发布** ⏸ —— ${REASON:-闸门未通过或前序步骤失败}"
+              echo
+              echo "main 上没有新 tag，手机不会收到 OTA。要发就："
+              echo "① 确认 \`AndroidManifest.xml\` 已 bump（dev/main/tag 三者最大值 +1）+ \`RELEASE_NOTES.md\` 已更新，再合一个 PR；"
+              echo "② 或手动打 tag：\`git tag -a $TAG -m '…' && git push origin $TAG\`（走 release.yml）；"
+              echo "③ 或在 Actions 页手动 run 本 workflow（workflow_dispatch）。"
+            fi
+            [ -n "$DISPATCH_REASON" ] && { echo; echo "手动触发备注：$DISPATCH_REASON"; }
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # 失败时把日志写回 check-run，方便沙箱侧（读不到 Actions 日志下载链接）用 API 自查
+      - name: 诊断写回 check-run（成功失败都写）
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STATUS: ${{ job.status }}
+        run: |
+          { echo "===== scripts/run_tests.sh ====="; cat /tmp/t.log 2>/dev/null || echo "(无)";
+            echo; echo "===== build.sh ====="; cat /tmp/b.log 2>/dev/null || echo "(无)";
+            echo; echo "===== apksigner ====="; cat /tmp/certs.txt 2>/dev/null || echo "(无)";
+            echo; echo "===== release ====="; cat /tmp/rel.json 2>/dev/null || echo "(无)"; } > /tmp/diag.log
+          tail -c 24000 /tmp/diag.log | iconv -f utf-8 -t utf-8 -c > /tmp/diag.trim || cp /tmp/diag.log /tmp/diag.trim
+          gh api --method POST "/repos/$GITHUB_REPOSITORY/check-runs" \
+            -f name=auto-release-diagnostics -f head_sha="${{ github.sha }}" \
+            -f status=completed -f conclusion="$STATUS" \
+            -f "output[title]=auto-release 日志（$STATUS）" \
+            -f "output[summary]=$(cat /tmp/diag.trim)" \
+            -f "external_id=${{ github.run_id }}-auto-diag" > /dev/null || echo "（诊断写回失败，不影响发布）"
