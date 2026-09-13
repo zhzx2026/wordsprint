@@ -48,8 +48,10 @@ public class Update {
 
     /** 返回非 null = 有更新；url 为空视为未配置（err 提示） */
     public static Info check(Context c) throws Exception {
-        String raw = Prefs.of(c).str(Prefs.K_UP_URL, "").trim();
-        if (raw.isEmpty()) raw = c.getString(R.string.update_default_src).trim();
+        int ch = Prefs.of(c).updateChannel();
+        String raw = ch == 1
+                ? c.getString(R.string.update_dev_src).trim()
+                : c.getString(R.string.update_default_src).trim();
         if (raw.contains("YOUR_GITHUB"))
             throw new Exception("GitHub 源未配置：先跑 scripts/github_setup.sh 你的用户名/仓库");
         if (raw.isEmpty()) throw new Exception("未设置更新源地址");
@@ -293,7 +295,6 @@ public class Update {
     public static void autoCheck(final Activity a) {
         final Prefs p = Prefs.of(a);
         if (!p.on(Prefs.K_UP_AUTO, true)) return;
-        if (p.str(Prefs.K_UP_URL, "").trim().isEmpty()) return;
         long now = System.currentTimeMillis();
         if (now - p.l(Prefs.K_UP_LAST, 0) < 20L * 3600 * 1000) return;
         p.set(Prefs.K_UP_LAST, now);
