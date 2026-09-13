@@ -102,6 +102,16 @@ PUSH_TOKEN=<用户临时提供的 fine-grained PAT> bash scripts/promote.sh 1.0.
 11. **每个测试包都必须 +1 `versionCode`**：`Update.check` 是 `dev.code > myCode` 严格大于，
     同一个 code 发第二次，手机上点「检查更新」会得到"已是最新版本"→ 永远装不到新修复（本轮踩过）。
     `AndroidManifest.xml` 是唯一版本源，改它即可，脚本（run_ci/release.yml）都从它读。
+    ⚠️ **bump 前必须先取「当前最大号」再 +1，别只看自己分支的基线**（用户明确要求）：
+    ```bash
+    gh api "/repos/zhzx2026/wordsprint/contents/update.json?ref=dev" --jq .content | base64 -d   # dev 通道在发的号
+    gh api "/repos/zhzx2026/wordsprint/contents/AndroidManifest.xml?ref=main" --jq .content | base64 -d | grep version   # main 已占的号
+    gh api "/repos/zhzx2026/wordsprint/tags?per_page=5" --jq '.[].name'                          # 已发布的 tag
+    ```
+    多个 Arena 分支并行时**极易撞号**：2026-09-13 本轮就撞了——PR #1（小学 8 册）13:47 合进 main 并占了
+    `code 16 / v1.0.15`，而我 13:48 从旧基线也 bump 到 16，两版同号 → 装过前者的手机永远收不到后者。
+    取三者最大值 +1（当时正确答案是 **17 / v1.0.16**）。同理：合并 main 后**必须重放数据改动**，
+    否则拿旧 `wdb.dat` 转正会把别人新加的词书删掉（本轮 21 本 9592 词差点被打回 13 本 8824 词）。
 13. **弹键盘会重建 Activity**：凡是页面上可能出现输入框/弹窗带输入的，`android:configChanges` 必须带上
     `keyboard|keyboardHidden|navigation`（v1.0.13 装机实测「扫码页点粘贴进度码＝退出」就是这个：
     扫码页只声明了 `orientation|screenSize`，弹窗里 EditText 一 `showSoftInput` → 配置变化 → 扫码页被销毁重建、
@@ -124,11 +134,12 @@ PUSH_TOKEN=<用户临时提供的 fine-grained PAT> bash scripts/promote.sh 1.0.
     尺寸不变，写完自解析校验内容指纹一致。进度按 `bookId`（md5(rel)）存取，与顺序无关 → 不会丢进度。
     App 侧显示顺序 = pack 里的顺序（`MainActivity.buildRows()` 不做二次排序），改数据文件即可生效。
 
-## 当前状态（2026-09-13 第五次更新）
-- ⏳ **待用户实测：v1.0.15（code 16）** —— 分支 `arena/01a09b02-wordsprint`，只改了**词书库高中排序**
-  （先必修一/二/三，再选择性必修一~四，见坑清单 14）+ bump 版本 + 文档。staging CI 已 success
-  （run 34760865856：ALL HOST TESTS PASS、`PackTest` books=13 words=8824、签名证书仍是 `729793de…`、
-  apk 558444B），dev 通道 `update.json` 已指向它。**没有打 tag、没有发 Release**——按铁律等用户说「转正」。
+## 当前状态（2026-09-13 第六次更新）
+- ⏳ **待用户实测：v1.0.16（code 17）** —— 分支 `arena/01a09b02-wordsprint`，已 **merge `origin/main`（PR #1）**，
+  所以这个包 = 小学 8 册 768 词 + 详情遮罩可关 + **词书库高中排序修复**（先必修一/二/三，再选择性必修一~四，见坑 14）。
+  数据：`res/raw/wdb.dat` 21 本 / 9592 词 / 401529B（尺寸与 main 一致，只重排了高中段）。
+  版本号取「dev(16) 与 main(16) 的最大值 +1」= **17**，v1.0.15 那一号已被 PR #1 占用且从未发 Release（见坑 11）。
+  **没有打 tag、没有发 Release**——按铁律等用户说「转正」。
 - 线上最新：**v1.0.14（code 15）** —— 2026-09-13 用户回「转正」后发布：`main` 快进到 `bb6a950`、tag `v1.0.14`、
   Release「刷单词 v1.0.14」资产 `wordsprint.apk`(558444B) + `update.json`(1453B) ✓，`releases/latest` 已指向它
   （所有 1.0.9/1.0.10… 老机器下次「检查更新」就会收到这版）。临时 dev 通道已删。

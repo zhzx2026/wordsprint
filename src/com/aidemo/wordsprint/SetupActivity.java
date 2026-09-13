@@ -49,6 +49,11 @@ public class SetupActivity extends Activity {
         order = prefs.order(book.id);
         lag = prefs.lag(book.id);
 
+        // 点上方遮罩关闭详情（见 sheet_setup.xml 的 scrim 注释）
+        findViewById(R.id.scrim).setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { finish(); }
+        });
+
         View root = findViewById(R.id.sheetRoot);
         root.setTranslationY(Ui.dp(this, 600));
         root.animate().translationY(0f).setDuration(260).setInterpolator(new android.view.animation.DecelerateInterpolator()).start();

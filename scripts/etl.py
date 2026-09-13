@@ -11,7 +11,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAW = os.path.join(ROOT, 'raw_xlsx')
 paths = json.load(open(os.path.join(ROOT, 'path_index.json')))
 
-# ===== 仅保留：人教版初中 5 册、人教版高中新课标 7 册、高考大纲 3500 =====
+# ===== 保留：人教版小学（PEP 三年级起点 3-6 年级）+ 初中 5 册 + 高中新课标 7 册 + 高考大纲 3500 =====
+# 小学册没有 raw_xlsx 时由 scripts/etl_primary.py 从 data/primary_words.tsv 追加，
+# 两条路径产出的元数据保持一致（pub=人教版 PEP / title=三年级上册… / series=三年级起点 / stage=0）。
+KEEP_PRIMARY = ('三年级', '四年级', '五年级', '六年级')
 KEEP_JUNIOR = ('初中英语七年级上', '初中英语七年级下', '初中英语八年级上', '初中英语八年级下', '初中英语九年级全')
 KEEP_SENIOR = ('必修第一册', '必修第二册', '必修第三册',
                '选择性必修第一册', '选择性必修第二册', '选择性必修第三册', '选择性必修第四册')
@@ -23,6 +26,8 @@ def _keep(rel):
         fn = rel.rsplit('/', 1)[-1][:-5]
         if any(k in fn for k in KEEP_JUNIOR): return True
         if '高中英语' in fn and any(k in fn for k in KEEP_SENIOR): return True
+        # 小学：人教版 3-6 年级。"一年级起点"是另一个系列（人教一起），不收
+        if '小学英语' in fn and '一年级起点' not in fn and any(k in fn for k in KEEP_PRIMARY): return True
     return False
 KEEP_IDX = [(i, p) for i, p in enumerate(paths) if _keep(p)]
 
@@ -144,7 +149,9 @@ for i, rel in KEEP_IDX:
         title = title.replace('三年级起点', '').replace('一年级起点', '').strip()
         import re as _re
         title = _re.sub(r'^(初中|高中)英语', r'\1', title)
+        if title.startswith('小学英语'): title = title[2:]     # 显示为"三年级上册"，学段看分组头
         stage = sort_key(fn)[0]
+        if stage == 0 and not series: series = '三年级起点'    # 人教版小学英语默认即三年级起点
     elif rel == CUTOFF_3500:
         pub = '大纲词表'
         title = '高考英语 3500 词'; series = ''

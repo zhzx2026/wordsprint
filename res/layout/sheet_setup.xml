@@ -3,6 +3,15 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <!-- 上半屏遮罩：窗口本身只有 dim（Sheet 主题），普通 Activity 的
+         setFinishOnTouchOutside 因内容视图铺满全屏而永远收不到"外面"的触摸，
+         点上方没反应（用户反馈"点词本详情点上面不能退出"）。这里铺一层透明
+         点击层，点它 = 关详情。 -->
+    <View
+        android:id="@+id/scrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+
     <LinearLayout
         android:id="@+id/sheetRoot"
         android:layout_width="match_parent"
