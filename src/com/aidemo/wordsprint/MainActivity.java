@@ -36,8 +36,8 @@ public class MainActivity extends Activity {
         });
 
         LinearLayout chips = (LinearLayout) findViewById(R.id.filterChips);
-        final String[] names = {"全部", Db.stageName(Db.STAGE_JUNIOR), Db.stageName(Db.STAGE_SENIOR), Db.stageName(Db.STAGE_EXAM)};
-        final int[] stages = {-1, Db.STAGE_JUNIOR, Db.STAGE_SENIOR, Db.STAGE_EXAM};
+        final String[] names = {"全部", Db.stageName(Db.STAGE_PRIMARY), Db.stageName(Db.STAGE_JUNIOR), Db.stageName(Db.STAGE_SENIOR), Db.stageName(Db.STAGE_EXAM)};
+        final int[] stages = {-1, Db.STAGE_PRIMARY, Db.STAGE_JUNIOR, Db.STAGE_SENIOR, Db.STAGE_EXAM};
         for (int i = 0; i < names.length; i++) {
             final int idx = i;
             TextView chip = Ui.chip(this, names[i], i == 0);
