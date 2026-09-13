@@ -88,8 +88,22 @@ PUSH_TOKEN=<用户临时提供的 fine-grained PAT> bash scripts/promote.sh
     Camera1 的另一条命门：**不要在弹窗按钮回调里同步 `stopCam()`**——主线程 `release()` 与相机线程 `autoFocus`
     抢同一个 native 对象，是 `catch(Throwable)` 拦不住的进程级崩溃；现在统一 `camLock` + `stopCamAsync()`（在相机线程里释放）。
 
-## 当前状态（2026-09-13 第二次更新）
-- 线上最新：**v1.0.9（code 10）**。用户装机反馈两件事：① 「粘贴进度码」还是不行且**会闪退**；② 更新弹窗"太丑，圆角处有白色"。
+11. **每个测试包都必须 +1 `versionCode`**：`Update.check` 是 `dev.code > myCode` 严格大于，
+    同一个 code 发第二次，手机上点「检查更新」会得到"已是最新版本"→ 永远装不到新修复（本轮踩过）。
+    `AndroidManifest.xml` 是唯一版本源，改它即可，脚本（run_ci/release.yml）都从它读。
+12. **Base64 的"能解"不等于"解对"**：`getUrlDecoder()` 对先过滤过的串几乎不报错，字母表选错时它照样吐出一串
+    **错字节**，于是错误只在 inflate 那一步暴露——所以 `ProgressCode` 是"两套字母表各试一次，**以 inflate 成功为裁判**"，
+    别退回"先选字母表再解压"。同族陷阱还有两处：`Inflater.setInput()` 只保存引用不拷贝（输入/输出必须两个数组，
+    否则输出把未读完的输入盖掉）；`Window` 没有 `setWindowAnimationStyle()`（动画样式只能写
+    `WindowManager.LayoutParams.windowAnimations`）。
+
+## 当前状态（2026-09-13 第三次更新）
+- 线上最新：**v1.0.9（code 10）**；装机测试包已到 **v1.0.11（code 12）**（dev 通道，未转正）。
+- 用户第二轮仍然只回了一句「还是不能粘贴码」→ 因为没有设备日志，这轮把**"失败必须自证"**做进产品：
+  `ProgressCode.Out.stage/detail` + 失败卡片上的**「复制诊断信息」**（原文长度/有效字符数/开头结尾 28 字符/卡在哪一步），
+  下次用户贴那句回来就能直接定位。解析改自愈式找码起点（`wpx1` 标签后可跟任意/无分隔符，或取最长 base64 段），
+  `PasteSheet` 加「读取剪贴板/清空」按钮（有些 ROM 对话框里长按菜单压根弹不出来）、去掉外层 ScrollView、
+  空剪贴板单独给人话提示；解析在子线程、合并回主线程。
 - 本轮改动（**manifest 已 bump 到 v1.0.10 / code 11**，等用户装机点头后才转正）：
   - 新增 `ProgressCode`（容错解析：前缀可缺/大小写、中文说明与引号包围、折行、NBSP/全角/零宽、两套 base64 字母表、
     **复制被截断时把写完整的那部分先合并**）+ 主机测试 `test/CodeHostTest.java`。
