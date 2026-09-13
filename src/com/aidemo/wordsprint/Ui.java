@@ -180,7 +180,9 @@ public class Ui {
         dialogRef[0].setCanceledOnTouchOutside(cancelable);
         if (dialogRef[0].getWindow() != null) {
             dialogRef[0].getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0x00000000));
-            try { dialogRef[0].getWindow().setWindowAnimationStyle(R.style.Anim_Dialog_Card); } catch (Exception ignored) {}
+            try { android.view.WindowManager.LayoutParams wlp = dialogRef[0].getWindow().getAttributes();
+                 wlp.windowAnimations = R.style.Anim_Dialog_Card;   // Window 没有动画 setter，只能走 LayoutParams
+                 dialogRef[0].getWindow().setAttributes(wlp); } catch (Exception ignored) {}
         }
         dialogRef[0].show();
         stripDialogPanel(dialogRef[0], card);
@@ -262,7 +264,9 @@ public class Ui {
         dialogRef[0].setCanceledOnTouchOutside(cancelable);
         if (dialogRef[0].getWindow() != null) {
             dialogRef[0].getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0x00000000));
-            try { dialogRef[0].getWindow().setWindowAnimationStyle(R.style.Anim_Dialog_Card); } catch (Exception ignored) {}
+            try { android.view.WindowManager.LayoutParams wlp = dialogRef[0].getWindow().getAttributes();
+                 wlp.windowAnimations = R.style.Anim_Dialog_Card;   // Window 没有动画 setter，只能走 LayoutParams
+                 dialogRef[0].getWindow().setAttributes(wlp); } catch (Exception ignored) {}
         }
         dialogRef[0].show();
         stripDialogPanel(dialogRef[0], card);
@@ -279,7 +283,9 @@ public class Ui {
         dlg.setCanceledOnTouchOutside(cancelable);
         if (dlg.getWindow() != null) {
             dlg.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0x00000000));
-            try { dlg.getWindow().setWindowAnimationStyle(R.style.Anim_Dialog_Card); } catch (Exception ignored) {}
+            try { android.view.WindowManager.LayoutParams wlp = dlg.getWindow().getAttributes();
+                 wlp.windowAnimations = R.style.Anim_Dialog_Card;   // Window 没有动画 setter，只能走 LayoutParams
+                 dlg.getWindow().setAttributes(wlp); } catch (Exception ignored) {}
         }
         dlg.show();
         stripDialogPanel(dlg, card);
