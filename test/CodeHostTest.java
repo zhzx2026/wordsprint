@@ -26,11 +26,14 @@ public class CodeHostTest {
         List<Transfer.DayRec> days = new ArrayList<>();
     }
 
+    /** 真实词书规模：人教初中 5 册 + 高中 7 册 + 高考 3500，共 8804 词（README 同源） */
+    static final int[] REAL_N = {400, 420, 430, 440, 878, 360, 360, 360, 380, 380, 380, 394, 3622};
+
     static Data fake(int seed, int nBooks) {
         Random r = new Random(seed);
         Data d = new Data();
         for (int i = 0; i < nBooks; i++) {
-            int n = 300 + r.nextInt(3400);                       // 每册词数（真实是 2568/2634/3622 这一档）
+            int n = REAL_N[i % REAL_N.length];
             int mastered = r.nextInt(n + 1);
             BitSet bs = new BitSet(n);
             for (int k = 0; k < mastered; k++) bs.set(r.nextInt(n));
@@ -115,7 +118,7 @@ public class CodeHostTest {
                 String part = code.substring(0, cut);
                 ProgressCode.Out po;
                 try { po = ProgressCode.parse(part, true); }
-                catch (Exception e) { check(cut < 200, "seed" + seed + " 截到 " + pct + "% 就啥都不剩了，允许失败"); continue; }
+                catch (Exception e) { throw new RuntimeException("截到 " + pct + "%（" + cut + " 字符）不该整码作废：" + e.getMessage(), e); }
                 check(po.truncated, "seed" + seed + " 截到 " + pct + "% 必须标记 truncated");
                 check(po.decoded.books.size() <= d.books.size(), "seed" + seed + " 恢复的词书数不超原文");
                 for (int k = 0; k < po.decoded.books.size(); k++) {
@@ -154,7 +157,8 @@ public class CodeHostTest {
             check(e.getMessage() != null && e.getMessage().contains("空"), "空码提示：" + e.getMessage());
         }
 
-        System.out.println("ALL PROGRESSCODE TESTS PASS (" + checks + " checks)");
+        System.out.println("ALL PROGRESSCODE TESTS PASS (" + checks + " checks, 真实码长≈"
+                + encode(fake(1, 13), true).length() + " 字符)");
     }
 
     static String rep(char c, int n) {

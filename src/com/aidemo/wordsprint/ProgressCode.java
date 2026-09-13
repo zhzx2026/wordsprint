@@ -162,25 +162,28 @@ public class ProgressCode {
             // 逐块喂数据，先喂一次会把整段输入重复一遍，inflate 出来的是脏数据。
             InputStream in = new ByteArrayInputStream(src);
             List<byte[]> chunks = new ArrayList<byte[]>();
-            byte[] buf = new byte[1 << 15];
+            // 输入/输出必须是两个数组：Inflater.setInput 只存引用不拷贝，
+            // 若把 inflate 的输出写回同一个 buf，会覆盖掉还没吃完的输入（自我破坏）。
+            byte[] inBuf = new byte[1 << 13];
+            byte[] outBuf = new byte[1 << 15];
             int total = 0;
             while (true) {
                 if (inf.finished()) break;
                 if (inf.needsInput()) {
-                    int n = in.read(buf);
+                    int n = in.read(inBuf);
                     if (n <= 0) break;
-                    inf.setInput(buf, 0, n);
+                    inf.setInput(inBuf, 0, n);
                     continue;
                 }
                 int n;
-                try { n = inf.inflate(buf); }
+                try { n = inf.inflate(outBuf); }
                 catch (DataFormatException e) { o.truncated = true; break; }
                 if (n <= 0) break;
                 byte[] piece = new byte[n];
-                System.arraycopy(buf, 0, piece, 0, n);
+                System.arraycopy(outBuf, 0, piece, 0, n);
                 chunks.add(piece);
                 total += n;
-                if (!lenient && total > (8 << 20)) break;
+                if (lenient && total > (8 << 20)) break;      // 畸形码别把内存吃光
             }
             if (total == 0) return null;
             byte[] out = new byte[total];
