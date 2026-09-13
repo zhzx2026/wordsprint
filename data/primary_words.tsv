@@ -1,0 +1,768 @@
+3	1	hello	həˈloʊ	你好
+3	1	hi	haɪ	嗨；你好
+3	1	goodbye	ˌɡʊdˈbaɪ	再见
+3	1	bye	baɪ	再见
+3	1	I	aɪ	我
+3	1	am	æm	是
+3	1	Miss	mɪs	小姐；女士
+3	1	Mr	ˈmɪstər	先生
+3	1	and	ænd	和；与
+3	1	too	tuː	也；太
+3	1	how	haʊ	怎样；如何
+3	1	are	ɑːr	是
+3	1	you	juː	你；你们
+3	1	fine	faɪn	好的
+3	1	thank	θæŋk	感谢
+3	1	nice	naɪs	好的；令人愉快的
+3	1	meet	miːt	遇见；碰到
+3	1	good	ɡʊd	好的
+3	1	morning	ˈmɔːrnɪŋ	早晨；上午
+3	1	afternoon	ˌæftərˈnuːn	下午
+3	1	evening	ˈiːvnɪŋ	傍晚；晚上
+3	1	red	red	红色；红色的
+3	1	yellow	ˈjeloʊ	黄色；黄色的
+3	1	green	ɡriːn	绿色；绿色的
+3	1	blue	bluː	蓝色；蓝色的
+3	1	black	blæk	黑色；黑色的
+3	1	white	waɪt	白色；白色的
+3	1	orange	ˈɔːrɪndʒ	橙色；橙色的
+3	1	brown	braʊn	棕色；棕色的
+3	1	colour	ˈkʌlər	颜色
+3	1	see	siː	看见
+3	1	face	feɪs	脸
+3	1	ear	ɪr	耳朵
+3	1	eye	aɪ	眼睛
+3	1	nose	noʊz	鼻子
+3	1	mouth	maʊθ	嘴巴
+3	1	arm	ɑːrm	手臂
+3	1	hand	hænd	手
+3	1	head	hed	头
+3	1	body	ˈbɒdi	身体
+3	1	leg	leɡ	腿
+3	1	foot	fʊt	脚
+3	1	look	lʊk	看
+3	1	at	æt	在
+3	1	this	ðɪs	这；这个
+3	1	my	maɪ	我的
+3	1	me	miː	我
+3	1	your	jʊr	你的；你们的
+3	1	the	ðə	这；那
+3	1	cat	kæt	猫
+3	1	dog	dɒɡ	狗
+3	1	duck	dʌk	鸭子
+3	1	pig	pɪɡ	猪
+3	1	bear	ber	熊
+3	1	bird	bɜːrd	鸟
+3	1	panda	ˈpændə	熊猫
+3	1	tiger	ˈtaɪɡər	老虎
+3	1	elephant	ˈelɪfənt	大象
+3	1	monkey	ˈmʌŋki	猴子
+3	1	zoo	zuː	动物园
+3	1	animal	ˈænɪml	动物
+3	1	what	wɒt	什么
+3	1	a	ə	一（个、只）
+3	1	an	æn	一（个、只）
+3	1	is	ɪz	是
+3	1	it	ɪt	它
+3	1	cute	kjuːt	可爱的
+3	1	funny	ˈfʌni	有趣的；滑稽的
+3	1	cool	kuːl	酷的；凉爽的
+3	1	bread	bred	面包
+3	1	juice	dʒuːs	果汁
+3	1	egg	eɡ	蛋
+3	1	milk	mɪlk	牛奶
+3	1	water	ˈwɔːtər	水
+3	1	cake	keɪk	蛋糕
+3	1	fish	fɪʃ	鱼
+3	1	rice	raɪs	米饭
+3	1	eat	iːt	吃
+3	1	drink	drɪŋk	喝
+3	1	have	hæv	有；吃
+3	1	some	sʌm	一些
+3	1	like	laɪk	喜欢
+3	1	here	hɪr	这里
+3	1	please	pliːz	请
+3	1	thanks	θæŋks	谢谢
+3	1	can	kæn	能；可以
+3	1	one	wʌn	一
+3	1	two	tuː	二
+3	1	three	θriː	三
+3	1	four	fɔːr	四
+3	1	five	faɪv	五
+3	1	six	sɪks	六
+3	1	seven	ˈsevən	七
+3	1	eight	eɪt	八
+3	1	nine	naɪn	九
+3	1	ten	ten	十
+3	1	happy	ˈhæpi	快乐的
+3	1	birthday	ˈbɜːrθdeɪ	生日
+3	1	gift	ɡɪft	礼物
+3	1	old	oʊld	老的；旧的
+3	1	year	jɪr	年
+3	1	many	ˈmeni	许多的
+3	1	plate	pleɪt	盘子
+3	1	candle	ˈkændl	蜡烛
+3	2	boy	bɔɪ	男孩
+3	2	girl	ɡɜːrl	女孩
+3	2	teacher	ˈtiːtʃər	老师
+3	2	student	ˈstuːdnt	学生
+3	2	pupil	ˈpjuːpl	小学生
+3	2	China	ˈtʃaɪnə	中国
+3	2	UK	ˌjuː ˈkeɪ	英国
+3	2	USA	ˌjuː es ˈeɪ	美国
+3	2	Canada	ˈkænədə	加拿大
+3	2	from	frɒm	从；来自
+3	2	new	njuː	新的
+3	2	friend	frend	朋友
+3	2	welcome	ˈwelkəm	欢迎
+3	2	back	bæk	回来
+3	2	school	skuːl	学校
+3	2	where	wer	哪里
+3	2	he	hiː	他
+3	2	she	ʃiː	她
+3	2	father	ˈfɑːðər	父亲；爸爸
+3	2	dad	dæd	爸爸
+3	2	mother	ˈmʌðər	母亲；妈妈
+3	2	mum	mʌm	妈妈
+3	2	man	mæn	男人
+3	2	woman	ˈwʊmən	女人
+3	2	sister	ˈsɪstər	姐；妹
+3	2	brother	ˈbrʌðər	兄；弟
+3	2	grandmother	ˈɡrænmʌðər	祖母；外祖母
+3	2	grandfather	ˈɡrænfɑːðər	祖父；外祖父
+3	2	family	ˈfæməli	家庭
+3	2	who	huː	谁
+3	2	that	ðæt	那；那个
+3	2	thin	θɪn	瘦的
+3	2	fat	fæt	胖的
+3	2	tall	tɔːl	高的
+3	2	short	ʃɔːrt	矮的；短的
+3	2	long	lɒŋ	长的
+3	2	small	smɔːl	小的
+3	2	big	bɪɡ	大的
+3	2	giraffe	dʒɪˈræf	长颈鹿
+3	2	children	ˈtʃɪldrən	儿童(复数)
+3	2	tail	teɪl	尾巴
+3	2	so	soʊ	如此；这么
+3	2	on	ɒn	在……上面
+3	2	in	ɪn	在……里面
+3	2	under	ˈʌndər	在……下面
+3	2	desk	desk	书桌
+3	2	chair	tʃer	椅子
+3	2	cap	kæp	帽子
+3	2	ball	bɔːl	球
+3	2	car	kɑːr	小汽车
+3	2	boat	boʊt	小船
+3	2	map	mæp	地图
+3	2	toy	tɔɪ	玩具
+3	2	box	bɒks	盒子
+3	2	apple	ˈæpl	苹果
+3	2	pear	per	梨
+3	2	orange	ˈɔːrɪndʒ	橙子
+3	2	banana	bəˈnænə	香蕉
+3	2	watermelon	ˈwɔːtərmelən	西瓜
+3	2	strawberry	ˈstrɔːberi	草莓
+3	2	grape	ɡreɪp	葡萄
+3	2	buy	baɪ	买
+3	2	fruit	fruːt	水果
+3	2	yes	jes	是的
+3	2	no	noʊ	不；不是
+3	2	do	duː	做
+3	2	don't	doʊnt	不（do not）
+3	2	sorry	ˈsɒri	对不起
+3	2	eleven	ɪˈlevən	十一
+3	2	twelve	twelv	十二
+3	2	thirteen	ˌθɜːrˈtiːn	十三
+3	2	fourteen	ˌfɔːrˈtiːn	十四
+3	2	fifteen	ˌfɪfˈtiːn	十五
+3	2	sixteen	ˌsɪksˈtiːn	十六
+3	2	seventeen	ˌsevənˈtiːn	十七
+3	2	eighteen	ˌeɪˈtiːn	十八
+3	2	nineteen	ˌnaɪnˈtiːn	十九
+3	2	twenty	ˈtwenti	二十
+3	2	kite	kaɪt	风筝
+3	2	beautiful	ˈbjuːtɪfl	美丽的
+3	2	open	ˈoʊpən	打开
+3	2	close	kloʊz	关上
+3	2	crayon	ˈkreɪɒn	蜡笔
+4	1	classroom	ˈklæsruːm	教室
+4	1	window	ˈwɪndoʊ	窗户
+4	1	blackboard	ˈblækbɔːrd	黑板
+4	1	light	laɪt	灯
+4	1	picture	ˈpɪktʃər	图片；照片
+4	1	door	dɔːr	门
+4	1	floor	flɔːr	地板
+4	1	wall	wɔːl	墙
+4	1	computer	kəmˈpjuːtər	电脑
+4	1	fan	fæn	风扇
+4	1	near	nɪr	近的
+4	1	clean	kliːn	打扫；干净的
+4	1	help	help	帮助
+4	1	really	ˈrɪəli	真的
+4	1	schoolbag	ˈskuːlbæɡ	书包
+4	1	book	bʊk	书
+4	1	English book	ˈɪŋɡlɪʃ bʊk	英语书
+4	1	Chinese book	tʃaɪˈniːz bʊk	语文书
+4	1	maths book	mæθs bʊk	数学书
+4	1	storybook	ˈstɔːribʊk	故事书
+4	1	notebook	ˈnoʊtbʊk	笔记本
+4	1	pencil	ˈpensl	铅笔
+4	1	pencil box	ˈpensl bɒks	铅笔盒
+4	1	ruler	ˈruːlər	尺子
+4	1	eraser	ɪˈreɪsər	橡皮
+4	1	candy	ˈkændi	糖果
+4	1	heavy	ˈhevi	重的
+4	1	wow	waʊ	哇
+4	1	strong	strɒŋ	强壮的
+4	1	friendly	ˈfrendli	友好的
+4	1	quiet	ˈkwaɪət	安静的
+4	1	hair	her	头发
+4	1	shoe	ʃuː	鞋
+4	1	glasses	ˈɡlæsɪz	眼镜
+4	1	his	hɪz	他的
+4	1	her	hɜːr	她的
+4	1	name	neɪm	名字
+4	1	has	hæz	有
+4	1	or	ɔːr	或者
+4	1	right	raɪt	对的；正确的
+4	1	hat	hæt	帽子
+4	1	home	hoʊm	家
+4	1	room	ruːm	房间
+4	1	bedroom	ˈbedruːm	卧室
+4	1	living room	ˈlɪvɪŋ ruːm	客厅
+4	1	study	ˈstʌdi	书房
+4	1	kitchen	ˈkɪtʃɪn	厨房
+4	1	bathroom	ˈbæθruːm	浴室
+4	1	bed	bed	床
+4	1	phone	foʊn	电话
+4	1	table	ˈteɪbl	桌子
+4	1	sofa	ˈsoʊfə	沙发
+4	1	fridge	frɪdʒ	冰箱
+4	1	find	faɪnd	找到
+4	1	them	ðem	他们
+4	1	come	kʌm	来
+4	1	key	kiː	钥匙
+4	1	beef	biːf	牛肉
+4	1	chicken	ˈtʃɪkɪn	鸡肉
+4	1	noodles	ˈnuːdlz	面条
+4	1	soup	suːp	汤
+4	1	vegetable	ˈvedʒtəbl	蔬菜
+4	1	chopsticks	ˈtʃɒpstɪks	筷子
+4	1	bowl	boʊl	碗
+4	1	fork	fɔːrk	叉子
+4	1	knife	naɪf	小刀
+4	1	spoon	spuːn	勺子
+4	1	dinner	ˈdɪnər	晚餐
+4	1	ready	ˈredi	准备好的
+4	1	would	wʊd	愿意
+4	1	pass	pæs	递；传
+4	1	cut	kʌt	切
+4	1	use	juːz	使用
+4	1	parents	ˈperənts	父母
+4	1	cousin	ˈkʌzn	堂兄弟姐妹
+4	1	uncle	ˈʌŋkl	叔；舅
+4	1	aunt	ænt	姑；姨
+4	1	baby	ˈbeɪbi	婴儿
+4	1	doctor	ˈdɒktər	医生
+4	1	cook	kʊk	厨师
+4	1	driver	ˈdraɪvər	司机
+4	1	farmer	ˈfɑːrmər	农民
+4	1	nurse	nɜːrs	护士
+4	1	job	dʒɒb	工作
+4	1	people	ˈpiːpl	人们
+4	1	but	bʌt	但是
+4	1	little	ˈlɪtl	小的
+4	1	puppy	ˈpʌpi	小狗
+4	1	football	ˈfʊtbɔːl	足球
+4	1	basketball	ˈbæskɪtbɔːl	篮球
+4	2	playground	ˈpleɪɡraʊnd	操场
+4	2	garden	ˈɡɑːrdn	花园
+4	2	library	ˈlaɪbrəri	图书馆
+4	2	art room	ɑːrt ruːm	美术教室
+4	2	music room	ˈmjuːzɪk ruːm	音乐教室
+4	2	computer room	kəmˈpjuːtər ruːm	电脑教室
+4	2	gym	dʒɪm	体育馆
+4	2	first	fɜːrst	第一
+4	2	second	ˈsekənd	第二
+4	2	next to	nekst tuː	紧邻
+4	2	homework	ˈhoʊmwɜːrk	家庭作业
+4	2	class	klæs	班级；课
+4	2	forty	ˈfɔːrti	四十
+4	2	way	weɪ	路；方向
+4	2	time	taɪm	时间
+4	2	o'clock	əˈklɒk	……点钟
+4	2	lunch	lʌntʃ	午餐
+4	2	breakfast	ˈbrekfəst	早餐
+4	2	music	ˈmjuːzɪk	音乐
+4	2	English	ˈɪŋɡlɪʃ	英语
+4	2	get up	ɡet ʌp	起床
+4	2	go to school	ɡoʊ tuː skuːl	去上学
+4	2	go home	ɡoʊ hoʊm	回家
+4	2	go to bed	ɡoʊ tuː bed	上床睡觉
+4	2	over	ˈoʊvər	结束
+4	2	now	naʊ	现在
+4	2	kid	kɪd	小孩
+4	2	just	dʒʌst	仅仅；刚好
+4	2	minute	ˈmɪnɪt	分钟
+4	2	hurry	ˈhʌri	赶快
+4	2	up	ʌp	向上
+4	2	weather	ˈweðər	天气
+4	2	cold	koʊld	寒冷的
+4	2	warm	wɔːrm	温暖的
+4	2	hot	hɒt	热的
+4	2	rainy	ˈreɪni	多雨的
+4	2	windy	ˈwɪndi	多风的
+4	2	cloudy	ˈklaʊdi	多云的
+4	2	snowy	ˈsnoʊi	多雪的
+4	2	sunny	ˈsʌni	晴朗的
+4	2	outside	ˌaʊtˈsaɪd	在外面
+4	2	fly	flaɪ	飞；放（风筝）
+4	2	degree	dɪˈɡriː	度
+4	2	Beijing	ˈbeɪˈdʒɪŋ	北京
+4	2	New York	njuː jɔːrk	纽约
+4	2	farm	fɑːrm	农场
+4	2	hen	hen	母鸡
+4	2	cow	kaʊ	奶牛
+4	2	horse	hɔːrs	马
+4	2	sheep	ʃiːp	绵羊
+4	2	goat	ɡoʊt	山羊
+4	2	lamb	læm	小羊
+4	2	tomato	təˈmeɪtoʊ	西红柿
+4	2	potato	pəˈteɪtoʊ	土豆
+4	2	carrot	ˈkærət	胡萝卜
+4	2	onion	ˈʌnjən	洋葱
+4	2	green beans	ɡriːn biːnz	四季豆
+4	2	these	ðiːz	这些
+4	2	those	ðoʊz	那些
+4	2	yum	jʌm	好吃
+4	2	clothes	kloʊðz	衣服
+4	2	shirt	ʃɜːrt	衬衫
+4	2	T-shirt	ˈtiːʃɜːrt	T恤
+4	2	skirt	skɜːrt	短裙
+4	2	dress	dres	连衣裙
+4	2	pants	pænts	裤子
+4	2	shorts	ʃɔːrts	短裤
+4	2	jacket	ˈdʒækɪt	夹克
+4	2	coat	koʊt	外套
+4	2	sweater	ˈswetər	毛衣
+4	2	sock	sɒk	袜子
+4	2	jeans	dʒiːnz	牛仔裤
+4	2	put on	pʊt ɒn	穿上
+4	2	take off	teɪk ɒf	脱下
+4	2	hang up	hæŋ ʌp	挂起来
+4	2	wear	wer	穿
+4	2	whose	huːz	谁的
+4	2	mine	maɪn	我的
+4	2	yours	jʊrz	你的
+4	2	pack	pæk	收拾；打包
+4	2	shop	ʃɒp	商店
+4	2	glove	ɡlʌv	手套
+4	2	scarf	skɑːrf	围巾
+4	2	umbrella	ʌmˈbrelə	雨伞
+4	2	sunglasses	ˈsʌnɡlæsɪz	太阳镜
+4	2	pretty	ˈprɪti	漂亮的
+4	2	expensive	ɪkˈspensɪv	昂贵的
+4	2	cheap	tʃiːp	便宜的
+4	2	nice	naɪs	好看的
+4	2	try	traɪ	试
+4	2	size	saɪz	尺码
+4	2	of course	əv kɔːrs	当然
+4	2	too	tuː	太
+4	2	how much	haʊ mʌtʃ	多少钱
+4	2	yuan	juˈæn	元
+4	2	dollar	ˈdɒlər	美元
+4	2	us	ʌs	我们（宾格）
+5	1	young	jʌŋ	年轻的
+5	1	kind	kaɪnd	和蔼的；亲切的
+5	1	strict	strɪkt	严格的
+5	1	polite	pəˈlaɪt	有礼貌的
+5	1	helpful	ˈhelpfl	有帮助的
+5	1	clever	ˈklevər	聪明的
+5	1	shy	ʃaɪ	害羞的
+5	1	know	noʊ	知道
+5	1	our	ˈaʊər	我们的
+5	1	will	wɪl	将要
+5	1	sometimes	ˈsʌmtaɪmz	有时候
+5	1	robot	ˈroʊbɒt	机器人
+5	1	speak	spiːk	说话
+5	1	finish	ˈfɪnɪʃ	完成
+5	1	Monday	ˈmʌndeɪ	星期一
+5	1	Tuesday	ˈtjuːzdeɪ	星期二
+5	1	Wednesday	ˈwenzdeɪ	星期三
+5	1	Thursday	ˈθɜːrzdeɪ	星期四
+5	1	Friday	ˈfraɪdeɪ	星期五
+5	1	Saturday	ˈsætərdeɪ	星期六
+5	1	Sunday	ˈsʌndeɪ	星期日
+5	1	weekend	ˈwiːkend	周末
+5	1	wash	wɒʃ	洗
+5	1	watch	wɒtʃ	看
+5	1	read	riːd	读
+5	1	play	pleɪ	玩；播放
+5	1	often	ˈɒfn	经常
+5	1	every	ˈevri	每一个
+5	1	day	deɪ	天；日
+5	1	schedule	ˈʃedjuːl	时间表
+5	1	sandwich	ˈsænwɪtʃ	三明治
+5	1	salad	ˈsæləd	沙拉
+5	1	hamburger	ˈhæmbɜːrɡər	汉堡包
+5	1	ice cream	ˌaɪs ˈkriːm	冰淇淋
+5	1	tea	tiː	茶
+5	1	fresh	freʃ	新鲜的
+5	1	healthy	ˈhelθi	健康的
+5	1	delicious	dɪˈlɪʃəs	美味的
+5	1	hot	hɒt	辣的
+5	1	sweet	swiːt	甜的
+5	1	salty	ˈsɔːlti	咸的
+5	1	favourite	ˈfeɪvərɪt	最喜欢的
+5	1	thirsty	ˈθɜːrsti	渴的
+5	1	hungry	ˈhʌŋɡri	饿的
+5	1	food	fuːd	食物
+5	1	order	ˈɔːrdər	点餐
+5	1	sing	sɪŋ	唱歌
+5	1	song	sɒŋ	歌曲
+5	1	dance	dæns	跳舞
+5	1	draw	drɔː	画画
+5	1	cartoon	kɑːrˈtuːn	卡通
+5	1	swim	swɪm	游泳
+5	1	play basketball	pleɪ ˈbæskɪtbɔːl	打篮球
+5	1	play ping-pong	pleɪ pɪŋpɒŋ	打乒乓球
+5	1	speak English	spiːk ˈɪŋɡlɪʃ	说英语
+5	1	cook	kʊk	烹饪
+5	1	kung fu	ˌkʌŋ ˈfuː	功夫
+5	1	wonderful	ˈwʌndərfl	精彩的
+5	1	learn	lɜːrn	学习
+5	1	any	ˈeni	任何的
+5	1	problem	ˈprɒbləm	问题
+5	1	no problem	noʊ ˈprɒbləm	没问题
+5	1	party	ˈpɑːrti	聚会
+5	1	next	nekst	下一个
+5	1	clock	klɒk	钟
+5	1	plant	plænt	植物
+5	1	bottle	ˈbɒtl	瓶子
+5	1	photo	ˈfoʊtoʊ	照片
+5	1	bike	baɪk	自行车
+5	1	between	bɪˈtwiːn	在……中间
+5	1	above	əˈbʌv	在……上方
+5	1	beside	bɪˈsaɪd	在……旁边
+5	1	behind	bɪˈhaɪnd	在……后面
+5	1	in front of	ɪn frʌnt əv	在……前面
+5	1	there	ðer	那里（表示存在）
+5	1	lots of	lɒts əv	许多
+5	1	dirty	ˈdɜːrti	脏的
+5	1	their	ðer	他们的
+5	1	house	haʊs	房子
+5	1	flower	ˈflaʊər	花
+5	1	lots	lɒts	许多
+5	1	park	pɑːrk	公园
+5	1	lake	leɪk	湖
+5	1	river	ˈrɪvər	河
+5	1	forest	ˈfɒrɪst	森林
+5	1	mountain	ˈmaʊntɪn	高山
+5	1	hill	hɪl	小山
+5	1	tree	triː	树
+5	1	bridge	brɪdʒ	桥
+5	1	building	ˈbɪldɪŋ	建筑物
+5	1	village	ˈvɪlɪdʒ	村庄
+5	1	nature	ˈneɪtʃər	自然
+5	1	rabbit	ˈræbɪt	兔子
+5	1	high	haɪ	高的
+5	1	go boating	ɡoʊ ˈboʊtɪŋ	去划船
+5	1	aren't	ɑːrnt	不是(are not)
+5	2	eat breakfast	iːt ˈbrekfəst	吃早餐
+5	2	have ... class	hæv klæs	上……课
+5	2	eat lunch	iːt lʌntʃ	吃午餐
+5	2	do morning exercises	duː ˈmɔːrnɪŋ ˈeksərsaɪzɪz	做早操
+5	2	eat dinner	iːt ˈdɪnər	吃晚餐
+5	2	clean my room	kliːn maɪ ruːm	打扫我的房间
+5	2	go for a walk	ɡoʊ fər ə wɔːk	去散步
+5	2	go shopping	ɡoʊ ˈʃɒpɪŋ	去购物
+5	2	take	teɪk	上（课）
+5	2	dancing	ˈdænsɪŋ	跳舞的
+5	2	shopping	ˈʃɒpɪŋ	购物
+5	2	usually	ˈjuːʒuəli	通常
+5	2	together	təˈɡeðər	一起
+5	2	when	wen	什么时候
+5	2	exercise	ˈeksərsaɪz	锻炼
+5	2	after	ˈæftər	在……之后
+5	2	a.m.	ˌeɪ ˈem	上午
+5	2	p.m.	ˌpiː ˈem	下午
+5	2	noon	nuːn	中午
+5	2	morning	ˈmɔːrnɪŋ	早晨
+5	2	evening	ˈiːvnɪŋ	晚上
+5	2	night	naɪt	夜晚
+5	2	spring	sprɪŋ	春天
+5	2	summer	ˈsʌmər	夏天
+5	2	autumn	ˈɔːtəm	秋天
+5	2	winter	ˈwɪntər	冬天
+5	2	season	ˈsiːzn	季节
+5	2	go swimming	ɡoʊ ˈswɪmɪŋ	去游泳
+5	2	go on a picnic	ɡoʊ ɒn ə ˈpɪknɪk	去野餐
+5	2	pick apples	pɪk ˈæplz	摘苹果
+5	2	make a snowman	meɪk ə ˈsnoʊmæn	堆雪人
+5	2	picnic	ˈpɪknɪk	野餐
+5	2	snow	snoʊ	雪
+5	2	snowman	ˈsnoʊmæn	雪人
+5	2	which	wɪtʃ	哪个
+5	2	best	best	最
+5	2	because	bɪˈkɒz	因为
+5	2	vacation	veɪˈkeɪʃn	假期
+5	2	all	ɔːl	全部
+5	2	leaf	liːf	叶子
+5	2	paint	peɪnt	画画
+5	2	January	ˈdʒænjueri	一月
+5	2	February	ˈfebrueri	二月
+5	2	March	mɑːrtʃ	三月
+5	2	April	ˈeɪprəl	四月
+5	2	May	meɪ	五月
+5	2	June	dʒuːn	六月
+5	2	July	dʒuˈlaɪ	七月
+5	2	August	ˈɔːɡəst	八月
+5	2	September	sepˈtembər	九月
+5	2	October	ɒkˈtoʊbər	十月
+5	2	November	noʊˈvembər	十一月
+5	2	December	dɪˈsembər	十二月
+5	2	few	fjuː	少的
+5	2	thing	θɪŋ	事情
+5	2	meet	miːt	见面
+5	2	sports meet	spɔːrts miːt	运动会
+5	2	Easter	ˈiːstər	复活节
+5	2	trip	trɪp	旅行
+5	2	year	jɪr	年
+5	2	plant	plænt	种植
+5	2	national	ˈnæʃnəl	国家的
+5	2	American	əˈmerɪkən	美国的
+5	2	Thanksgiving	ˌθæŋksˈɡɪvɪŋ	感恩节
+5	2	Christmas	ˈkrɪsməs	圣诞节
+5	2	holiday	ˈhɒlədeɪ	假日
+5	2	game	ɡeɪm	游戏；比赛
+5	2	roll	roʊl	滚动
+5	2	look for	lʊk fɔːr	寻找
+5	2	chocolate	ˈtʃɒklət	巧克力
+5	2	bunny	ˈbʌni	兔子
+5	2	first (1st)	fɜːrst	第一
+5	2	second (2nd)	ˈsekənd	第二
+5	2	third (3rd)	θɜːrd	第三
+5	2	fourth (4th)	fɔːrθ	第四
+5	2	fifth (5th)	fɪfθ	第五
+5	2	twelfth (12th)	twelfθ	第十二
+5	2	twentieth (20th)	ˈtwentiəθ	第二十
+5	2	twenty-first (21st)	ˈtwenti fɜːrst	第二十一
+5	2	twenty-third (23rd)	ˈtwenti θɜːrd	第二十三
+5	2	thirtieth (30th)	ˈθɜːrtiəθ	第三十
+5	2	birthday	ˈbɜːrθdeɪ	生日
+5	2	April Fool's Day	ˈeɪprəl fuːlz deɪ	愚人节
+5	2	mine	maɪn	我的
+5	2	yours	jʊrz	你的
+5	2	his	hɪz	他的
+5	2	hers	hɜːrz	她的
+5	2	theirs	ðerz	他们的
+5	2	ours	ˈaʊərz	我们的
+5	2	climbing	ˈklaɪmɪŋ	攀登
+5	2	eating	ˈiːtɪŋ	吃
+5	2	playing	ˈpleɪɪŋ	玩
+5	2	jumping	ˈdʒʌmpɪŋ	跳
+5	2	drinking	ˈdrɪŋkɪŋ	喝
+5	2	sleeping	ˈsliːpɪŋ	睡觉
+5	2	each	iːtʃ	每一个
+5	2	other	ˈʌðər	其他的
+5	2	each other	iːtʃ ˈʌðər	互相
+5	2	exciting	ɪkˈsaɪtɪŋ	令人兴奋的
+5	2	like	laɪk	像
+5	2	walk	wɔːk	走
+5	2	doing morning exercises	ˈduːɪŋ ˈmɔːrnɪŋ ˈeksərsaɪzɪz	做早操
+5	2	having ... class	ˈhævɪŋ klæs	上……课
+5	2	reading a book	ˈriːdɪŋ ə bʊk	看书
+5	2	listening to music	ˈlɪsənɪŋ tuː ˈmjuːzɪk	听音乐
+5	2	keep	kiːp	保持
+5	2	keep to the right	kiːp tuː ðə raɪt	靠右
+5	2	talk quietly	tɔːk ˈkwaɪətli	小声说话
+5	2	take turns	teɪk tɜːrnz	轮流
+5	2	bamboo	ˌbæmˈbuː	竹子
+5	2	its	ɪts	它的
+5	2	show	ʃoʊ	展示
+5	2	anything	ˈeniθɪŋ	任何事
+5	2	else	els	其他的
+5	2	practice	ˈpræktɪs	练习
+6	1	science	ˈsaɪəns	科学
+6	1	museum	mjuˈziːəm	博物馆
+6	1	post office	poʊst ˈɔːfɪs	邮局
+6	1	bookstore	ˈbʊkstɔːr	书店
+6	1	cinema	ˈsɪnəmə	电影院
+6	1	hospital	ˈhɒspɪtl	医院
+6	1	crossing	ˈkrɒsɪŋ	十字路口
+6	1	turn	tɜːrn	转弯
+6	1	left	left	左边
+6	1	right	raɪt	右边
+6	1	straight	streɪt	笔直地
+6	1	get	ɡet	到达
+6	1	GPS	ˌdʒiː piː ˈes	全球定位系统
+6	1	gave	ɡeɪv	给(give过去式)
+6	1	feature	ˈfiːtʃər	特征
+6	1	follow	ˈfɒloʊ	跟随
+6	1	far	fɑːr	远的
+6	1	tell	tel	告诉
+6	1	by	baɪ	乘坐
+6	1	bus	bʌs	公交车
+6	1	plane	pleɪn	飞机
+6	1	taxi	ˈtæksi	出租车
+6	1	ship	ʃɪp	轮船
+6	1	subway	ˈsʌbweɪ	地铁
+6	1	train	treɪn	火车
+6	1	slow	sloʊ	慢的
+6	1	down	daʊn	向下
+6	1	slow down	sloʊ daʊn	慢下来
+6	1	stop	stɒp	停下
+6	1	fast	fæst	快的
+6	1	wait	weɪt	等待
+6	1	go	ɡoʊ	去；走
+6	1	come	kʌm	来
+6	1	on foot	ɒn fʊt	步行
+6	1	traffic	ˈtræfɪk	交通
+6	1	light	laɪt	灯
+6	1	helmet	ˈhelmɪt	头盔
+6	1	must	mʌst	必须
+6	1	wear	wer	戴
+6	1	attention	əˈtenʃn	注意
+6	1	went	went	去(go过去式)
+6	1	camp	kæmp	野营
+6	1	went camping	went ˈkæmpɪŋ	去野营
+6	1	fish	fɪʃ	钓鱼
+6	1	went fishing	went ˈfɪʃɪŋ	去钓鱼
+6	1	rode	roʊd	骑(ride过去式)
+6	1	rode a horse	roʊd ə hɔːrs	骑马
+6	1	hurt	hɜːrt	受伤
+6	1	hurt my foot	hɜːrt maɪ fʊt	伤了脚
+6	1	ate	eɪt	吃(eat过去式)
+6	1	took	tʊk	拍照(take过去式)
+6	1	took pictures	tʊk ˈpɪktʃərz	拍照
+6	1	bought	bɔːt	买(buy过去式)
+6	1	bought gifts	bɔːt ɡɪfts	买礼物
+6	1	last	læst	上一个
+6	1	weekend	ˈwiːkend	周末
+6	1	ago	əˈɡoʊ	以前
+6	1	Xinjiang	ˈʃɪnˈdʒjæŋ	新疆
+6	1	fell	fel	摔倒(fall过去式)
+6	1	off	ɒf	脱离
+6	1	Labour Day	ˈleɪbər deɪ	劳动节
+6	1	mule	mjuːl	骡子
+6	1	Turpan	ˈtʊrˈpæn	吐鲁番
+6	1	could	kʊd	能(can过去式)
+6	1	till	tɪl	直到
+6	1	beach	biːtʃ	海滩
+6	1	dining hall	ˈdaɪnɪŋ hɔːl	餐厅
+6	1	grass	ɡræs	草
+6	1	gym	dʒɪm	体育馆
+6	1	cycling	ˈsaɪklɪŋ	骑自行车
+6	1	go cycling	ɡoʊ ˈsaɪklɪŋ	去骑自行车
+6	1	ice-skate	ˈaɪs skeɪt	滑冰
+6	1	badminton	ˈbædmɪntən	羽毛球
+6	1	different	ˈdɪfrənt	不同的
+6	1	was	wɒz	是(is过去式)
+6	1	were	wɜːr	是(are过去式)
+6	1	factory	ˈfæktəri	工厂
+6	1	worker	ˈwɜːrkər	工人
+6	1	postman	ˈpoʊstmən	邮递员
+6	1	businessman	ˈbɪznəsmæn	商人
+6	1	police officer	pəˈliːs ˈɔːfɪsər	警官
+6	1	fisherman	ˈfɪʃərmən	渔夫
+6	1	scientist	ˈsaɪəntɪst	科学家
+6	1	pilot	ˈpaɪlət	飞行员
+6	1	coach	koʊtʃ	教练
+6	1	country	ˈkʌntri	国家
+6	1	head teacher	hed ˈtiːtʃər	校长
+6	1	sea	siː	海
+6	1	stay	steɪ	保持
+6	1	university	ˌjuːnɪˈvɜːrsəti	大学
+6	1	reporter	rɪˈpɔːrtər	记者
+6	1	type	taɪp	打字
+6	1	quickly	ˈkwɪkli	快速地
+6	1	secretary	ˈsekrəteri	秘书
+6	1	angry	ˈæŋɡri	生气的
+6	1	afraid	əˈfreɪd	害怕的
+6	1	sad	sæd	伤心的
+6	1	worried	ˈwʌrid	担心的
+6	1	worry	ˈwʌri	担心
+6	1	happy	ˈhæpi	高兴的
+6	1	see a doctor	siː ə ˈdɒktər	看医生
+6	1	more	mɔːr	更多的
+6	1	deep	diːp	深的
+6	1	breath	breθ	呼吸
+6	1	count	kaʊnt	数
+6	1	chase	tʃeɪs	追赶
+6	1	mice	maɪs	老鼠(复数)
+6	1	bad	bæd	坏的
+6	1	ill	ɪl	生病的
+6	1	wrong	rɒŋ	错误的；有毛病的
+6	1	should	ʃʊd	应该
+6	1	feel	fiːl	感觉
+6	1	well	wel	好的
+6	1	sit	sɪt	坐
+6	1	hear	hɪr	听到
+6	1	ant	ænt	蚂蚁
+6	1	stuck	stʌk	卡住
+6	1	pull	pʊl	拉
+6	1	everyone	ˈevriwʌn	每个人
+6	2	younger	ˈjʌŋɡər	更年轻的
+6	2	older	ˈoʊldər	更年老的
+6	2	taller	ˈtɔːlər	更高的
+6	2	shorter	ˈʃɔːrtər	更矮的
+6	2	longer	ˈlɒŋɡər	更长的
+6	2	thinner	ˈθɪnər	更瘦的
+6	2	heavier	ˈheviər	更重的
+6	2	bigger	ˈbɪɡər	更大的
+6	2	smaller	ˈsmɔːlər	更小的
+6	2	stronger	ˈstrɒŋɡər	更强壮的
+6	2	dinosaur	ˈdaɪnəsɔːr	恐龙
+6	2	hall	hɔːl	大厅
+6	2	metre	ˈmiːtər	米
+6	2	than	ðæn	比
+6	2	both	boʊθ	两个都
+6	2	kilogram	ˈkɪləɡræm	千克
+6	2	size	saɪz	尺码
+6	2	your	jʊr	你的
+6	2	countryside	ˈkʌntrisaɪd	乡村
+6	2	lower	ˈloʊər	更低的
+6	2	shadow	ˈʃædoʊ	影子
+6	2	smarter	ˈsmɑːrtər	更聪明的
+6	2	become	bɪˈkʌm	变成
+6	2	cleaned	kliːnd	打扫(clean过去式)
+6	2	stayed	steɪd	停留(stay过去式)
+6	2	watched	wɒtʃt	看(watch过去式)
+6	2	read	red	读(read过去式)
+6	2	saw	sɔː	看见(see过去式)
+6	2	slept	slept	睡觉(sleep过去式)
+6	2	washed	wɒʃt	洗(wash过去式)
+6	2	had	hæd	有(have过去式)
+6	2	had a cold	hæd ə koʊld	感冒
+6	2	last	læst	上一个
+6	2	yesterday	ˈjestərdeɪ	昨天
+6	2	before	bɪˈfɔːr	之前
+6	2	drank	dræŋk	喝(drink过去式)
+6	2	show	ʃoʊ	演出
+6	2	magazine	ˌmæɡəˈziːn	杂志
+6	2	better	ˈbetər	更好的
+6	2	faster	ˈfæstər	更快的
+6	2	hotel	hoʊˈtel	旅馆
+6	2	fixed	fɪkst	修理(fix过去式)
+6	2	broken	ˈbroʊkən	破损的
+6	2	everything	ˈevriθɪŋ	一切
+6	2	went swimming	went ˈswɪmɪŋ	去游泳
+6	2	took pictures	tʊk ˈpɪktʃərz	拍照
+6	2	bought gifts	bɔːt ɡɪfts	买礼物
+6	2	Sanya	ˈsænjɑː	三亚
+6	2	beautiful	ˈbjuːtɪfl	美丽的
+6	2	Hainan	hɑɪˈnæn	海南
+6	2	far	fɑːr	远的
+6	2	sometime	ˈsʌmtaɪm	某个时候
+6	2	sat	sæt	坐(sit过去式)
+6	2	picture	ˈpɪktʃər	图片
+6	2	ago	əˈɡoʊ	以前
+6	2	different	ˈdɪfrənt	不同的
+6	2	active	ˈæktɪv	积极的
+6	2	cycling	ˈsaɪklɪŋ	骑自行车运动
+6	2	nothing	ˈnʌθɪŋ	没有什么
+6	2	thought	θɔːt	想(think过去式)
+6	2	star	stɑːr	星星
+6	2	easy	ˈiːzi	容易的
+6	2	look up	lʊk ʌp	查阅
+6	2	internet	ˈɪntərnet	互联网
