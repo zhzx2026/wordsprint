@@ -22,6 +22,11 @@ cp "wordsprint-v$VER.apk" "../刷单词-v$VER.apk" && echo "已拷出 ../刷单�
 git add -A
 git commit -qm "$NOTES" || true
 git tag -f "v$VER"
+if [ "${SKIP_PUSH:-0}" = "1" ]; then
+  echo "== 暂存完成（未推送）。按发版规则：先让用户装机测试，用户说「转正」后才执行："
+  echo "   bash scripts/promote.sh $VER"
+  exit 0
+fi
 PUSH_URL="https://github.com/$REPO.git"
 [ -n "${PUSH_TOKEN:-}" ] && PUSH_URL="https://x-access-token:${PUSH_TOKEN}@github.com/$REPO.git"
 if ! git push "$PUSH_URL" HEAD:refs/heads/main --follow-tags 2>/var/tmp/perr.txt; then
