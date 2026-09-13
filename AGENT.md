@@ -9,7 +9,7 @@
 ## 📌 版本迭代管理（用户 2026-09-13 定版，与发版铁律同级）
 规则全文见 [VERSIONING.md](VERSIONING.md)，执行器是 `scripts/version.sh`（版本号**只许它改**，不许手写 sed）：
 - **dev**：`X.Y`（Y≥1），如 2.1→2.2→2.3；每轮迭代交付前 `bash scripts/version.sh bump-dev`（+0.1、code 取 max+1、同步标识）。
-- **stable**：`X.0`（如 2.0）；用户确认后 `bash scripts/promote.sh`（自动 X.Y→X.0、等 staging 变绿、打 tag 推 main），或合 PR 自动转正。
+- **stable**：`X.0`（如 2.0、3.0）；用户确认后 `bash scripts/promote.sh`（自动 X.Y→(X+1).0、等 staging 变绿、打 tag 推 main），或合 PR 自动转正。**转正 = 主版本 +1**（1.x 转 2.0、2.x 转 3.0），不是同主版本归零（2026-09-13 用户澄清）。
 - dev 不合 main、不打 tag；tag 只打 stable（`v2.0`…）；旧 `1.0.x` 三段号已退役（`check` 判 legacy，CI 拒绝）。
 - `promote.sh` 新用法**不带版本号参数**（自动从当前 dev 推导）；`push_release.sh` 改为 dev 迭代（bump→构建→commit，不 tag 不 push）。
 

@@ -78,8 +78,8 @@ cmd_status() {
   local v c ch; v="$(cur_ver)"; c="$(cur_code)"; ch="$(channel_of "$v")"
   echo "当前：v$v（$ch，code $c）"
   case "$ch" in
-    dev)    echo "下一步：bump-dev → v${v%%.*}.$(( ${v##*.} + 1 ))；promote → v${v%%.*}.0（stable）" ;;
-    stable) echo "下一步：bump-dev → v$(( ${v%%.*} + 1 )).1（新一轮 dev）" ;;
+    dev)    echo "下一步：bump-dev → v${v%%.*}.$(( ${v##*.} + 1 ))；promote → v$(( ${v%%.*} + 1 )).0（stable）" ;;
+    stable) echo "下一步：bump-dev → v${v%%.*}.1（新一轮 dev）" ;;
     legacy) echo "下一步：bump-dev → v${VERSION_NEW_MAJOR:-1}.1（迁入新方案）" ;;
   esac
 }
@@ -89,7 +89,7 @@ cmd_bump_dev() {
   cur="$(cur_ver)"; vc="$(cur_code)"; ch="$(channel_of "$cur")"
   case "$ch" in
     dev)    next="${cur%%.*}.$(( ${cur##*.} + 1 ))" ;;
-    stable) next="$(( ${cur%%.*} + 1 )).1" ;;
+    stable) next="${cur%%.*}.1" ;;
     legacy) next="${VERSION_NEW_MAJOR:-1}.1" ;;
   esac
   base="$(max_code "$vc")"; code=$(( base + 1 ))
@@ -106,7 +106,7 @@ cmd_promote() {
     if [ "$ch" = stable ]; then echo "   已是 stable：下一轮迭代请 bump-dev（→ v$(( ${cur%%.*} + 1 )).1）" >&2; fi
     exit 1
   fi
-  next="${cur%%.*}.0"
+  next="$(( ${cur%%.*} + 1 )).0"
   base="$(max_code "$vc")"; code=$(( base + 1 ))
   apply "$next" "$code"
   echo "转正：dev v$cur（code $vc）→ stable v$next（code $code）"

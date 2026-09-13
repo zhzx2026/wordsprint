@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 转正（必须用户明确确认，或按约定以合 PR 为授权）：
-#   dev X.Y → stable X.0（version.sh promote：同主版本归零，code 取 max+1，同步标识）
+#   dev X.Y → stable (X+1).0（version.sh promote：主版本+1，code 取 max+1，同步标识）
 #   → commit → 推分支等 staging 变绿 → 打附注 tag vX.0 → push main + tag
 #   （push tag 触发 release.yml 发 Release，手机 OTA。规则见 VERSIONING.md。）
 # 用法：bash scripts/promote.sh [分支]
