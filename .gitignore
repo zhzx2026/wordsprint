@@ -14,3 +14,7 @@ download_list.json
 gen_qrtab.txt
 path_index.json
 rs_m_table.txt
+test/ref/
+test/*.txt
+test/*.png
+test/m*.png
