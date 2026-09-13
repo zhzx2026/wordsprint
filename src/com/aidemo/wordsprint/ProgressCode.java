@@ -147,12 +147,28 @@ public class ProgressCode {
         t.bodyChars = body.length();
         if (t.bodyChars < 8) { t.why = "short"; return t; }
 
-        byte[] comp = decodeBothAlphabets(body);
+        String why = "b64";
+        // 两套字母表都要**带着 inflate 一起判**：能解出字节的字符串未必是解对的那个
+        //（旧写法先选字母表再解压，遇到混合 +/-/_ 的文本就"能解但全错"，用户只看到"码无效"）。
+        for (int k = 0; k < 2; k++) {
+            boolean std = (k == 1);
+            Try r = attemptAlphabet(body, std, lenient);
+            if (r.d != null) return r;
+            if (r.bodyChars > 0 && r.why.length() > 0 && "b64".equals(why)) why = r.why;
+            if (r.why.length() > 0 && !"b64".equals(r.why)) why = r.why;      // 更接近成功的那次
+        }
+        t.why = why;
+        return t;
+    }
+
+    private static Try attemptAlphabet(String body, boolean std, boolean lenient) {
+        Try t = new Try();
+        t.bodyChars = body.length();
+        byte[] comp = decodeAlphabet(body, std);
         if (comp == null || comp.length == 0) { t.why = "b64"; return t; }
 
-        byte[] payload = null;
         InflaterProbe p = probe(comp, lenient);
-        payload = p.bytes;
+        byte[] payload = p.bytes;
         t.truncated = p.truncated;
         if (payload == null) {
             // 开头被吃掉几个字节（微信"提取文字"常把首行连带吞掉）：逐个前移再试
@@ -178,14 +194,7 @@ public class ProgressCode {
         return t;
     }
 
-    /** URL 字母表与标准字母表各试一次：绝不做"字符替换后硬解"那种会悄悄改坏字节的事 */
-    static byte[] decodeBothAlphabets(String s) {
-        byte[] a = decodeAlphabet(s, false);
-        if (a != null) return a;
-        return decodeAlphabet(s, true);
-    }
-
-    private static byte[] decodeAlphabet(String s, boolean std) {
+    /** 只按一套字母表过滤并解码；调用方对两套各试一次，用 inflate 当裁判 */    private static byte[] decodeAlphabet(String s, boolean std) {
         StringBuilder sb = new StringBuilder(s.length());
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
