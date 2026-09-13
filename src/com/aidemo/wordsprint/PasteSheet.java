@@ -87,7 +87,7 @@ public class PasteSheet {
         rlp.topMargin = (int) Ui.dp(a, 8);
         col.addView(row, rlp);
 
-        AlertDialog dlg = Ui.cardDialogEx(a, str(a, R.string.manual_import), col,
+        AlertDialog dlg = Ui.cardDialogEx(a, str(a, R.string.manual_import) + Ui.versionTag(a), col,
                 str(a, R.string.do_import), new Runnable() {
                     @Override public void run() {
                         String t = et.getText() == null ? "" : et.getText().toString();

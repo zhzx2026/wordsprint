@@ -33,6 +33,10 @@ public class SettingsActivity extends Activity {
         findViewById(R.id.btnScan).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { startActivity(new Intent(SettingsActivity.this, ScanActivity.class)); }
         });
+        try {                                   // 页脚带版本号：装机实测时一眼确认装的是哪一版
+            android.widget.TextView foot = (android.widget.TextView) findViewById(R.id.tvVersionFooter);
+            if (foot != null) foot.setText(getString(R.string.app_name) + Ui.versionTag(this));
+        } catch (Throwable ignored) {}
         Db.ensureLoaded(this);
         ((TextView) findViewById(R.id.tvAbout)).setText(
                 getString(R.string.about_line, Db.I.books().size(), Db.I.totalWords()));

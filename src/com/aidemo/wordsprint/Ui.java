@@ -342,6 +342,16 @@ public class Ui {
         }
     }
 
+    /** 装没装上、装的哪一版，得让用户一眼看见（页脚 + 弹窗标题都用它） */
+    public static String versionTag(android.content.Context c) {
+        try {
+            String v = c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionName;
+            return v == null || v.length() == 0 ? "" : "  v" + v;
+        } catch (Throwable t) {
+            return "";
+        }
+    }
+
     /** 写剪贴板：个别 ROM（后台无焦点、超长文本）会抛异常，绝不让它带走进程 */
     public static boolean copyText(android.content.Context c, CharSequence s) {
         try {
