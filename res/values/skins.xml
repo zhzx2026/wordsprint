@@ -8,8 +8,12 @@
 -->
 <resources>
 
+    <!--
+      ⚠️ 每个皮肤都要写 parent="" ：style 名字里的点会被 aapt2 当父样式前缀解析
+         （Skin.S1 → parent="Skin"），不写就会报 "resource style/Skin not found"。
+    -->
     <!-- ================= 1 · 松林（森林绿） ================= -->
-    <style name="Skin.S1">
+    <style name="Skin.S1" parent="">
         <item name="wpBg">#F1F6F1</item>
         <item name="wpSurface">#FFFFFF</item>
         <item name="wpBrand">#0E9F5E</item>
@@ -26,7 +30,7 @@
         <item name="wpGreen1">#0E9F5E</item>
         <item name="wpGreen2">#1EC97B</item>
     </style>
-    <style name="Skin.S1d">
+    <style name="Skin.S1d" parent="">
         <item name="wpBg">#0F1A16</item>
         <item name="wpSurface">#17241E</item>
         <item name="wpBrand">#2EBD85</item>
@@ -45,7 +49,7 @@
     </style>
 
     <!-- ================= 2 · 落日（暖橙） ================= -->
-    <style name="Skin.S2">
+    <style name="Skin.S2" parent="">
         <item name="wpBg">#FBF3EA</item>
         <item name="wpSurface">#FFFFFF</item>
         <item name="wpBrand">#E8590C</item>
@@ -62,7 +66,7 @@
         <item name="wpGreen1">#0E9F5E</item>
         <item name="wpGreen2">#1EC97B</item>
     </style>
-    <style name="Skin.S2d">
+    <style name="Skin.S2d" parent="">
         <item name="wpBg">#1A120C</item>
         <item name="wpSurface">#251B14</item>
         <item name="wpBrand">#FF8A3D</item>
@@ -81,7 +85,7 @@
     </style>
 
     <!-- ================= 3 · 莓红（玫瑰） ================= -->
-    <style name="Skin.S3">
+    <style name="Skin.S3" parent="">
         <item name="wpBg">#FCF2F5</item>
         <item name="wpSurface">#FFFFFF</item>
         <item name="wpBrand">#D6336C</item>
@@ -98,7 +102,7 @@
         <item name="wpGreen1">#0E9F5E</item>
         <item name="wpGreen2">#1EC97B</item>
     </style>
-    <style name="Skin.S3d">
+    <style name="Skin.S3d" parent="">
         <item name="wpBg">#1B1013</item>
         <item name="wpSurface">#261A1F</item>
         <item name="wpBrand">#F06595</item>
@@ -117,7 +121,7 @@
     </style>
 
     <!-- ================= 4 · 深海（靛青） ================= -->
-    <style name="Skin.S4">
+    <style name="Skin.S4" parent="">
         <item name="wpBg">#EEF6F8</item>
         <item name="wpSurface">#FFFFFF</item>
         <item name="wpBrand">#0B7285</item>
@@ -134,7 +138,7 @@
         <item name="wpGreen1">#0E9F5E</item>
         <item name="wpGreen2">#1EC97B</item>
     </style>
-    <style name="Skin.S4d">
+    <style name="Skin.S4d" parent="">
         <item name="wpBg">#0C171A</item>
         <item name="wpSurface">#14242A</item>
         <item name="wpBrand">#22B8CF</item>
