@@ -152,58 +152,8 @@ jobs:
             echo "update.json： \`$URLBASE/update.json\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
-  # 战绩页托管：二维码指向 https://zhzx2026.github.io/wordsprint/share/index.html
-  # 为什么必须有这一步：jsDelivr/statically 这类 GitHub CDN 会故意把 .html 发成 text/plain，
-  # 扫描二维码只能看到源码（用户 2026-09-14 反馈）。GitHub Pages 是官方方案：Content-Type
-  # 正确、查询参数原样保留、没有中转页。enablement: true 会让它在 Pages 没开时自动开启。
-  pages:
-    name: 战绩页（GitHub Pages）
-    runs-on: ubuntu-latest
-    needs: build
-    continue-on-error: true          # Pages 未开启时不要让整个流水线变红（会在注解里给出该点哪里）
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: 组装站点（只发战绩页 + 字体）
-        run: |
-          set -e
-          mkdir -p _site/share _site/res/font
-          cp share/index.html _site/share/index.html
-          cp share/README.md  _site/share/README.md
-          cp res/font/wp_word.ttf _site/res/font/wp_word.ttf
-          printf '<meta charset="utf-8"><title>WordsPrint</title><p>战绩页在 <a href="share/index.html">/share/index.html</a></p>' > _site/index.html
-
-      # 先自己试着开一次 Pages，把真实报错打到注解里（沙箱侧读不到 job 日志，只能这样自查）
-      - name: 尝试开启 Pages（把报错暴露出来）
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set +e
-          echo "--- POST /pages (build_type=workflow) ---"
-          a=$(gh api -X POST "repos/${{ github.repository }}/pages" -f 'build_type=workflow' 2>&1); echo "$a"
-          echo "--- GET /pages ---"
-          b=$(gh api "repos/${{ github.repository }}/pages" 2>&1); echo "$b"
-          if echo "$b" | grep -q '"html_url"'; then
-            echo "Pages 已开启 ✓"
-          else
-            echo "::error title=GitHub Pages 未开启::请在仓库 Settings → Pages 把 Source 选成 “GitHub Actions”（一次即可），之后每次构建会自动发布战绩页"
-          fi
-          exit 0
-
-      - uses: actions/configure-pages@v5
-        with:
-          enablement: true          # 没开 Pages 就顺手开（需要 pages: write）
-
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
-
-      - id: deploy
-        uses: actions/deploy-pages@v4
+# 战绩页（share/index.html）不走 Actions 发布，而是用 Pages 的「Deploy from a branch」：
+# 仓库 Settings → Pages → Source = Deploy from a branch → dev → /(root)。
+# 原因：GITHUB_TOKEN 没有创建 Pages 站点的权限（实测 Resource not accessible by integration），
+#      只有仓库所有者点一次才行；而 dev 分支本来每次构建都会被 publish_dev.sh 刷新（含 share/），
+#      所以开一次之后页面就自动跟着每次构建更新。

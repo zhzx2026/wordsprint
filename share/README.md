@@ -16,13 +16,15 @@ https://zhzx2026.github.io/wordsprint/share/index.html?d=<payload>
 | statically.io / githack | 同样发 `text/plain`；githack 还会先弹一个「External Content Notice」中转页，要人手点一下 |
 | GitHub Pages | 官方、`Content-Type: text/html`、查询参数原样保留、没有中转页 ✅ |
 
-Pages 现在跟 **dev 分支根目录**（测试期，CI 每次构建都会顺手确认 Pages 开着）；
-转正时把 Source 切到 `main` 即可 —— 二维码里的地址不变，之前分享出去的图也不会失效。
+**开启方式（只需一次，且必须是仓库所有者点）**：仓库 `Settings` → `Pages` → Source = *Deploy from a branch*
+→ Branch = **dev**、目录 = **/ (root)** → Save。
 
-- 开启方式（只需一次）：仓库 Settings → Pages → Source = *Deploy from a branch* → `dev` → `/ (root)` → Save。
-  `staging.yml` 里也有一步会尝试自动开启（需要 token 具备 `pages: write`，没权限就跳过并给出提示）。
-- 升级这个页面的方式：改本文件 → 推分支 → Pages 自动重建（App 不用发版，二维码地址固定）。
-- 字体用相对路径 `../res/font/wp_word.ttf`，Pages 会按仓库目录结构原样提供，所以页面上的字母 a 也是单层写法。
+- 为什么不用 Actions 发布：实测 `GITHUB_TOKEN` 没有创建 Pages 站点的权限
+  （`Resource not accessible by integration`），所以 CI 里没法代劳；分支方式反而更省事。
+- 开完就能用：dev 分支本来就由 `publish_dev.sh` 在每次构建时刷新（含 `share/index.html`
+  与 `res/font/wp_word.ttf`），所以页面会跟着每次构建自动更新，**不需要重新发版**。
+- 转正后把 Source 切到 `main` 即可（地址不变，之前分享出去的图也不会失效）。
+- 若想改用 Actions 发布（`actions/deploy-pages`），先把 Source 改成 *GitHub Actions* 再启用。
 
 ## 数据契约（App ↔ 页面，改一边必须改另一边）
 

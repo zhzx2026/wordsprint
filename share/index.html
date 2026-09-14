@@ -251,9 +251,13 @@ if (typeof module !== 'undefined' && module.exports) module.exports = WPI;   /* 
   var $ = function(id){ return document.getElementById(id); };
   var LBL = { d_today:'今日新词', d_streak:'连续打卡', d_best:'最高连续', d_days:'达标天数' };
 
-  function para(name, def){   /* ?d=… 也容忍 ?p=… / #d=… */
-    var q = window.location.search || '', hash = window.location.hash || '';
-    var m = /[?&#](?:d|p)=([A-Za-z0-9\-_+/=]+)/.exec(q + hash);
+  function para(name, def){
+    /* 取负载：?d=… 也容忍 ?p=… / #d=…；再容忍被别的预览服务包一层（URL 被 percent-encode，
+       变成 …%3Fd%3D<payload>）—— 这样页面挂到任何会渲染 HTML 的托管点都能打开。 */
+    var href = window.location.href || '';
+    var m = /[?&#](?:d|p)=([A-Za-z0-9\-_+/=]+)/.exec(href);
+    if (m) return m[1];
+    m = /(?:%3F|%26|%23)(?:d|p)(?:%3D|=)([A-Za-z0-9\-_+/=]+)/i.exec(href);
     return m ? m[1] : def;
   }
   function bad(msg){
