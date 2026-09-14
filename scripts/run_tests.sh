@@ -17,7 +17,7 @@ mkdir -p "$D"
 # 被测源码就是发版用的那一份（不是 test/ 下的旧副本）
 cp "$S"/Engine.java "$S"/QREnc.java "$S"/QRUtil.java "$S"/Transfer.java "$S"/ProgressCode.java "$S"/Pack.java \
    "$S"/PlanCode.java "$S"/Plan.java "$S"/Diary.java "$S"/Scale.java \
-   "$S"/WrongBook.java "$S"/ShareGeom.java "$D"/
+   "$S"/WrongBook.java "$S"/ShareGeom.java "$S"/Ges.java "$D"/
 rm -rf test/out && mkdir -p test/out
 
 echo "== javac（同一份源码）"
