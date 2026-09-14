@@ -23,7 +23,6 @@ public final class ShareCard {
     // 版面尺寸全在 ShareGeom（纯几何 + 主机侧测试），这里只是引用
     public static final int W = ShareGeom.W;
     public static final int H = ShareGeom.H;
-    private static final int PAD = ShareGeom.PAD;
 
     private ShareCard() {}
 
@@ -106,13 +105,19 @@ public final class ShareCard {
 
         c.drawColor(bg);
 
-        // ===== 顶部渐变（下方 28dp 圆角） =====
-        int headH = 620;
+        // 四周留白：所有内容排在这个框里，不贴边（用户 2026-09-14：图片上下左右都要隔一段）
+        final float textL = ShareGeom.textLeft();      // 卡片内文字左基准
+        final float textR = ShareGeom.textRight();     // 卡片内文字右基准
+        final float cardL = ShareGeom.cardLeft();      // 卡片左缘
+        final float cardR = ShareGeom.cardRight();     // 卡片右缘
+
+        // ===== 顶部渐变卡（圆角一张，不再出血到画布边） =====
+        float headTop = ShareGeom.headerTop(), headBottom = ShareGeom.headerBottom();
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-        p.setShader(new android.graphics.LinearGradient(0, 0, W, headH, hs, he, android.graphics.Shader.TileMode.CLAMP));
+        p.setShader(new android.graphics.LinearGradient(cardL, headTop, cardR, headBottom, hs, he,
+                android.graphics.Shader.TileMode.CLAMP));
         Path path = new Path();
-        float r = 40;
-        path.addRoundRect(new RectF(0, -r, W, headH - r), new float[]{0, 0, 0, 0, r, r, r, r}, Path.Direction.CW);
+        path.addRoundRect(new RectF(cardL, headTop, cardR, headBottom), 40, 40, Path.Direction.CW);
         path.close();
         c.drawPath(path, p);
 
@@ -124,27 +129,46 @@ public final class ShareCard {
         tp.setColor(0xCCFFFFFF);
         tp.setTextSize(30);
         tp.setTypeface(tf);
-        c.drawText("刷单词 · WordsPrint", PAD, 100, tp);
+        c.drawText("刷单词 · WordsPrint", textL, ShareGeom.headBaseline(104), tp);
         tp.setTextAlign(Paint.Align.RIGHT);
-        c.drawText(s.date, W - PAD, 100, tp);
+        c.drawText(s.date, textR, ShareGeom.headBaseline(104), tp);
         tp.setTextAlign(Paint.Align.LEFT);
 
         // 名字 + 标语
         tp.setColor(0xFFFFFFFF);
         tp.setTextSize(46);
         tp.setTypeface(tfb);
-        c.drawText(s.name == null || s.name.isEmpty() ? "我" : s.name, PAD, 190, tp);
+        c.drawText(s.name == null || s.name.isEmpty() ? "我" : s.name, textL, ShareGeom.headBaseline(196), tp);
         tp.setTextSize(52);
-        c.drawText(s.headline, PAD, 272, tp);
+        c.drawText(s.headline, textL, ShareGeom.headBaseline(280), tp);
 
-        // 大数字：累计掌握
+        // 大数字：累计掌握。
+        // 注意顺序：宽度必须用**大字号**量出来，再换成小字号画说明 ——
+        // 上一版是先改字号后量宽度，量出来偏小，于是「301」和「个单词」叠在了一起。
+        String numTxt = String.valueOf(s.total);
+        String numLabel = a.getString(R.string.share_mastered);
+        float numBase = ShareGeom.headBaseline(430);
+        float numSize = 104;
         tp.setTypeface(tfb);
-        tp.setTextSize(104);
-        c.drawText(String.valueOf(s.total), PAD, 420, tp);
-        tp.setTextSize(30);
+        tp.setTextSize(numSize);
+        float numW = measure(tp, numTxt);
         tp.setTypeface(tf);
+        tp.setTextSize(30);
+        float labelW = measure(tp, numLabel);
+        while (numSize > 56 && ShareGeom.statLabelX(numW) + labelW > textR) {   // 位数太多就缩字号，别撞右边留白
+            numSize -= 6;
+            tp.setTypeface(tfb);
+            tp.setTextSize(numSize);
+            numW = measure(tp, numTxt);
+        }
+        tp.setTypeface(tfb);
+        tp.setTextSize(numSize);
+        tp.setColor(0xFFFFFFFF);
+        c.drawText(numTxt, textL, numBase, tp);
+        tp.setTypeface(tf);
+        tp.setTextSize(30);
         tp.setColor(0xD9FFFFFF);
-        c.drawText(a.getString(R.string.share_mastered), PAD + measure(tp, String.valueOf(s.total)) + 90, 420, tp);
+        c.drawText(numLabel, ShareGeom.statLabelX(numW), numBase, tp);
 
         // 顶部四个指标
         String[][] cells = {
@@ -153,22 +177,22 @@ public final class ShareCard {
                 {s.best + " 天", a.getString(R.string.share_best)},
                 {s.doneDays + " 天", a.getString(R.string.share_goal_days)},
         };
-        float cw = (W - PAD * 2) / 4f;
+        float cw = (textR - textL) / 4f;
         for (int i = 0; i < cells.length; i++) {
-            float x = PAD + cw * i;
+            float x = textL + cw * i;
             tp.setTypeface(tfb);
             tp.setTextSize(40);
             tp.setColor(0xFFFFFFFF);
-            c.drawText(cells[i][0], x, 530, tp);
+            c.drawText(cells[i][0], x, ShareGeom.headBaseline(540), tp);
             tp.setTypeface(tf);
             tp.setTextSize(24);
             tp.setColor(0xB3FFFFFF);
-            c.drawText(cells[i][1], x, 572, tp);
+            c.drawText(cells[i][1], x, ShareGeom.headBaseline(582), tp);
         }
 
         // ===== 今日目标完成情况 =====
         float y = ShareGeom.goalTop();
-        RectF card = new RectF(PAD - 14, y, W - PAD + 14, y + ShareGeom.GOAL_CARD_H);
+        RectF card = new RectF(cardL, y, cardR, y + ShareGeom.GOAL_CARD_H);
         Paint cp = new Paint(Paint.ANTI_ALIAS_FLAG);
         cp.setColor(surface);
         c.drawRoundRect(card, 34, 34, cp);
@@ -176,21 +200,23 @@ public final class ShareCard {
         tp.setTypeface(tfb);
         tp.setTextSize(36);
         tp.setColor(text);
-        c.drawText(a.getString(R.string.goal_title), PAD + 18, y + 66, tp);
+        c.drawText(a.getString(R.string.goal_title), textL, y + 66, tp);
 
         boolean done = s.today >= s.goal;
         // 勾选标记
         tp.setTextSize(40);
         tp.setColor(done ? green : text2);
-        c.drawText(done ? "✓" : "○", W - PAD - 40, y + 66, tp);
+        tp.setTextAlign(Paint.Align.RIGHT);
+        c.drawText(done ? "✓" : "○", textR, y + 66, tp);
+        tp.setTextAlign(Paint.Align.LEFT);
 
         tp.setTypeface(tf);
         tp.setTextSize(28);
         tp.setColor(text2);
-        c.drawText(a.getString(R.string.goal_progress, s.today, s.goal), PAD + 18, y + 112, tp);
+        c.drawText(a.getString(R.string.goal_progress, s.today, s.goal), textL, y + 112, tp);
 
         // 进度条
-        RectF track = new RectF(PAD + 18, y + 140, W - PAD - 18, y + 158);
+        RectF track = new RectF(textL, y + 140, textR, y + 158);
         Paint bp = new Paint(Paint.ANTI_ALIAS_FLAG);
         bp.setColor(Skin.c(a, R.attr.wpTrack));
         c.drawRoundRect(track, 9, 9, bp);
@@ -203,9 +229,9 @@ public final class ShareCard {
         // 三个习惯勾选
         String[] habits = {a.getString(R.string.goal_title), a.getString(R.string.habit_rev), a.getString(R.string.habit_test)};
         boolean[] hdone = {done, s.revMin >= Diary.MIN_REV_MIN, s.testDone >= Diary.MIN_TEST};
-        float hw = (W - PAD * 2 - 6) / 3f;
+        float hw = (textR - textL - 6) / 3f;
         for (int i = 0; i < 3; i++) {
-            float x = PAD + i * (hw + 3);
+            float x = textL + i * (hw + 3);
             RectF hb = new RectF(x, y + 180, x + hw, y + 226);
             Paint hp = new Paint(Paint.ANTI_ALIAS_FLAG);
             hp.setColor(hdone[i] ? Ui.withAlpha(green, 0x22) : Skin.c(a, R.attr.wpChipBg));
@@ -224,17 +250,17 @@ public final class ShareCard {
         float cell = ShareGeom.cell(), gridH = ShareGeom.gridH();
         float heatCardH = ShareGeom.heatCardH();
 
-        RectF heatCard = new RectF(PAD - 14, hy, W - PAD + 14, hy + heatCardH);
+        RectF heatCard = new RectF(cardL, hy, cardR, hy + heatCardH);
         c.drawRoundRect(heatCard, 34, 34, cp);
 
         tp.setTypeface(tfb);
         tp.setTextSize(36);
         tp.setColor(text);
-        c.drawText(a.getString(R.string.heat_title), PAD + 18, hy + 66, tp);
+        c.drawText(a.getString(R.string.heat_title), textL, hy + 66, tp);
         tp.setTypeface(tf);
         tp.setTextSize(26);
         tp.setColor(text2);
-        c.drawText(a.getString(R.string.share_heat) + " · " + a.getString(R.string.heat_sub), PAD + 18, hy + 106, tp);
+        c.drawText(a.getString(R.string.share_heat) + " · " + a.getString(R.string.heat_sub), textL, hy + 106, tp);
 
         List<String> days = new ArrayList<String>();
         HeatView.paint(c, s.diary, s.date, gridLeft, gridTop,
@@ -246,30 +272,30 @@ public final class ShareCard {
         tp.setColor(text2);
         c.drawText(a.getString(R.string.streak_best) + " " + getString2(a, R.string.days_unit, s.best)
                         + " · " + getString2(a, R.string.streak_done_days, s.doneDays),
-                PAD + 18, gridTop + gridH + 44, tp);
+                textL, ShareGeom.heatFootBaseline(hy), tp);
 
         // ===== 底部：二维码 + 落款 =====
         float qy = ShareGeom.qrTop(hy);
-        RectF qrCard = new RectF(PAD - 14, qy, W - PAD + 14, qy + ShareGeom.QR_CARD_H);
+        RectF qrCard = new RectF(cardL, qy, cardR, qy + ShareGeom.QR_CARD_H);
         cp.setColor(surface);
         c.drawRoundRect(qrCard, 34, 34, cp);
 
         tp.setTypeface(tfb);
         tp.setTextSize(32);
         tp.setColor(text);
-        c.drawText(a.getString(R.string.share_foot), PAD + 18, qy + 60, tp);
+        c.drawText(a.getString(R.string.share_foot), textL, qy + 60, tp);
         tp.setTypeface(tf);
         tp.setTextSize(24);
         tp.setColor(text2);
-        c.drawText(s.date + " · " + a.getString(R.string.plan_title) + " " + PlanStore.get(a).size() + " 本", PAD + 18, qy + 100, tp);
+        c.drawText(s.date + " · " + a.getString(R.string.plan_title) + " " + PlanStore.get(a).size() + " 本", textL, qy + 100, tp);
         c.drawText(a.getString(R.string.fav_title) + " " + s.favs + " · " + a.getString(R.string.streak_cur) + " " + s.streak + " 天",
-                PAD + 18, qy + 136, tp);
+                textL, qy + 136, tp);
 
         // 二维码
         try {
             byte[] data = s.url.getBytes("UTF-8");
             boolean[][] mat = QRUtil.verifiedEncode(data);
-            float qsize = 250, qx = W - PAD - 18 - qsize, qyy = qy + 34;
+            float qsize = 250, qx = textR - qsize, qyy = qy + 34;
             Paint wp = new Paint(Paint.ANTI_ALIAS_FLAG);
             wp.setColor(0xFFFFFFFF);
             c.drawRoundRect(new RectF(qx - 14, qyy - 14, qx + qsize + 14, qyy + qsize + 14), 18, 18, wp);
@@ -283,13 +309,16 @@ public final class ShareCard {
         } catch (Throwable t) {
             tp.setColor(text2);
             tp.setTextSize(22);
-            c.drawText("(二维码生成失败)", W - PAD - 220, qy + 150, tp);
+            tp.setTextAlign(Paint.Align.RIGHT);
+            c.drawText("(二维码生成失败)", textR, qy + 150, tp);
+            tp.setTextAlign(Paint.Align.LEFT);
         }
 
         tp.setTextSize(22);
         tp.setColor(text2);
         tp.setTextAlign(Paint.Align.CENTER);
-        c.drawText(a.getString(R.string.app_name) + Ui.versionTag(a) + " · 素纸背单词", W / 2f, qy + 286, tp);
+        c.drawText(a.getString(R.string.app_name) + Ui.versionTag(a) + " · 素纸背单词", W / 2f,
+                ShareGeom.footBaseline(hy), tp);
         return bmp;
     }
 

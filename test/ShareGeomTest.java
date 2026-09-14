@@ -55,7 +55,30 @@ public class ShareGeomTest {
         String bad = ShareGeom.check();
         check(bad == null, "ShareGeom.check() 必须通过，实际：" + bad);
 
-        // 7) 二维码尺寸够扫（300px 卡片放 250px 二维码，剩一点余量）
+        // 7) 四周留白：内容不许贴边（用户 2026-09-14：「图片上下左右都要隔一段」）
+        check(ShareGeom.headerTop() >= ShareGeom.MARGIN, "渐变卡上缘在留白以内：" + fmt(ShareGeom.headerTop()));
+        check(ShareGeom.cardLeft() >= ShareGeom.MARGIN, "卡片左缘在留白以内：" + fmt(ShareGeom.cardLeft()));
+        check(ShareGeom.cardRight() <= ShareGeom.W - ShareGeom.MARGIN, "卡片右缘在留白以内：" + fmt(ShareGeom.cardRight()));
+        check(ShareGeom.textLeft() > ShareGeom.cardLeft(), "文字在卡片边上再往里收一格");
+        check(ShareGeom.gridRight() <= ShareGeom.cardRight(), "网格右缘不出卡片：" + fmt(ShareGeom.gridRight()));
+        check(qrTop + ShareGeom.QR_CARD_H <= ShareGeom.bottom(), "二维码卡下缘在留白以内："
+                + fmt(qrTop + ShareGeom.QR_CARD_H) + " vs " + fmt(ShareGeom.bottom()));
+        check(ShareGeom.footBaseline(heatTop) <= ShareGeom.bottom(), "落款下缘在留白以内：" + fmt(ShareGeom.footBaseline(heatTop)));
+        check(ShareGeom.goalTop() - ShareGeom.headerBottom() >= ShareGeom.HEAD_GAP - 0.01f, "渐变卡与目标卡之间留了空");
+        check(qrTop - heatBottom >= ShareGeom.HEAT_GAP - 0.01f, "热力图与二维码卡之间留了空");
+
+        // 8) 大数字与右边说明文字不许叠（用户报的「301」压住说明就是这里）
+        //    规则：说明的 x = 文字左基准 + 数字宽度 + 间隙，而数字宽度按大字号量（画图侧照做）
+        float threeDigits = 3 * 104 * 0.62f;                       // 三位数字在 104px 下的粗略宽度
+        check(ShareGeom.statLabelX(threeDigits) >= ShareGeom.textLeft() + threeDigits + ShareGeom.STAT_GAP - 0.01f,
+                "说明文字起点必须越过数字右缘 + 间隙：" + fmt(ShareGeom.statLabelX(threeDigits)));
+        check(ShareGeom.statLabelX(threeDigits) + 90 < ShareGeom.textRight(), "三位数字 + 说明不会撞到右边留白");
+        check(ShareGeom.STAT_GAP >= 16, "数字与说明之间至少留 16px，别贴在一起");
+
+        // 9) 网格宽度与左右缘自洽（HeatView 画的时候用的是同一组数）
+        check(Math.abs(ShareGeom.gridLeft() + ShareGeom.gridW() - ShareGeom.gridRight()) < 0.5f, "网格宽度与左右缘对得上");
+
+        // 10) 二维码尺寸够扫（300px 卡片放 250px 二维码，剩一点余量）
         check(ShareGeom.QR_CARD_H >= 280, "二维码卡片高度够放大图");
 
         System.out.println("ALL SHARE GEOM TESTS PASS (" + checks + " checks)");

@@ -303,6 +303,29 @@ def main():
                     problems.append('%s.java:%d  View/TextView 上没有 %s 这个方法：%s'
                                     % (name, i, bad.rstrip('('), line.strip()[:46]))
 
+    # 「资源 id 被当字符串拼」：返回 R.string 的 int 方法名直接 +(拼接) 会画出数字而不是文字
+    #（2026-09-14 装机反馈：手势弹窗里显示的是 1/2/3…）
+    for name, body in sorted(texts.items()):
+        lines = _strip_java_comments(body)
+        intres = [m for m in re.findall(r'static int (\w+)\(', body) if m.endswith('Label') or m.endswith('Res')]
+        for fn in intres:
+            for i, line in enumerate(lines, 1):
+                if re.search(r'(?<![\w.])' + fn + r'\([^)]*\)\s*\+', line) or re.search(r'\+\s*' + fn + r'\(', line):
+                    problems.append('%s.java:%d  %s(...) 返回的是资源 id，直接拼接会显示数字，要包 getString：%s'
+                                    % (name, i, fn, line.strip()[:46]))
+
+    # 「战绩图别再手写坐标」：大数字右边那行说明必须走 ShareGeom.statLabelX（不然又会叠字）
+    sc = texts.get('ShareCard')
+    if sc and 'statLabelX(' not in sc:
+        problems.append('ShareCard.java 没用 ShareGeom.statLabelX(数字宽度) 排「累计掌握」那行说明')
+
+    # 「局部变量遮蔽资源类 R」：一旦声明 float R = ...，文件里所有 R.string/R.attr 都编译不过
+    for name, body in sorted(texts.items()):
+        for i, line in enumerate(_strip_java_comments(body), 1):
+            if re.search(r'\b(?:float|int|double|long|String|CharSequence|View|Object)\s+R\s*[=;,)]', line):
+                problems.append('%s.java:%d  变量名 R 会遮蔽资源类 R（R.string/R.attr 全崩），换个名字：%s'
+                                % (name, i, line.strip()[:46]))
+
     # 「手势又写死了」：刷词页必须走 Ges 映射分发（用户 2026-09-14 明确要求「手势由用户自己定」）
     st = texts.get('StudyActivity', '')
     if st:

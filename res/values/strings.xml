@@ -266,13 +266,6 @@
     <string name="plan_bad">这枚码不是词本配置码</string>
 
     <string name="ges_title">手势操作</string>
-    <string name="ges_up">上滑 = 收藏 / 取消收藏</string>
-    <string name="ges_down">下滑 = 看释义（翻面）</string>
-    <string name="ges_left">左滑 = 不认识（进回炉）</string>
-    <string name="ges_right">右滑 = 记住了</string>
-    <string name="ges_tap">点一下 = 翻面；翻面后再点 = 朗读</string>
-    <string name="ges_long">长按单词 = 查词详情</string>
-    <string name="ges_once">手势：上滑收藏 · 下滑看释义 · 左右滑判定</string>
 
     <string name="set_theme_title">深色模式</string>
     <string name="set_theme_desc">跟随系统，或一直浅色 / 一直深色</string>
@@ -333,6 +326,7 @@
     <string name="ges_act_lookup">查词详情</string>
     <string name="ges_act_skip">跳过这个词</string>
 
+    <string name="ges_unfit">（不适合点按/长按）</string>
     <string name="ges_pick_title">%1$s 绑哪个动作？</string>
     <string name="ges_pick_desc">点一下直接生效，不用确定。</string>
     <string name="ges_hint_dyn">手势：%1$s= %2$s · %3$s= %4$s · %5$s= %6$s · %7$s= %8$s</string>

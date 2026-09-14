@@ -65,7 +65,7 @@ public final class GesUi {
             row.addView(name, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
 
             TextView val = new TextView(a);
-            val.setText(actionLabel(map[slot]));
+            val.setText(a.getString(actionLabel(map[slot])));
             val.setTextSize(compact ? 13f : 14f);
             val.setTextColor(Skin.c(a, R.attr.wpBrand));
             val.setBackgroundResource(R.drawable.bg_pill_brand);
@@ -94,7 +94,8 @@ public final class GesUi {
             final int action = Ges.ACTIONS[i];
             final boolean allowed = Ges.allowedFor(slot, action);
             TextView row = new TextView(a);
-            row.setText(actionLabel(action) + (allowed ? "" : "（不适合点按/长按）"));
+            row.setText(a.getString(actionLabel(action))
+                    + (allowed ? "" : a.getString(R.string.ges_unfit)));
             row.setTextSize(14f);
             row.setTextColor(allowed ? Skin.c(a, R.attr.wpText) : Skin.c(a, R.attr.wpText2));
             row.setPadding((int) Ui.dp(a, 12), (int) Ui.dp(a, 11), (int) Ui.dp(a, 12), (int) Ui.dp(a, 11));
