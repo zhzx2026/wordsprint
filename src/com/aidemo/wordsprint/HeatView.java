@@ -70,8 +70,9 @@ public class HeatView extends View {
         Paint tp = new Paint(Paint.ANTI_ALIAS_FLAG);
         tp.setTextSize(cell * 0.92f);
         tp.setColor(Skin.c(getContext(), R.attr.wpText2));
+        // 空格子用 ramp[0]（浅灰）——以前用 wpSurface，和卡片底色一样，整张网格「看不见格子」
         paint(cv, diary, today, labelW, labelH, cell, gap, WEEKS, ramp,
-                Skin.c(getContext(), R.attr.wpText2), Skin.c(getContext(), R.attr.wpSurface),
+                Skin.c(getContext(), R.attr.wpText2), ramp[0],
                 Skin.c(getContext(), R.attr.wpText2), tp, cellDays);
     }
 

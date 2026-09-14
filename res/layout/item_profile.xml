@@ -58,6 +58,20 @@
             android:textSize="12sp"/>
     </LinearLayout>
 
+    <TextView
+        android:id="@+id/pfDel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_row_tap"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:text="@string/profile_delete"
+        android:textColor="?attr/wpRed"
+        android:textSize="12.5sp"
+        android:textStyle="bold"/>
+
     <ImageView
         android:id="@+id/pfChevron"
         android:layout_width="20dp"

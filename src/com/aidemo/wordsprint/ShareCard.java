@@ -59,17 +59,18 @@ public final class ShareCard {
     }
 
     /**
-     * 在线战绩页地址（jsDelivr 加速的仓库文件，国内可访问、不会触发下载）。
+     * 在线战绩页地址。
      *
-     * 分支跟着版本通道走：dev 版读 `dev` 分支（staging CI 每次都会把 share/ 一起发上去，
-     * 所以测试包里的二维码当场就能打开），stable 版读 `main`（转正后 main 上自然有这份页面）。
-     * 这样不用「发版前记得手动改地址」这种迟早会忘的约定。
+     * 2026-09-14 用户反馈「html 打开看到的是源码」→ 查证：jsDelivr 与 statically.io 这类
+     * GitHub CDN 都**故意**把 .html 当 `Content-Type: text/plain` 发（防钓鱼），浏览器只会
+     * 把源码当文本显示；githack 虽然会渲染，但先弹一个「外部内容提示」页要人点一下。
+     * 所以战绩页改挂 **GitHub Pages**（官方、Content-Type 正确、查询参数原样保留、无中转页）。
+     *
+     * 仓库里 share/index.html 是唯一那份页面；Pages 现在跟 dev 分支（测试期），转正时
+     * promote.sh 再切到 main —— 二维码里的地址不变，老图也不会失效。
      */
     public static String pageBase(Activity a) {
-        String v = Update.myName(a);
-        boolean stable = v != null && v.endsWith(".0");
-        return "https://cdn.jsdelivr.net/gh/zhzx2026/wordsprint@" + (stable ? "main" : "dev")
-                + "/share/index.html";
+        return "https://zhzx2026.github.io/wordsprint/share/index.html";
     }
 
     public static String url(Activity a, Stats s) {
@@ -264,7 +265,7 @@ public final class ShareCard {
 
         List<String> days = new ArrayList<String>();
         HeatView.paint(c, s.diary, s.date, gridLeft, gridTop,
-                cell, gap, ShareGeom.HEAT_COLS, ramp, text2, Skin.c(a, R.attr.wpLine), text2, tp, days);
+                cell, gap, ShareGeom.HEAT_COLS, ramp, text2, ramp[0], text2, tp, days);
         String geomBad = ShareGeom.check();                 // 版面自检：错了只写日志，不让分享失败
         if (geomBad != null) android.util.Log.w("ShareCard", "战绩图版面异常：" + geomBad);
 
@@ -287,7 +288,7 @@ public final class ShareCard {
         tp.setTypeface(tf);
         tp.setTextSize(24);
         tp.setColor(text2);
-        c.drawText(s.date + " · " + a.getString(R.string.plan_title) + " " + PlanStore.get(a).size() + " 本", textL, qy + 100, tp);
+        c.drawText(s.date, textL, qy + 100, tp);
         c.drawText(a.getString(R.string.fav_title) + " " + s.favs + " · " + a.getString(R.string.streak_cur) + " " + s.streak + " 天",
                 textL, qy + 136, tp);
 

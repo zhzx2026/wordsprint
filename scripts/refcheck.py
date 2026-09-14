@@ -326,6 +326,18 @@ def main():
                 problems.append('%s.java:%d  变量名 R 会遮蔽资源类 R（R.string/R.attr 全崩），换个名字：%s'
                                 % (name, i, line.strip()[:46]))
 
+    # 「战绩页又挂回 text/plain 的 CDN」：jsDelivr/statically 对 .html 发 text/plain，
+    #  浏览器打开只看得到源码（用户 2026-09-14 反馈）→ pageBase 必须是 GitHub Pages
+    sc = texts.get('ShareCard')
+    if sc:
+        m = re.search(r'pageBase\(Activity a\)\s*\{[^}]*?return\s+"([^"]+)"', sc, re.S)
+        if m:
+            url = m.group(1)
+            if 'jsdelivr' in url or 'statically' in url or 'githack' in url:
+                problems.append('ShareCard.pageBase 指向了以 text/plain 发 .html 的 CDN（打开只看到源码）：' + url)
+            elif 'github.io' not in url:
+                problems.append('ShareCard.pageBase 不是 GitHub Pages 地址：' + url)
+
     # 「手势又写死了」：刷词页必须走 Ges 映射分发（用户 2026-09-14 明确要求「手势由用户自己定」）
     st = texts.get('StudyActivity', '')
     if st:

@@ -215,6 +215,15 @@ public class ProfileActivity extends Activity {
             }
             ImageView chev = (ImageView) cv.findViewById(R.id.pfChevron);
             chev.setVisibility(cur ? View.GONE : View.VISIBLE);
+
+            // 删除：每行一个明确的按钮（只剩一个档案时置灰，点了会提示「至少要留一个」）
+            TextView del = (TextView) cv.findViewById(R.id.pfDel);
+            boolean canDel = Prefs.profiles().list.size() > 1;
+            del.setVisibility(canDel ? View.VISIBLE : View.GONE);
+            final Profiles.P target = p;
+            del.setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) { confirmDelete(target); }
+            });
             return cv;
         }
     }

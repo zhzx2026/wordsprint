@@ -38,10 +38,17 @@ public class SharePayloadTest {
     }
 
     public static void main(String[] args) throws Exception {
-        // 与实际 pageBase() 一致：dev 包读 dev 分支，stable 包读 main
-        String baseDev = "https://cdn.jsdelivr.net/gh/zhzx2026/wordsprint@dev/share/index.html";
-        String baseMain = "https://cdn.jsdelivr.net/gh/zhzx2026/wordsprint@main/share/index.html";
+        // 与实际 pageBase() 一致：GitHub Pages（官方，会以 text/html 发出，浏览器才渲染成网页）
+        // dev / stable 用同一个地址：Pages 背后跟哪个分支由仓库设置决定，二维码里的链接不用变
+        String baseDev = "https://zhzx2026.github.io/wordsprint/share/index.html";
+        String baseMain = baseDev;
         String base = baseDev;
+
+        // 0) 页面地址必须落在会正常渲染 HTML 的站点上
+        //    （jsDelivr / statically 这些 CDN 故意把 .html 发成 text/plain → 打开只看到源码）
+        check(base.indexOf("jsdelivr") < 0 && base.indexOf("statically") < 0,
+                "战绩页不能挂在把 .html 当 text/plain 发的 CDN 上：" + base);
+        check(base.indexOf("github.io") > 0, "战绩页地址应是 GitHub Pages：" + base);
 
         // 1) 往返 + zlib 封装
         String raw = buildRaw("小明", "2026-09-14", 57, 100, 12, 30, 1234, 88, 14, 9, 12, heat(7));

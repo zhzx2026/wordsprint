@@ -296,7 +296,8 @@ public class Update {
         final Prefs p = Prefs.of(a);
         if (!p.on(Prefs.K_UP_AUTO, true)) return;
         long now = System.currentTimeMillis();
-        if (now - p.l(Prefs.K_UP_LAST, 0) < 20L * 3600 * 1000) return;
+        // 测试期一天出好几个包，20 小时一次的节流等于「永远不提醒」→ 改成半小时一次
+        if (now - p.l(Prefs.K_UP_LAST, 0) < 30L * 60 * 1000) return;
         p.set(Prefs.K_UP_LAST, now);
         checkAsync(a, new Cb() {
             @Override public void onResult(Info info, String err) {

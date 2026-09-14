@@ -154,7 +154,7 @@ public class ShareActivity extends Activity {
             i.setType("image/png");
             i.putExtra(Intent.EXTRA_STREAM, uri);
             i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            i.putExtra(Intent.EXTRA_TEXT, ShareCard.pageBase(this));
+            i.putExtra(Intent.EXTRA_TEXT, ShareCard.url(this, ShareCard.collect(this)));
             startActivity(Intent.createChooser(i, getString(R.string.share_title)));
         } catch (Throwable t) {
             try { saveImage(); toast(getString(R.string.share_no_app)); } catch (Throwable ignored) {}

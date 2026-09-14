@@ -15,6 +15,7 @@ on:
 permissions:
   contents: write          # 只用于把测试包推到孤儿分支 dev（raw 直链，供手机 App 内更新）
   checks: write            # 只用于把失败日志写回 ci-diagnostics 检查（沙箱/无日志权限的一侧靠它自查）
+  pages: write             # 只用于确保 GitHub Pages 已开启（战绩页要能渲染成网页，见下）
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -136,3 +137,23 @@ jobs:
             echo
             echo "update.json： \`$URLBASE/update.json\`"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # 战绩分享的二维码指向 GitHub Pages —— jsDelivr/statically 这类 CDN 故意把 .html
+      # 发成 text/plain，浏览器只能看到源码（用户 2026-09-14 反馈）。Pages 是官方方案：
+      # Content-Type 正确、查询参数原样保留。这里尝试自动开启（首次会用 dev 分支根目录）；
+      # 没权限（404/403）就跳过并写进摘要——用户手动在 Settings → Pages 里选 dev / (root) 即可。
+      - name: 确保 GitHub Pages 已开启（战绩页）
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          out=$(gh api -X POST "repos/${{ github.repository }}/pages" \
+                  -f 'source[branch]=dev' -f 'source[path]=/' 2>&1)
+          rc=$?
+          if [ $rc -eq 0 ]; then echo "Pages 已开启：" ; echo "$out" | head -5
+          else
+            echo "Pages 开启失败（多半是权限）：$out"
+            echo "::notice title=GitHub Pages::请在仓库 Settings → Pages 里把 Source 设成 dev / (root)，战绩页才能渲染"
+          fi
+          exit 0
+

@@ -2,19 +2,27 @@
 
 `index.html` 是战绩图里那个二维码指向的网页：**扫码直接打开，不触发任何文件下载**
 （这是需求第 7 条的硬要求）。页面不依赖服务器、不依赖第三方库，数据全在 URL 里，
-所以放在仓库里、用 jsDelivr 加速即可：
+所以它需要的是一个「会把 .html 当网页发出去」的托管点：
 
 ```
-https://cdn.jsdelivr.net/gh/zhzx2026/wordsprint@<分支>/share/index.html?d=<payload>
+https://zhzx2026.github.io/wordsprint/share/index.html?d=<payload>
 ```
 
-分支不是写死的，由 App 按自己的版本通道选（见 `ShareCard.pageBase`）：
-**dev 版 → `@dev`**（staging CI 每次构建都会把 `share/` 一起发到 dev 分支，测试包里的二维码当场能开），
-**stable 版 → `@main`**（转正后 main 上自然有这份文件）。
+**为什么是 GitHub Pages（2026-09-14 用户反馈「html 打开看到的是源码」后换过来的）**
 
-- 为什么用 jsDelivr：国内可访问、微信内置浏览器能直接打开、不会像 GitHub Pages 那样被墙。
-  换分支/改文件后 CDN 有缓存，需要 `?d=` 变化或等缓存刷新（jsDelivr 对 `@main` 缓存较短）。
-- 升级这个页面的方式：改本文件 → 合到 `main` → CDN 自动刷新（App 不用发版）。
+| 托管方式 | 实测结果 |
+|---|---|
+| jsDelivr（`cdn.jsdelivr.net/gh/...`） | 官方策略：**HTML 文件一律以 `Content-Type: text/plain` 发出**（防钓鱼），浏览器只会把源码当文本显示 —— 用户看到的正是这个 |
+| statically.io / githack | 同样发 `text/plain`；githack 还会先弹一个「External Content Notice」中转页，要人手点一下 |
+| GitHub Pages | 官方、`Content-Type: text/html`、查询参数原样保留、没有中转页 ✅ |
+
+Pages 现在跟 **dev 分支根目录**（测试期，CI 每次构建都会顺手确认 Pages 开着）；
+转正时把 Source 切到 `main` 即可 —— 二维码里的地址不变，之前分享出去的图也不会失效。
+
+- 开启方式（只需一次）：仓库 Settings → Pages → Source = *Deploy from a branch* → `dev` → `/ (root)` → Save。
+  `staging.yml` 里也有一步会尝试自动开启（需要 token 具备 `pages: write`，没权限就跳过并给出提示）。
+- 升级这个页面的方式：改本文件 → 推分支 → Pages 自动重建（App 不用发版，二维码地址固定）。
+- 字体用相对路径 `../res/font/wp_word.ttf`，Pages 会按仓库目录结构原样提供，所以页面上的字母 a 也是单层写法。
 
 ## 数据契约（App ↔ 页面，改一边必须改另一边）
 
