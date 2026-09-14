@@ -68,6 +68,7 @@ public class StudyActivity extends Activity {
         tvPhonetic = (TextView) findViewById(R.id.tvPhonetic);
         tvHint = (TextView) findViewById(R.id.tvHint);
         tvMeaning = (TextView) findViewById(R.id.tvMeaning);
+        tvPos = (TextView) findViewById(R.id.tvPos);
         tvGroupPill = (TextView) findViewById(R.id.tvGroupPill);
         tvWrongPill = (TextView) findViewById(R.id.tvWrongPill);
         btnFav = (TextView) findViewById(R.id.btnFav);

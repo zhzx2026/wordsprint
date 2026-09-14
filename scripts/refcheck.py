@@ -208,6 +208,65 @@ def main():
                 problems.append('%s.java:%d  %s.%s(%d 参) 与声明 %s 不符'
                                 % (cls, raw[:m.start()].count('\n') + 1, c, mem, n, sorted(decls[c][mem])))
 
+    # 「字段声明了却从没赋值」：漏写 findViewById 就会在运行时 NPE（StudyActivity.tvPos 就是这么挂的）
+    for cls, raw in texts.items():
+        t = strip_code(raw)
+        for m in re.finditer(r'^    (?:private|protected|public)\s+(?:static\s+)?(?!final\b)([A-Za-z_][\w.<>\[\], ]*?)\s+([\w, ]+);$',
+                             raw, re.M):
+            decl = m.group(0)
+            if '=' in decl:
+                continue
+            for name in [x.strip().split()[-1] for x in m.group(2).split(',') if x.strip()]:   # 跳过 volatile/static 这类漏进来的修饰词
+                if not re.search(r'(?<![\w])' + re.escape(name) + r'\s*=[^=]', strip_code(raw)):   # 允许 Xxx.name = … 这种带限定名的赋值
+                    problems.append('%s.java:%d  字段 %s 声明了却从未赋值（漏了 findViewById/初始化？）'
+                                    % (cls, raw[:m.start()].count('\n') + 1, name))
+
+    # 「findViewById 的 id 不在这个类加载的布局里」：跨布局同名会骗过「id 是否存在」的全局检查
+    for cls, raw in texts.items():
+        layouts = set(re.findall(r'R\.layout\.(\w+)', raw))
+        if not layouts:
+            continue
+        ok_ids = set()
+        for lay in layouts:
+            lp = os.path.join(RES, 'layout', lay + '.xml')
+            if os.path.exists(lp):
+                ok_ids |= set(re.findall(r'@\+?id/(\w+)', read(lp)))
+        for m in re.finditer(r'findViewById\(R\.id\.(\w+)\)', raw):
+            if m.group(1) not in ok_ids:
+                problems.append('%s.java:%d  findViewById(R.id.%s)：不在本文件用到的布局里（%s）'
+                                % (cls, raw[:m.start()].count('\n') + 1, m.group(1),
+                                   ','.join(sorted(layouts))))
+
+    # 「findViewById 的强制转型和布局里的控件类型对不上」：运行起来才炸的 ClassCastException
+    SUPER = {'LinearLayout': {'ViewGroup', 'View'}, 'FrameLayout': {'ViewGroup', 'View'},
+             'RelativeLayout': {'ViewGroup', 'View'}, 'ScrollView': {'ViewGroup', 'View'},
+             'HorizontalScrollView': {'ViewGroup', 'View'}, 'TextView': {'View'},
+             'ImageView': {'View'}, 'ProgressBar': {'View'}, 'Switch': {'View'},
+             'View': set(), 'EditText': {'View'}, 'Button': {'View'}, 'Space': {'View'}}
+    for cls, raw in texts.items():
+        layouts = set(re.findall(r'R\.layout\.(\w+)', raw))
+        if not layouts:
+            continue
+        idtag = {}
+        for lay in layouts:
+            lp = os.path.join(RES, 'layout', lay + '.xml')
+            if not os.path.exists(lp):
+                continue
+            t = read(lp)
+            for m in re.finditer(r'<([\w.]+)[^>]*@\+?id/(\w+)', t):
+                tag = m.group(1).split('.')[-1]
+                if tag not in ('item',):                      # <item> 之类不是控件
+                    idtag.setdefault(m.group(2), set()).add(tag)
+        for m in re.finditer(r'\((\w+(?:\.\w+)*)\)\s*findViewById\(R\.id\.(\w+)\)', raw):
+            cast, vid = m.group(1).split('.')[-1], m.group(2)
+            if cast in ('View', 'Object') or vid not in idtag:
+                continue
+            ok = cast in idtag[vid] or any(cast in SUPER.get(t, set()) for t in idtag[vid])
+            if not ok:
+                problems.append('%s.java:%d  (%s) findViewById(R.id.%s) 与布局里的 <%s> 不匹配'
+                                % (cls, raw[:m.start()].count('\n') + 1, m.group(1), vid,
+                                   '/'.join(sorted(idtag[vid]))))
+
     # 「匿名类里的 this」：new Xxx() { ... this ... } 里的 this 是匿名类自己，
     # 传给要 Context/Activity/View 的方法就编译不过（CI 抓过一次，规则写回脚本里）
     risky = ('this,', 'this)', 'this.', 'this ')
