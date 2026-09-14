@@ -215,7 +215,9 @@
     <string name="fav_title">我的收藏</string>
     <string name="fav_empty">还没有收藏的词：刷词时点右上角爱心即可收藏</string>
     <string name="fav_count">共 %1$d 个词</string>
-    <string name="fav_added">已加入收藏 ♥</string>
+    <string name="fav_add">收藏这个词</string>
+    <string name="fav_remove">取消收藏</string>
+    <string name="fav_added">已加入收藏</string>
     <string name="fav_removed">已取消收藏</string>
     <string name="fav_start_review">开始复习收藏</string>
 
@@ -318,18 +320,24 @@
     <string name="ges_slot_long">长按</string>
 
     <string name="ges_act_none">不绑定</string>
+    <string name="ges_short_fav">收藏</string>
+    <string name="ges_short_reveal">看释义</string>
+    <string name="ges_short_know">记住了</string>
+    <string name="ges_short_unknown">不认识</string>
+    <string name="ges_short_lookup">查词</string>
     <string name="ges_act_fav">收藏 / 取消收藏</string>
     <string name="ges_act_reveal">看释义（翻面）</string>
     <string name="ges_act_know">记住了</string>
     <string name="ges_act_unknown">不认识（进错题本）</string>
-    <string name="ges_act_speak">朗读单词</string>
     <string name="ges_act_lookup">查词详情</string>
-    <string name="ges_act_skip">跳过这个词</string>
 
+    <string name="undo_answer">上一个（撤销）</string>
+    <string name="undo_done">已撤销，重新选一次</string>
+    <string name="undo_none">还没有可撤销的操作</string>
     <string name="ges_unfit">（不适合点按/长按）</string>
     <string name="ges_pick_title">%1$s 绑哪个动作？</string>
     <string name="ges_pick_desc">点一下直接生效，不用确定。</string>
-    <string name="ges_hint_dyn">手势：%1$s= %2$s · %3$s= %4$s · %5$s= %6$s · %7$s= %8$s</string>
+    <string name="ges_hint_dyn">%1$s %2$s · %3$s %4$s</string>
     <string name="ges_reset">恢复默认手势</string>
     <string name="ges_reset_done">已恢复默认手势</string>
     <string name="ges_note">点按有个例外：没翻面时先翻面，翻面后再点才执行你绑的动作（谁都先想看一眼答案）。</string>

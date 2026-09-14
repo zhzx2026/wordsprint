@@ -124,6 +124,23 @@ public final class DiaryStore {
         fire();
     }
 
+    /** 撤销一次自测张数（点错了按「上一个」时用） */
+    public static synchronized void undoTested() {
+        Diary.Day d = today();
+        if (d.test > 0) d.test--;
+        if (d.test < Diary.MIN_TEST) d.testDone = false;
+        save();
+        fire();
+    }
+
+    /** 撤销一次温习记录 */
+    public static synchronized void undoReviewed() {
+        Diary.Day d = today();
+        if (d.rev > 0) d.rev--;
+        save();
+        fire();
+    }
+
     /** 自测作答一张 */
     public static synchronized void tested() {
         Diary.Day d = today();

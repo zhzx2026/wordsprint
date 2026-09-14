@@ -92,6 +92,36 @@ public class EngineTest {
         e4.startGroup();
         int cnt=0; while (e4.current()>=0 && cnt<50){ e4.answer(cnt%4==0); e4.next(); cnt++; if (ended) break; }
         check(ended, "shuffled group ends");
-        System.out.println("ENGINE OK — 6 组断言全部通过");
+        // 7) 撤销（点错「记住了 / 不认识」时把上一步收回来）
+        BitSet ms7 = new BitSet(n); Sink sink7 = new Sink(ms7);
+        Engine e7 = new Engine(n, order, ms7, 0, 5, 3, false, sink7);
+        ended = false;
+        e7.startGroup();
+        check(!e7.canUndo(), "还没作答时没有可撤销的");
+        e7.answer(true);                        // 第 1 张：记住了
+        check(e7.canUndo(), "作答之后可以撤销");
+        e7.next();
+        check(e7.current() == 1, "正常出下一张：" + e7.current());
+        e7.undo();
+        check(e7.current() == 0, "撤销后回到那张卡：" + e7.current());
+        check(!ms7.get(0), "撤销把「已掌握」也退回去了");
+        check(shown == 0, "撤销会重摆那张卡（onShow 收到 0），实际 " + shown);
+        check(e7.answers() == 0 && e7.okCount() == 0, "计数回退：" + e7.answers() + "/" + e7.okCount());
+        check(!e7.canUndo(), "同一张卡只能撤销一次（快照已用掉）");
+        e7.answer(false);                       // 这回点「不认识」
+        check(e7.requeues() == 1, "不认识会计入回炉");
+        e7.next();
+        e7.undo();                              // 撤销「不认识」
+        check(e7.requeues() == 0 && e7.dueCount() == 0, "撤销把回炉表也收回来了");
+        e7.answer(true);                        // 重新选：这次记住
+        check(ms7.get(0), "重新作答按新选择生效");
+        e7.next();
+        // 组结束后不许再撤销（否则会回到已经结算的组）
+        int guard = 0;
+        while (e7.current() >= 0 && guard++ < 20) { e7.answer(true); e7.next(); }
+        check(ended, "这一组跑完了");
+        check(!e7.canUndo(), "组结束后撤销失效");
+
+        System.out.println("ENGINE OK — 7 组断言全部通过（含撤销）");
     }
 }

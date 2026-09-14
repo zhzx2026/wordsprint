@@ -67,6 +67,13 @@ public final class WrongBook {
     /** 清空某个词（用户在词书详情里「重置」这类操作） */
     public void remove(int i) { left.remove(i); }
 
+    /** 复制一份（作答前拍快照，撤销时还原） */
+    public WrongBook copy() {
+        WrongBook c = new WrongBook();
+        c.left.putAll(left);
+        return c;
+    }
+
     // ---------------- 存取 ----------------
 
     /** "idx:left,idx:left,…"（词序号与剩余次数都是小整数，一行就够） */

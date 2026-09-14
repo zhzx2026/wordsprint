@@ -139,26 +139,26 @@
                     android:layout_height="1dp"
                     android:layout_weight="1"/>
 
-                <TextView
+                <ImageView
+                    android:id="@+id/btnUndo"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="9dp"
+                    android:background="@drawable/bg_circle_chip"
+                    android:src="@drawable/ic_undo"
+                    android:tint="?attr/wpText2"
+                    android:contentDescription="@string/undo_answer"/>
+
+                <ImageView
                     android:id="@+id/btnFav"
                     android:layout_width="40dp"
                     android:layout_height="40dp"
-                    android:background="@drawable/bg_circle_chip"
-                    android:gravity="center"
-                    android:text="♡"
-                    android:textColor="?attr/wpRed"
-                    android:textSize="19sp"/>
-
-                <ImageView
-                    android:id="@+id/btnSpeak"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
                     android:layout_marginStart="8dp"
-                    android:padding="9dp"
+                    android:padding="10dp"
                     android:background="@drawable/bg_circle_chip"
-                    android:src="@drawable/ic_volume"
-                    android:tint="?attr/wpBrand"
-                    android:contentDescription="@null"/>
+                    android:src="@drawable/ic_heart"
+                    android:tint="?attr/wpRed"
+                    android:contentDescription="@string/fav_added"/>
             </LinearLayout>
 
             <LinearLayout

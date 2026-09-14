@@ -20,12 +20,14 @@ public final class Ges {
     public static final int REVEAL = 2;      // 看释义（翻面）
     public static final int KNOW = 3;        // 记住了
     public static final int UNKNOWN = 4;     // 不认识（进错题本）
-    public static final int SPEAK = 5;       // 朗读单词
-    public static final int LOOKUP = 6;      // 查词详情
-    public static final int SKIP = 7;        // 跳过这个词（不算对错）
+    public static final int LOOKUP = 5;      // 查词详情
 
-    /** 设置页下拉里的全部动作（NONE 也列出来，方便「不要这个手势」） */
-    public static final int[] ACTIONS = {NONE, FAV, REVEAL, KNOW, UNKNOWN, SPEAK, LOOKUP, SKIP};
+    /**
+     * 设置页里能挑的动作（NONE 也列出来，方便「不要这个手势」）。
+     * 2026-09-14 用户反馈「快捷键不要这么多，不要跳过」→ 去掉了「跳过这个词」，
+     * 也去掉「朗读」（朗读在卡片上本来就是翻面后再点一下，不必再占一个选项）。
+     */
+    public static final int[] ACTIONS = {NONE, FAV, REVEAL, KNOW, UNKNOWN, LOOKUP};
 
     // ---- 位置 ----
     public static final int UP = 0, DOWN = 1, LEFT = 2, RIGHT = 3, TAP = 4, LONG = 5;
@@ -66,7 +68,11 @@ public final class Ges {
     /** 给设置页用：当前映射的短描述键（对应 strings.xml 的 ges_act_*） */
     public static String nameKey(int action) { return "ges_act_" + action; }
 
-    private static boolean known(int a) { return a >= NONE && a <= SKIP; }
+    /** 是不是当前这套动作里的合法值（老版本存的「朗读 / 跳过」现在会被判不合法 → 退回默认） */
+    private static boolean known(int a) {
+        for (int x : ACTIONS) if (x == a) return true;
+        return false;
+    }
 
     private static int num(String s, int def) {
         try { return Integer.parseInt(s.trim()); } catch (Throwable t) { return def; }

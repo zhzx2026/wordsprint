@@ -147,7 +147,7 @@ public final class Words {
         final Hit h0 = hits.isEmpty() ? null : hits.get(0);
         final boolean[] fav = {h0 != null && Favorites.has(h0.book.id, h0.idx)};
         Ui.cardDialogEx(a, a.getString(R.string.word_detail_title), Ui.scrollable(col, 300),
-                (fav[0] ? "♥ " : "♡ ") + a.getString(R.string.fp_label), new Runnable() {
+                a.getString(fav[0] ? R.string.fav_remove : R.string.fav_add), new Runnable() {
                     @Override public void run() {
                         if (h0 == null) return;
                         boolean now = Favorites.toggle(h0.book.id, h0.idx);
@@ -194,12 +194,13 @@ public final class Words {
         col.addView(m, lp);
 
         if (withFav) {
-            TextView heart = new TextView(a);
-            heart.setText("♥");
-            heart.setTextSize(19f);
-            heart.setTextColor(Favorites.has(h.book.id, h.idx)
-                    ? Skin.c(a, R.attr.wpRed) : Skin.c(a, R.attr.wpText2));
-            heart.setPadding((int) Ui.dp(a, 10), (int) Ui.dp(a, 4), (int) Ui.dp(a, 4), (int) Ui.dp(a, 6));
+            // 矢量爱心（以前是文字 ♥：字形粗细跟着系统字体走，用户反馈「画得太丑」）
+            boolean has = Favorites.has(h.book.id, h.idx);
+            android.widget.ImageView heart = new android.widget.ImageView(a);
+            heart.setImageResource(has ? R.drawable.ic_heart_fill : R.drawable.ic_heart);
+            heart.setColorFilter(Skin.c(a, has ? R.attr.wpRed : R.attr.wpText2));
+            int hp = (int) Ui.dp(a, 8);
+            heart.setPadding(hp, hp, hp, hp);
             box.addView(heart);
         }
         if (tap != null) box.setOnClickListener(tap);

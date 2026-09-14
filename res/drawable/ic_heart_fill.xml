@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 收藏（已收藏）：同一套轮廓的实心版本，和描边版严格对齐，切换时不会跳。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,20.2C12,20.2 3.6,15.1 3.6,9.5C3.6,6.6 5.9,4.4 8.6,4.4C10.3,4.4 11.5,5.4 12,6.4C12.5,5.4 13.7,4.4 15.4,4.4C18.1,4.4 20.4,6.6 20.4,9.5C20.4,15.1 12,20.2 12,20.2Z"/>
+</vector>

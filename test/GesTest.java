@@ -26,14 +26,14 @@ public class GesTest {
         check(Ges.decode("").length == Ges.SLOTS, "空串也能得到完整映射");
 
         // 2) 往返：任意组合都要一字不差
-        int[] custom = {Ges.SPEAK, Ges.UNKNOWN, Ges.FAV, Ges.SKIP, Ges.SPEAK, Ges.NONE};
+        int[] custom = {Ges.LOOKUP, Ges.UNKNOWN, Ges.FAV, Ges.NONE, Ges.REVEAL, Ges.LOOKUP};
         String enc = Ges.encode(custom);
         check(Ges.encode(Ges.decode(enc)).equals(enc), "编码→解码→编码 稳定");
         int[] back = Ges.decode(enc);
         for (int i = 0; i < Ges.SLOTS; i++) check(back[i] == custom[i], "第 " + i + " 个位置往返一致");
 
         // 3) 用户随手改的常见写法：空格分隔、少写几段、多余逗号
-        check(Ges.decode("5 5 5 5 5 5")[Ges.UP] == Ges.SPEAK, "空格分隔也认");
+        check(Ges.decode("5 5 5 5 5 5")[Ges.UP] == Ges.LOOKUP, "空格分隔也认");
         check(Ges.decode("4,3")[Ges.LEFT] == Ges.UNKNOWN && Ges.decode("4,3")[Ges.RIGHT] == Ges.KNOW, "只写前两段");
         check(Ges.decode("4,3")[Ges.TAP] == Ges.DEF[Ges.TAP], "没写的段用默认值");
         check(Ges.decode("1,,2")[Ges.DOWN] == Ges.DEF[Ges.DOWN], "空段用默认值");
@@ -42,8 +42,16 @@ public class GesTest {
         // 4) 脏数据（手改坏 / 跨版本）：认不出来的值退回默认，绝不整屏失效
         check(Ges.decode("abc,def")[Ges.UP] == Ges.DEF[Ges.UP], "乱码退回默认");
         check(Ges.decode("99,-3,999")[Ges.UP] == Ges.DEF[Ges.UP], "越界数字退回默认");
-        check(Ges.decode("7")[Ges.UP] == Ges.SKIP && Ges.decode("7")[Ges.DOWN] == Ges.DEF[Ges.DOWN],
+        check(Ges.decode("4")[Ges.UP] == Ges.UNKNOWN && Ges.decode("4")[Ges.DOWN] == Ges.DEF[Ges.DOWN],
                 "合法段生效、非法段退回");
+        // 老版本存过「跳过(7)」：这个动作已下线（用户 2026-09-14 要求「不要跳过」），要自动退回默认
+        check(Ges.decode("7,7,7,7,7,7")[Ges.UP] == Ges.DEF[Ges.UP], "已下线的「跳过」退回默认");
+        check(Ges.decode("7,7,7,7,7,7")[Ges.LONG] == Ges.DEF[Ges.LONG], "老数据整体退回默认");
+        // 动作表：从 8 个（含朗读/跳过）精简到 6 个
+        check(Ges.ACTIONS.length == 6, "动作选项精简到 6 个");
+        boolean hasOld = false;
+        for (int a : Ges.ACTIONS) if (a == 6 || a == 7) hasOld = true;
+        check(!hasOld, "动作表里不该再有朗读/跳过（它们的编号 6/7 已废弃）");
         check(Ges.encode(new int[]{99, 99, 99, 99, 99, 99}).equals(Ges.encode(Ges.DEF)), "编码时非法值也兜底");
 
         // 5) 点按/长按不能绑「判定」类动作（左右滑才讲得通），其它位置不受限
@@ -53,13 +61,13 @@ public class GesTest {
         check(Ges.allowedFor(Ges.TAP, Ges.FAV) && Ges.allowedFor(Ges.LONG, Ges.LOOKUP), "点按/长按能绑收藏与查词");
 
         // 6) with()：改一个位置不影响其它位置
-        int[] one = Ges.with(Ges.DEF, Ges.UP, Ges.SKIP);
-        check(one[Ges.UP] == Ges.SKIP, "改上滑为跳过");
+        int[] one = Ges.with(Ges.DEF, Ges.UP, Ges.NONE);
+        check(one[Ges.UP] == Ges.NONE, "改上滑为「不绑定」");
         check(one[Ges.RIGHT] == Ges.DEF[Ges.RIGHT], "其它位置不动");
         check(Ges.DEF[Ges.UP] == Ges.FAV, "原数组不被改动（不可变）");
 
         // 7) describe()：设置页/日志里能一眼看出映射
-        check(Ges.describe(Ges.DEF).contains("1") && Ges.describe(Ges.DEF).contains("6"), "describe 输出包含动作号");
+        check(Ges.describe(Ges.DEF).contains("1") && Ges.describe(Ges.DEF).contains("5"), "describe 输出包含动作号");
 
         System.out.println("ALL GES TESTS PASS (" + checks + " checks)");
     }

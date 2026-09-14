@@ -9,6 +9,7 @@ import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.AnimationUtils;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -35,7 +36,12 @@ public class StudyActivity extends Activity {
     private long lastTick;
 
     private View card, actions, result, colMain, meaningBox;
-    private TextView tvWord, tvPhonetic, tvHint, tvMeaning, tvPos, tvGroupPill, tvWrongPill, btnFav;
+    private TextView tvWord, tvPhonetic, tvHint, tvMeaning, tvPos, tvGroupPill, tvWrongPill;
+    private ImageView btnFav, btnUndo;
+    // 撤销用：作答前的错题本快照 / 这张是不是「首次记住」/ 这次答对了吗
+    private WrongBook wbSnap;
+    private boolean lastFresh, lastOk, lastWasTest, lastWasReview;
+    private boolean hintShown;
     private android.widget.ProgressBar progress;
     private ConfettiView confetti;
     private final List<Integer> groupWords = new ArrayList<Integer>();
@@ -73,7 +79,8 @@ public class StudyActivity extends Activity {
         tvPos = (TextView) findViewById(R.id.tvPos);
         tvGroupPill = (TextView) findViewById(R.id.tvGroupPill);
         tvWrongPill = (TextView) findViewById(R.id.tvWrongPill);
-        btnFav = (TextView) findViewById(R.id.btnFav);
+        btnFav = (ImageView) findViewById(R.id.btnFav);
+        btnUndo = (ImageView) findViewById(R.id.btnUndo);
         progress = (android.widget.ProgressBar) findViewById(R.id.groupProgress);
         confetti = (ConfettiView) findViewById(R.id.confetti);
 
@@ -88,9 +95,9 @@ public class StudyActivity extends Activity {
         if (mode == MODE_WRONG) tvGroupPill.setText(R.string.review_mode);
         if (mode == MODE_TEST) tvGroupPill.setText(R.string.habit_test);
         if (mode != MODE_WORD) tvHint.setText(mode == MODE_TEST ? "想起来的单词，翻面核对" : getString(R.string.tap_reveal));
-        if (mode == MODE_WORD && prefs.i(Prefs.K_GES_HINT, 1) == 1) {
-            tvGroupPill.setText(gesHint());                 // 只提示一次，且按用户自己的映射来说
-            prefs.set(Prefs.K_GES_HINT, 0);
+        if (mode == MODE_WORD && !hintShown) {
+            tvGroupPill.setText(gesHint());                 // 每次进来只在第一张卡提示一句，且按用户自己的映射说
+            hintShown = true;
         }
 
         findViewById(R.id.btnClose).setOnClickListener(new View.OnClickListener() {
@@ -102,10 +109,8 @@ public class StudyActivity extends Activity {
         findViewById(R.id.btnNo).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { answer(false); }
         });
-        findViewById(R.id.btnSpeak).setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                if (engine.current() >= 0) sfx.speak(book.word(engine.current()));
-            }
+        btnUndo.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { undoLast(); }
         });
         btnFav.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { toggleFav(); }
@@ -213,6 +218,7 @@ public class StudyActivity extends Activity {
     }
 
     private void updateHud() {
+        btnUndo.setAlpha(engine.canUndo() ? 1f : 0.35f);      // 没得撤销时变淡
         tvPos.setText(engine.doneInGroup() + " / " + engine.groupTotal());
         int pct = engine.groupTotal() == 0 ? 100 : engine.doneInGroup() * 100 / engine.groupTotal();
         progress.setProgress(pct);
@@ -261,18 +267,17 @@ public class StudyActivity extends Activity {
 
     /** 按当前映射拼一句提示（用户自己改过映射后，这句话要跟着变） */
     private String gesHint() {
+        // 只列左右滑这两个「判定」手势（用户 2026-09-14：提示别把六条都堆出来）
         int[] m = prefs.ges();
         return getString(R.string.ges_hint_dyn,
-                getString(GesUi.slotLabel(Ges.LEFT)), getString(GesUi.actionLabel(m[Ges.LEFT])),
-                getString(GesUi.slotLabel(Ges.RIGHT)), getString(GesUi.actionLabel(m[Ges.RIGHT])),
-                getString(GesUi.slotLabel(Ges.UP)), getString(GesUi.actionLabel(m[Ges.UP])),
-                getString(GesUi.slotLabel(Ges.DOWN)), getString(GesUi.actionLabel(m[Ges.DOWN])));
+                getString(GesUi.slotLabel(Ges.LEFT)), getString(GesUi.actionShort(m[Ges.LEFT])),
+                getString(GesUi.slotLabel(Ges.RIGHT)), getString(GesUi.actionShort(m[Ges.RIGHT])));
     }
 
     private void updateFav() {
         int w = engine.current();
         boolean has = w >= 0 && Favorites.has(book.id, w);
-        btnFav.setText(has ? "♥" : "♡");
+        btnFav.setImageResource(has ? R.drawable.ic_heart_fill : R.drawable.ic_heart);
     }
 
     private void toggleFav() {
@@ -302,20 +307,12 @@ public class StudyActivity extends Activity {
             case Ges.REVEAL: if (!engine.flipped()) reveal(); else sfx.speak(book.word(engine.current())); break;
             case Ges.KNOW: if (!engine.flipped()) reveal(); answer(true); break;
             case Ges.UNKNOWN: if (!engine.flipped()) reveal(); answer(false); break;
-            case Ges.SPEAK: sfx.speak(book.word(engine.current())); break;
             case Ges.LOOKUP: Words.detail(this, book.word(engine.current()), new Words.Hit(book, engine.current())); break;
-            case Ges.SKIP: skipWord(); break;
             default: break;                                // 不绑定：什么都不做
         }
     }
 
-    /** 跳过当前词：不计对错、不进错题本，等于「这词我先放过」 */
-    private void skipWord() {
-        if (engine.current() < 0 || engine.busy()) return;
-        tick();
-        engine.next();
-        updateHud();
-    }
+
 
     /** 翻卡 = 布局重排 + 淡入（非 3D 翻转） */
     private void reveal() {
@@ -352,6 +349,12 @@ public class StudyActivity extends Activity {
         if (engine.current() < 0 || engine.busy()) return;
         int w = engine.current();
         tick();                                    // 把这段停留时间记到今天的时长里
+        // 撤销用：先把「这次作答会改到的东西」拍下来（错题本 / 是否首次记住 / 模式）
+        wbSnap = wb.copy();
+        lastFresh = ok && !engine.masteredBitSet().get(w);
+        lastOk = ok;
+        lastWasTest = mode == MODE_TEST;
+        lastWasReview = reviewMode;
         engine.answer(ok);
         if (ok) {
             boolean inBook = wb.has(w);
@@ -380,6 +383,28 @@ public class StudyActivity extends Activity {
                 engine.next();
             }
         }).start();
+    }
+
+    /**
+     * 上一个 = 撤销刚才那次作答：那张卡拿回来重新选。
+     * 计数、错题本、今日新增都跟着回退，避免「点错了还把进度算错」。
+     */
+    private void undoLast() {
+        if (engine.busy()) return;                 // 换卡动画还没走完，这一下先忽略
+        if (!engine.canUndo()) { toast(getString(R.string.undo_none)); return; }
+        if (wbSnap != null) {                     // 错题本回到作答前
+            wb = wbSnap;
+            prefs.saveWrongBook(book.id, wb);
+            wrongs = wb.ids();
+        }
+        if (lastFresh) prefs.addToday(-1);        // 刚记成「首次掌握」的那一个词撤回来
+        if (lastWasTest) DiaryStore.undoTested();
+        else if (lastWasReview && lastOk) DiaryStore.undoReviewed();
+        wbSnap = null;
+        engine.undo();                            // 队列/回炉/掌握位/计数全部回退 + 重摆那张卡
+        lastTick = SystemClock.elapsedRealtime();
+        updateHud();
+        toast(getString(R.string.undo_done));
     }
 
     /** 计时：把「距上次作答」的时间按模式记账（刷词 / 温习 / 自测） */
