@@ -15,7 +15,6 @@ on:
 permissions:
   contents: write          # 只用于把测试包推到孤儿分支 dev（raw 直链，供手机 App 内更新）
   checks: write            # 只用于把失败日志写回 ci-diagnostics 检查（沙箱/无日志权限的一侧靠它自查）
-  pages: write             # 只用于确保 GitHub Pages 已开启（战绩页要能渲染成网页，见下）
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -138,22 +137,55 @@ jobs:
             echo "update.json： \`$URLBASE/update.json\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # 战绩分享的二维码指向 GitHub Pages —— jsDelivr/statically 这类 CDN 故意把 .html
-      # 发成 text/plain，浏览器只能看到源码（用户 2026-09-14 反馈）。Pages 是官方方案：
-      # Content-Type 正确、查询参数原样保留。这里尝试自动开启（首次会用 dev 分支根目录）；
-      # 没权限（404/403）就跳过并写进摘要——用户手动在 Settings → Pages 里选 dev / (root) 即可。
-      - name: 确保 GitHub Pages 已开启（战绩页）
+      - name: Publish dev channel（raw 直链 + update.json）
         env:
-          GH_TOKEN: ${{ github.token }}
+          DEV_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set +e
-          out=$(gh api -X POST "repos/${{ github.repository }}/pages" \
-                  -f 'source[branch]=dev' -f 'source[path]=/' 2>&1)
-          rc=$?
-          if [ $rc -eq 0 ]; then echo "Pages 已开启：" ; echo "$out" | head -5
-          else
-            echo "Pages 开启失败（多半是权限）：$out"
-            echo "::notice title=GitHub Pages::请在仓库 Settings → Pages 里把 Source 设成 dev / (root)，战绩页才能渲染"
-          fi
-          exit 0
+          bash scripts/publish_dev.sh "CI staging v${{ steps.meta.outputs.ver }}（code ${{ steps.meta.outputs.vc }}）"
+          URLBASE="https://raw.githubusercontent.com/${{ github.repository }}/dev"
+          {
+            echo
+            echo "### 手机装机地址（开发者通道）"
+            echo
+            echo "设置 → 更新源填 \`$URLBASE\` → 点「检查」→「立即更新」（同签名，覆盖安装不丢进度）"
+            echo
+            echo "update.json： \`$URLBASE/update.json\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
+  # 战绩页托管：二维码指向 https://zhzx2026.github.io/wordsprint/share/index.html
+  # 为什么必须有这一步：jsDelivr/statically 这类 GitHub CDN 会故意把 .html 发成 text/plain，
+  # 扫描二维码只能看到源码（用户 2026-09-14 反馈）。GitHub Pages 是官方方案：Content-Type
+  # 正确、查询参数原样保留、没有中转页。enablement: true 会让它在 Pages 没开时自动开启。
+  pages:
+    name: 战绩页（GitHub Pages）
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 组装站点（只发战绩页 + 字体）
+        run: |
+          set -e
+          mkdir -p _site/share _site/res/font
+          cp share/index.html _site/share/index.html
+          cp share/README.md  _site/share/README.md
+          cp res/font/wp_word.ttf _site/res/font/wp_word.ttf
+          printf '<meta charset="utf-8"><title>WordsPrint</title><p>战绩页在 <a href="share/index.html">/share/index.html</a></p>' > _site/index.html
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true          # 没开 Pages 就顺手开（需要 pages: write）
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
