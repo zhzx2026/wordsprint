@@ -110,14 +110,14 @@ public class Update {
         TextView head = new TextView(a);
         head.setText(a.getString(R.string.update_found_v, info.name, myName(a)));
         head.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f);
-        head.setTextColor(a.getResources().getColor(R.color.text_primary));
+        head.setTextColor(Skin.c(a, R.attr.wpText));
         col.addView(head, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         if (!info.notes.isEmpty()) {
             TextView notes = new TextView(a);
             notes.setText(info.notes);
             notes.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
-            notes.setTextColor(a.getResources().getColor(R.color.text_secondary));
+            notes.setTextColor(Skin.c(a, R.attr.wpText2));
             notes.setLineSpacing(Ui.dp(a, 4), 1f);
             notes.setBackgroundResource(R.drawable.bg_card_field);
             int np = (int) Ui.dp(a, 11);
@@ -172,7 +172,7 @@ public class Update {
         try { pb.setProgressDrawable(a.getResources().getDrawable(R.drawable.progress_update)); } catch (Throwable ignored) {}
         final TextView st = new TextView(a);
         st.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
-        st.setTextColor(a.getResources().getColor(R.color.text_secondary));
+        st.setTextColor(Skin.c(a, R.attr.wpText2));
         st.setText(R.string.update_downloading);
         LinearLayout col = new LinearLayout(a);
         col.setOrientation(LinearLayout.VERTICAL);
@@ -183,7 +183,7 @@ public class Update {
         title.setText(a.getString(R.string.update_downloading_title, info.name));
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16.5f);
         title.setTypeface(title.getTypeface(), android.graphics.Typeface.BOLD);
-        title.setTextColor(a.getResources().getColor(R.color.text_primary));
+        title.setTextColor(Skin.c(a, R.attr.wpText));
         col.addView(title, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(
@@ -198,7 +198,7 @@ public class Update {
         cancelBtn.setText(R.string.update_cancel);
         cancelBtn.setGravity(android.view.Gravity.CENTER);
         cancelBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f);
-        cancelBtn.setTextColor(a.getResources().getColor(R.color.text_secondary));
+        cancelBtn.setTextColor(Skin.c(a, R.attr.wpText2));
         cancelBtn.setBackgroundResource(R.drawable.bg_btn_outline);
         LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, (int) (40 * d));

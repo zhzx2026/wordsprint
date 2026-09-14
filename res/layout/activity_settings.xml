@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/bg">
+    android:background="?attr/wpBg">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -102,6 +102,165 @@
                 </LinearLayout>
             </LinearLayout>
 
+            <!-- ===== 配色方案（多套皮肤） ===== -->
+            <TextView style="@style/SectionHead" android:text="@string/set_theme_title"/>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_card_20"
+                android:padding="13dp">
+                <LinearLayout
+                    android:id="@+id/skinChips"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"/>
+                <LinearLayout
+                    android:id="@+id/skinPreview"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal"/>
+                <TextView
+                    style="@style/SettingDesc"
+                    android:text="@string/set_theme_desc"/>
+            </LinearLayout>
+
+            <!-- ===== 字体（内置字体保证字母 a 是单层写法） ===== -->
+            <TextView style="@style/SectionHead" android:text="@string/set_font_title"/>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_card_20"
+                android:padding="13dp">
+                <LinearLayout
+                    android:id="@+id/fontChips"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"/>
+                <TextView
+                    android:id="@+id/tvFontSample"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="letter a · a a a · 单词长这样"
+                    android:textColor="?attr/wpText"
+                    android:textSize="17sp"/>
+                <TextView
+                    style="@style/SettingDesc"
+                    android:text="@string/set_font_desc"/>
+            </LinearLayout>
+
+            <!-- ===== 字号（大屏自适应） ===== -->
+            <TextView style="@style/SectionHead" android:text="@string/set_scale_title"/>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_card_20"
+                android:padding="13dp">
+                <LinearLayout
+                    android:id="@+id/scaleChips"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"/>
+                <TextView
+                    android:id="@+id/tvScaleDesc"
+                    style="@style/SettingDesc"
+                    android:text="@string/set_scale_desc"/>
+            </LinearLayout>
+
+            <!-- ===== 每日目标 ===== -->
+            <TextView style="@style/SectionHead" android:text="@string/set_goal_title"/>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_card_20"
+                android:padding="13dp">
+                <LinearLayout
+                    android:id="@+id/goalChips"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"/>
+                <TextView
+                    android:id="@+id/tvGoalDesc"
+                    style="@style/SettingDesc"
+                    android:text="@string/goal_pick_desc"/>
+            </LinearLayout>
+
+            <!-- ===== 档案 / 战绩 / 词本 / 查词 / 收藏 ===== -->
+            <TextView style="@style/SectionHead" android:text="@string/set_profile_title"/>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_card_20"
+                android:paddingStart="15dp"
+                android:paddingEnd="15dp">
+
+                <LinearLayout android:id="@+id/rowProfile" style="@style/SettingRow">
+                    <LinearLayout style="@style/SettingRowText">
+                        <TextView style="@style/SettingTitle" android:text="@string/set_profile_title"/>
+                        <TextView android:id="@+id/tvProfileNow" style="@style/SettingDesc" android:text="@string/set_profile_desc"/>
+                    </LinearLayout>
+                    <ImageView android:layout_width="20dp" android:layout_height="20dp" android:tint="?attr/wpText2" android:src="@drawable/ic_chevron" android:contentDescription="@null"/>
+                </LinearLayout>
+                <View style="@style/SettingDivider"/>
+
+                <LinearLayout android:id="@+id/rowShare" style="@style/SettingRow">
+                    <LinearLayout style="@style/SettingRowText">
+                        <TextView style="@style/SettingTitle" android:text="@string/set_share_title"/>
+                        <TextView style="@style/SettingDesc" android:text="@string/set_share_desc"/>
+                    </LinearLayout>
+                    <ImageView android:layout_width="20dp" android:layout_height="20dp" android:tint="?attr/wpText2" android:src="@drawable/ic_chevron" android:contentDescription="@null"/>
+                </LinearLayout>
+                <View style="@style/SettingDivider"/>
+
+                <LinearLayout android:id="@+id/rowPlan" style="@style/SettingRow">
+                    <LinearLayout style="@style/SettingRowText">
+                        <TextView style="@style/SettingTitle" android:text="@string/plan_title"/>
+                        <TextView android:id="@+id/tvPlanNow" style="@style/SettingDesc" android:text="@string/plan_desc"/>
+                    </LinearLayout>
+                    <ImageView android:layout_width="20dp" android:layout_height="20dp" android:tint="?attr/wpText2" android:src="@drawable/ic_chevron" android:contentDescription="@null"/>
+                </LinearLayout>
+                <View style="@style/SettingDivider"/>
+
+                <LinearLayout android:id="@+id/rowSearch" style="@style/SettingRow">
+                    <LinearLayout style="@style/SettingRowText">
+                        <TextView style="@style/SettingTitle" android:text="@string/quick_search"/>
+                        <TextView style="@style/SettingDesc" android:text="@string/search_tip"/>
+                    </LinearLayout>
+                    <ImageView android:layout_width="20dp" android:layout_height="20dp" android:tint="?attr/wpText2" android:src="@drawable/ic_chevron" android:contentDescription="@null"/>
+                </LinearLayout>
+                <View style="@style/SettingDivider"/>
+
+                <LinearLayout android:id="@+id/rowFav" style="@style/SettingRow">
+                    <LinearLayout style="@style/SettingRowText">
+                        <TextView style="@style/SettingTitle" android:text="@string/quick_fav"/>
+                        <TextView android:id="@+id/tvFavNow" style="@style/SettingDesc" android:text="@string/fav_empty"/>
+                    </LinearLayout>
+                    <ImageView android:layout_width="20dp" android:layout_height="20dp" android:tint="?attr/wpText2" android:src="@drawable/ic_chevron" android:contentDescription="@null"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- ===== 手势操作 ===== -->
+            <TextView style="@style/SectionHead" android:text="@string/ges_title"/>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/bg_card_20"
+                android:padding="15dp">
+                <TextView style="@style/SettingDesc" android:paddingTop="0dp" android:text="@string/ges_up"/>
+                <TextView style="@style/SettingDesc" android:text="@string/ges_down"/>
+                <TextView style="@style/SettingDesc" android:text="@string/ges_left"/>
+                <TextView style="@style/SettingDesc" android:text="@string/ges_right"/>
+                <TextView style="@style/SettingDesc" android:text="@string/ges_tap"/>
+                <TextView style="@style/SettingDesc" android:text="@string/ges_long"/>
+            </LinearLayout>
+
             <!-- 外观 -->
             <TextView style="@style/SectionHead" android:text="@string/theme_title" android:paddingStart="4dp"/>
 
@@ -175,7 +334,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="7dp"
-                        android:textColor="@color/text_secondary"
+                        android:textColor="?attr/wpText2"
                         android:textSize="11.5sp"/>
                 </LinearLayout>
             </LinearLayout>
@@ -196,14 +355,14 @@
                     android:layout_height="wrap_content"
                     android:paddingTop="13dp"
                     android:text="@string/transfer_desc"
-                    android:textColor="@color/text_secondary"
+                    android:textColor="?attr/wpText2"
                     android:textSize="11.5sp"/>
 
                 <LinearLayout style="@style/SettingRow" android:id="@+id/btnExport">
                     <LinearLayout style="@style/SettingRowText">
                         <TextView style="@style/SettingTitle" android:text="@string/export_qr"/>
                     </LinearLayout>
-                    <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_chevron" android:tint="@color/text_secondary" android:contentDescription="@null"/>
+                    <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_chevron" android:tint="?attr/wpText2" android:contentDescription="@null"/>
                 </LinearLayout>
                 <View style="@style/SettingDivider"/>
                 <LinearLayout style="@style/SettingRow" android:id="@+id/btnScan">
@@ -211,7 +370,7 @@
                         <TextView style="@style/SettingTitle" android:text="@string/scan_import"/>
                         <TextView style="@style/SettingDesc" android:text="@string/scan_import_desc"/>
                     </LinearLayout>
-                    <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_chevron" android:tint="@color/text_secondary" android:contentDescription="@null"/>
+                    <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_chevron" android:tint="?attr/wpText2" android:contentDescription="@null"/>
                 </LinearLayout>
             </LinearLayout>
 
@@ -222,7 +381,7 @@
                 android:layout_marginTop="18dp"
                 android:gravity="center"
                 android:text="@string/app_name"
-                android:textColor="@color/text_secondary"
+                android:textColor="?attr/wpText2"
                 android:textSize="11sp"
                 android:letterSpacing="0.2"/>
 
@@ -232,7 +391,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="3dp"
                 android:gravity="center"
-                android:textColor="@color/text_secondary"
+                android:textColor="?attr/wpText2"
                 android:textSize="11sp"/>
         </LinearLayout>
     </ScrollView>

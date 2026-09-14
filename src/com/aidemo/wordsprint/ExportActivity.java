@@ -22,8 +22,11 @@ public class ExportActivity extends Activity {
     private String code;
     private TextView codeText;
 
+    @Override protected void attachBaseContext(Context base) { super.attachBaseContext(Night.wrap(base)); }
+
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
+        Skin.apply(this);
         Db.ensureLoaded(this);
         setContentView(R.layout.activity_export);
         codeText = (TextView) findViewById(R.id.codeText);
@@ -76,6 +79,7 @@ public class ExportActivity extends Activity {
                 catch (Throwable t) { Toast.makeText(ExportActivity.this, "没有可用的分享目标", Toast.LENGTH_SHORT).show(); }
             }
         });
+        Ui.finishSetup(this);
     }
 
     /** 文本码常驻显示在码图下方（v1.0.9 之前是 gone，用户只能盲复制）；长按可全选 */
@@ -109,7 +113,7 @@ public class ExportActivity extends Activity {
             et.setText(code);
             et.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f);
             et.setTypeface(android.graphics.Typeface.MONOSPACE);
-            et.setTextColor(getResources().getColor(R.color.text_primary));
+            et.setTextColor(Skin.c(this, R.attr.wpText));
             et.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
             et.setHorizontallyScrolling(false);
             et.setTextIsSelectable(true);

@@ -168,6 +168,20 @@ def pub_rank(pub):
     return PUB_ORDER.index(pub) if pub in PUB_ORDER else 99
 books.sort(key=lambda b: (pub_rank(b['pub']), b['pub'], b['sortk'], b['title']))
 
+# ===== 大学四六级（大学英语学段，stage 5）=====
+# 数据在 data/cet_words.tsv.gz（scripts/etl_cet.py --fetch 生成），这里一并写入，
+# 保证「raw_xlsx 全量重生成」与「etl_cet.py 追加」两条路径产出完全一致。
+# 位置固定排在词书库最后（大学在两屏之后，别插到高考 3500 前面）。
+import sys as _sys
+_sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import etl_cet as _cet                                          # noqa: E402
+_cet_books = _cet.cet_books()
+_cet.verify_books(_cet_books)
+for _b in _cet_books:
+    _b['words'] = _b['rows']
+    _b['sortk'] = (9, 0, 0, 0, 0)
+books = books + _cet_books
+
 # two-pass string pool
 pool = {}
 def intern(s):

@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/bg">
+    android:background="?attr/wpBg">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -63,7 +63,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/paste_manual_tip"
-                android:textColor="@color/text_secondary"
+                android:textColor="?attr/wpText2"
                 android:textSize="11.5sp"
                 android:lineSpacingExtra="3dp"/>
 
@@ -80,8 +80,8 @@
                 android:typeface="monospace"
                 android:fontFamily="monospace"
                 android:textSize="12sp"
-                android:textColor="@color/text_primary"
-                android:textColorHint="@color/text_secondary"
+                android:textColor="?attr/wpText"
+                android:textColorHint="?attr/wpText2"
                 android:hint="@string/paste_hint"
                 android:scrollbars="vertical"
                 android:textIsSelectable="true"
@@ -101,7 +101,7 @@
                     android:gravity="center"
                     android:background="@drawable/bg_card_field"
                     android:text="@string/paste_read_clip"
-                    android:textColor="@color/brand1"
+                    android:textColor="?attr/wpBrand"
                     android:textSize="12.5sp"/>
 
                 <View
@@ -116,7 +116,7 @@
                     android:gravity="center"
                     android:background="@drawable/bg_card_field"
                     android:text="@string/paste_clear"
-                    android:textColor="@color/text_secondary"
+                    android:textColor="?attr/wpText2"
                     android:textSize="12.5sp"/>
             </LinearLayout>
 
@@ -139,7 +139,7 @@
                 android:layout_marginTop="14dp"
                 android:padding="10dp"
                 android:background="@drawable/bg_card_field"
-                android:textColor="@color/text_secondary"
+                android:textColor="?attr/wpText2"
                 android:textSize="11sp"
                 android:fontFamily="monospace"
                 android:lineSpacingExtra="2dp"
@@ -153,7 +153,7 @@
                 android:layout_marginTop="8dp"
                 android:padding="6dp"
                 android:text="@string/diag_copy"
-                android:textColor="@color/brand1"
+                android:textColor="?attr/wpBrand"
                 android:textSize="12sp"
                 android:visibility="gone"/>
         </LinearLayout>

@@ -37,7 +37,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
             android:text="英语 · 必修第一册"
-            android:textColor="@color/text_primary"
+            android:textColor="?attr/wpText"
             android:textSize="22sp"
             android:textStyle="bold"
             android:maxLines="1"
@@ -60,7 +60,7 @@
                 android:paddingTop="2dp"
                 android:paddingBottom="2dp"
                 android:text="人教版"
-                android:textColor="@color/brand1"
+                android:textColor="?attr/wpBrand"
                 android:textSize="11sp"
                 android:textStyle="bold"/>
 
@@ -70,7 +70,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
                 android:text="人教版 · 高中 · 共 377 词"
-                android:textColor="@color/text_secondary"
+                android:textColor="?attr/wpText2"
                 android:textSize="12sp"/>
         </LinearLayout>
 
@@ -100,7 +100,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/group_size"
-                    android:textColor="@color/text_secondary"
+                    android:textColor="?attr/wpText2"
                     android:textSize="11sp"
                     android:letterSpacing="0.1"/>
 
@@ -130,7 +130,7 @@
             android:paddingTop="10dp"
             android:paddingBottom="10dp"
             android:text="已学 0 · 剩余 377 · 错词 0"
-            android:textColor="@color/text_secondary"
+            android:textColor="?attr/wpText2"
             android:textSize="12.5sp"/>
 
         <!-- 顺序 + 间隔 -->
@@ -153,7 +153,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/order_label"
-                    android:textColor="@color/text_secondary"
+                    android:textColor="?attr/wpText2"
                     android:textSize="11sp"
                     android:letterSpacing="0.1"/>
 
@@ -177,7 +177,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/lag_label"
-                    android:textColor="@color/text_secondary"
+                    android:textColor="?attr/wpText2"
                     android:textSize="11sp"
                     android:letterSpacing="0.1"/>
 
@@ -187,7 +187,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="5dp"
                     android:text="每过 5 张再出现"
-                    android:textColor="@color/brand1"
+                    android:textColor="?attr/wpBrand"
                     android:textSize="13sp"
                     android:textStyle="bold"/>
 
@@ -251,7 +251,7 @@
                 android:background="@drawable/bg_btn_outline"
                 android:gravity="center"
                 android:text="@string/review_mode"
-                android:textColor="@color/brand1"
+                android:textColor="?attr/wpBrand"
                 android:textSize="13.5sp"
                 android:textStyle="bold"/>
 
@@ -264,7 +264,7 @@
                 android:paddingStart="10dp"
                 android:paddingEnd="4dp"
                 android:text="@string/reset_progress"
-                android:textColor="@color/red"
+                android:textColor="?attr/wpRed"
                 android:textSize="13.5sp"/>
         </LinearLayout>
     </LinearLayout>

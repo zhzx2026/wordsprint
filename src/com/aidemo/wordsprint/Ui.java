@@ -21,7 +21,8 @@ public class Ui {
         TextView tv = new TextView(c);
         tv.setText(text);
         tv.setTextSize(13f);
-        tv.setTextColor(c.getResources().getColorStateList(R.color.chip_text));
+        tv.setTextColor(stateList(c, R.color.chip_text));   // 带主题解析：里面是 ?attr 引用
+        Fonts.apply(tv, false);
         tv.setBackgroundResource(R.drawable.bg_chip);
         tv.setGravity(Gravity.CENTER);
         tv.setActivated(active);
@@ -37,7 +38,7 @@ public class Ui {
     public static TextView chip(Context c, String text, int bgRes, int textRes, float sizeSp, boolean tall) {
         TextView tv = chip(c, text, false);
         tv.setTextSize(sizeSp);
-        tv.setTextColor(c.getResources().getColor(textRes));
+        tv.setTextColor(textRes == 0 ? Skin.c(c, R.attr.wpText) : c.getResources().getColor(textRes));
         if (tall) tv.setPadding((int) dp(c, 15), (int) dp(c, 10), (int) dp(c, 15), (int) dp(c, 10));
         return tv;
     }
@@ -110,7 +111,7 @@ public class Ui {
         tv.setText(title);
         tv.setTextSize(16.5f);
         tv.setTypeface(tv.getTypeface(), android.graphics.Typeface.BOLD);
-        tv.setTextColor(a.getResources().getColor(R.color.text_primary));
+        tv.setTextColor(Skin.c(a, R.attr.wpText));
         card.addView(tv, new android.widget.LinearLayout.LayoutParams(
                 android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
                 android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -124,7 +125,7 @@ public class Ui {
         }
 
         View div = new View(a);
-        div.setBackgroundColor(a.getResources().getColor(R.color.line));
+        div.setBackgroundColor(Skin.c(a, R.attr.wpLine));
         android.widget.LinearLayout.LayoutParams dlp = new android.widget.LinearLayout.LayoutParams(
                 android.widget.LinearLayout.LayoutParams.MATCH_PARENT, (int) d);
         dlp.topMargin = (int) (16 * d);
@@ -140,7 +141,7 @@ public class Ui {
             neg.setText(negLabel);
             neg.setGravity(android.view.Gravity.CENTER);
             neg.setTextSize(14.5f);
-            neg.setTextColor(a.getResources().getColor(R.color.text_secondary));
+            neg.setTextColor(Skin.c(a, R.attr.wpText2));
             row.addView(neg, new android.widget.LinearLayout.LayoutParams(0, (int) (48 * d), 1));
             neg.setOnClickListener(new View.OnClickListener() {
                 @Override public void onClick(View v) {
@@ -150,7 +151,7 @@ public class Ui {
             });
             if (hasPos) {
                 View vd = new View(a);
-                vd.setBackgroundColor(a.getResources().getColor(R.color.line));
+                vd.setBackgroundColor(Skin.c(a, R.attr.wpLine));
                 android.widget.LinearLayout.LayoutParams vlp = new android.widget.LinearLayout.LayoutParams((int) d, (int) (20 * d));
                 vlp.gravity = android.view.Gravity.CENTER_VERTICAL;
                 row.addView(vd, vlp);
@@ -162,7 +163,7 @@ public class Ui {
             pos.setGravity(android.view.Gravity.CENTER);
             pos.setTextSize(14.5f);
             pos.setTypeface(pos.getTypeface(), android.graphics.Typeface.BOLD);
-            pos.setTextColor(a.getResources().getColor(R.color.brand1));
+            pos.setTextColor(Skin.c(a, R.attr.wpBrand));
             row.addView(pos, new android.widget.LinearLayout.LayoutParams(0, (int) (48 * d), 1));
             pos.setOnClickListener(new View.OnClickListener() {
                 @Override public void onClick(View v) {
@@ -184,6 +185,7 @@ public class Ui {
                  wlp.windowAnimations = R.style.Anim_Dialog_Card;   // Window 没有动画 setter，只能走 LayoutParams
                  dialogRef[0].getWindow().setAttributes(wlp); } catch (Exception ignored) {}
         }
+        Fonts.scaleTree(card, a);
         dialogRef[0].show();
         stripDialogPanel(dialogRef[0], card);
         return dialogRef[0];
@@ -208,7 +210,7 @@ public class Ui {
         tv.setText(title);
         tv.setTextSize(17f);
         tv.setTypeface(tv.getTypeface(), android.graphics.Typeface.BOLD);
-        tv.setTextColor(a.getResources().getColor(R.color.text_primary));
+        tv.setTextColor(Skin.c(a, R.attr.wpText));
         card.addView(tv, new android.widget.LinearLayout.LayoutParams(
                 android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
                 android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
@@ -246,7 +248,7 @@ public class Ui {
             neg.setText(negLabel);
             neg.setGravity(android.view.Gravity.CENTER);
             neg.setTextSize(13.5f);
-            neg.setTextColor(a.getResources().getColor(R.color.text_secondary));
+            neg.setTextColor(Skin.c(a, R.attr.wpText2));
             android.widget.LinearLayout.LayoutParams nlp = new android.widget.LinearLayout.LayoutParams(
                     android.widget.LinearLayout.LayoutParams.MATCH_PARENT, (int) (40 * d));
             nlp.topMargin = (int) (2 * d);
@@ -268,6 +270,7 @@ public class Ui {
                  wlp.windowAnimations = R.style.Anim_Dialog_Card;   // Window 没有动画 setter，只能走 LayoutParams
                  dialogRef[0].getWindow().setAttributes(wlp); } catch (Exception ignored) {}
         }
+        Fonts.scaleTree(card, a);
         dialogRef[0].show();
         stripDialogPanel(dialogRef[0], card);
         return dialogRef[0];
@@ -287,6 +290,7 @@ public class Ui {
                  wlp.windowAnimations = R.style.Anim_Dialog_Card;   // Window 没有动画 setter，只能走 LayoutParams
                  dlg.getWindow().setAttributes(wlp); } catch (Exception ignored) {}
         }
+        Fonts.scaleTree(card, a);
         dlg.show();
         stripDialogPanel(dlg, card);
         return dlg;
@@ -395,7 +399,7 @@ public class Ui {
         }
     }
 
-    /** 状态栏图标保持浅色（头部是深色渐变/纯色 status_bar） */
+    /** 状态栏图标保持浅色（头部是深色渐变/纯色 status_bar），并把配色方案应用到系统栏 */
     public static void applyWindow(Activity a) {
         if (Build.VERSION.SDK_INT >= 23) {
             View decor = a.getWindow().getDecorView();
@@ -403,5 +407,83 @@ public class Ui {
             vis &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
             decor.setSystemUiVisibility(vis);
         }
+        Skin.applyBars(a);
+    }
+
+    /**
+     * 程序化页面的统一顶栏（渐变 + 返回 + 标题 + 可选右侧按钮文字）。
+     * 查词/收藏/词本/战绩这些页面直接用它拼，省掉一堆各自为政的 XML。
+     */
+    public static LinearLayout screenHeader(final Activity a, String title, final boolean back, String action, final Runnable onAction) {
+        LinearLayout head = new LinearLayout(a);
+        head.setOrientation(LinearLayout.VERTICAL);
+        head.setBackgroundResource(R.drawable.bg_header_small);
+        head.setFitsSystemWindows(true);
+        int ph = (int) dp(a, 14);
+        head.setPadding(ph, (int) dp(a, 8), ph, (int) dp(a, 16));
+
+        LinearLayout row = new LinearLayout(a);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, (int) dp(a, 40)));
+
+        if (back) {
+            android.widget.ImageView b = new android.widget.ImageView(a);
+            b.setImageResource(R.drawable.ic_back);
+            b.setPadding((int) dp(a, 10), (int) dp(a, 10), (int) dp(a, 10), (int) dp(a, 10));
+            b.setBackgroundResource(R.drawable.bg_pill_white20);
+            b.setColorFilter(0xFFFFFFFF);
+            row.addView(b, new LinearLayout.LayoutParams((int) dp(a, 40), (int) dp(a, 40)));
+            b.setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) { a.finish(); }
+            });
+            View gap = new View(a);
+            row.addView(gap, new LinearLayout.LayoutParams((int) dp(a, 12), 1));
+        }
+
+        TextView tv = new TextView(a);
+        tv.setText(title);
+        tv.setTextSize(17f);
+        tv.setTextColor(0xFFFFFFFF);
+        tv.setTypeface(typeface(a, true));
+        row.addView(tv, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+
+        if (action != null) {
+            TextView act = new TextView(a);
+            act.setText(action);
+            act.setTextSize(13.5f);
+            act.setTextColor(0xFFFFFFFF);
+            act.setBackgroundResource(R.drawable.bg_pill_white20);
+            act.setPadding((int) dp(a, 12), (int) dp(a, 6), (int) dp(a, 12), (int) dp(a, 6));
+            act.setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) { safeRun(onAction); }
+            });
+            row.addView(act);
+        }
+        head.addView(row);
+        return head;
+    }
+
+    static android.graphics.Typeface typeface(Context c, boolean bold) {
+        return Fonts.typeface(c, bold);
+    }
+
+    /** 带主题的 ColorStateList（selector 里写的是 ?attr/…，必须用主题解析，否则报 type=0x2） */
+    public static android.content.res.ColorStateList stateList(Context c, int res) {
+        try {
+            return c.getResources().getColorStateList(res, c.getTheme());
+        } catch (Throwable t) {
+            try { return c.getResources().getColorStateList(res); } catch (Throwable t2) { return null; }
+        }
+    }
+
+    /**
+     * 统一的「页面收尾」：挂配色皮肤 → 系统栏配色 → 字体与大屏自适应。
+     * 每个 Activity 的 onCreate 里 setContentView 之后调用一次即可。
+     */
+    public static void finishSetup(Activity a) {
+        Skin.applyBars(a);
+        Fonts.scaleTree(a.findViewById(android.R.id.content), a);
     }
 }

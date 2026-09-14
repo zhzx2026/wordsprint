@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  配色方案（皮肤）= 只覆盖 wp* 主题属性的 overlay，由 Skin.java 在 Activity.onCreate 里
+  用 getTheme().applyStyle(...) 挂到当前页面上（浅色/深色各一套）。
+  ⚠️ 这里绝不写 window* / windowIsTranslucent 这类窗口级属性：那会让 Sheet 透明底、
+     扫码页黑底、深色模式统统失效（applyStyle 发生在窗口创建之后）。
+  默认配色（暖纸风）不在这里 —— 它就是 Theme.WordsPrint.Base 的默认值，不挂 overlay。
+-->
+<resources>
+
+    <!-- ================= 1 · 松林（森林绿） ================= -->
+    <style name="Skin.S1">
+        <item name="wpBg">#F1F6F1</item>
+        <item name="wpSurface">#FFFFFF</item>
+        <item name="wpBrand">#0E9F5E</item>
+        <item name="wpBrand2">#24B47E</item>
+        <item name="wpBrandSoft">#E3F4EA</item>
+        <item name="wpHeaderStart">#0C2C22</item>
+        <item name="wpHeaderEnd">#12A870</item>
+        <item name="wpLine">#DFE9E1</item>
+        <item name="wpChipBg">#E4EDE6</item>
+        <item name="wpStatusBar">#0C2C22</item>
+        <item name="wpCardStroke">#140C6E4E</item>
+        <item name="wpTrack">#14000000</item>
+        <item name="wpGreen">#12A870</item>
+        <item name="wpGreen1">#0E9F5E</item>
+        <item name="wpGreen2">#1EC97B</item>
+    </style>
+    <style name="Skin.S1d">
+        <item name="wpBg">#0F1A16</item>
+        <item name="wpSurface">#17241E</item>
+        <item name="wpBrand">#2EBD85</item>
+        <item name="wpBrand2">#4BD69C</item>
+        <item name="wpBrandSoft">#1D3B2E</item>
+        <item name="wpHeaderStart">#0A1F19</item>
+        <item name="wpHeaderEnd">#157A55</item>
+        <item name="wpLine">#22352C</item>
+        <item name="wpChipBg">#1D2E26</item>
+        <item name="wpStatusBar">#0A1F19</item>
+        <item name="wpCardStroke">#2A3548</item>
+        <item name="wpTrack">#2A3548</item>
+        <item name="wpGreen">#2EBD85</item>
+        <item name="wpGreen1">#12B36C</item>
+        <item name="wpGreen2">#1EC97B</item>
+    </style>
+
+    <!-- ================= 2 · 落日（暖橙） ================= -->
+    <style name="Skin.S2">
+        <item name="wpBg">#FBF3EA</item>
+        <item name="wpSurface">#FFFFFF</item>
+        <item name="wpBrand">#E8590C</item>
+        <item name="wpBrand2">#F97316</item>
+        <item name="wpBrandSoft">#FDEEE3</item>
+        <item name="wpHeaderStart">#3A1503</item>
+        <item name="wpHeaderEnd">#F08C00</item>
+        <item name="wpLine">#F0E2D3</item>
+        <item name="wpChipBg">#F1E5D8</item>
+        <item name="wpStatusBar">#3A1503</item>
+        <item name="wpCardStroke">#14C05621</item>
+        <item name="wpTrack">#14000000</item>
+        <item name="wpGreen">#12A870</item>
+        <item name="wpGreen1">#0E9F5E</item>
+        <item name="wpGreen2">#1EC97B</item>
+    </style>
+    <style name="Skin.S2d">
+        <item name="wpBg">#1A120C</item>
+        <item name="wpSurface">#251B14</item>
+        <item name="wpBrand">#FF8A3D</item>
+        <item name="wpBrand2">#FFA057</item>
+        <item name="wpBrandSoft">#3A2418</item>
+        <item name="wpHeaderStart">#2A0F05</item>
+        <item name="wpHeaderEnd">#B25F00</item>
+        <item name="wpLine">#33261C</item>
+        <item name="wpChipBg">#2E221A</item>
+        <item name="wpStatusBar">#2A0F05</item>
+        <item name="wpCardStroke">#2A3548</item>
+        <item name="wpTrack">#2A3548</item>
+        <item name="wpGreen">#2EBD85</item>
+        <item name="wpGreen1">#12B36C</item>
+        <item name="wpGreen2">#1EC97B</item>
+    </style>
+
+    <!-- ================= 3 · 莓红（玫瑰） ================= -->
+    <style name="Skin.S3">
+        <item name="wpBg">#FCF2F5</item>
+        <item name="wpSurface">#FFFFFF</item>
+        <item name="wpBrand">#D6336C</item>
+        <item name="wpBrand2">#E8598A</item>
+        <item name="wpBrandSoft">#FBE4EC</item>
+        <item name="wpHeaderStart">#3A0C20</item>
+        <item name="wpHeaderEnd">#E64980</item>
+        <item name="wpLine">#F1DCE3</item>
+        <item name="wpChipBg">#F2DEE5</item>
+        <item name="wpStatusBar">#3A0C20</item>
+        <item name="wpCardStroke">#14D6336C</item>
+        <item name="wpTrack">#14000000</item>
+        <item name="wpGreen">#12A870</item>
+        <item name="wpGreen1">#0E9F5E</item>
+        <item name="wpGreen2">#1EC97B</item>
+    </style>
+    <style name="Skin.S3d">
+        <item name="wpBg">#1B1013</item>
+        <item name="wpSurface">#261A1F</item>
+        <item name="wpBrand">#F06595</item>
+        <item name="wpBrand2">#F78CB4</item>
+        <item name="wpBrandSoft">#3B2230</item>
+        <item name="wpHeaderStart">#2A0A17</item>
+        <item name="wpHeaderEnd">#B02E5B</item>
+        <item name="wpLine">#34222A</item>
+        <item name="wpChipBg">#2F1F26</item>
+        <item name="wpStatusBar">#2A0A17</item>
+        <item name="wpCardStroke">#2A3548</item>
+        <item name="wpTrack">#2A3548</item>
+        <item name="wpGreen">#2EBD85</item>
+        <item name="wpGreen1">#12B36C</item>
+        <item name="wpGreen2">#1EC97B</item>
+    </style>
+
+    <!-- ================= 4 · 深海（靛青） ================= -->
+    <style name="Skin.S4">
+        <item name="wpBg">#EEF6F8</item>
+        <item name="wpSurface">#FFFFFF</item>
+        <item name="wpBrand">#0B7285</item>
+        <item name="wpBrand2">#1098AD</item>
+        <item name="wpBrandSoft">#E0F0F3</item>
+        <item name="wpHeaderStart">#062A33</item>
+        <item name="wpHeaderEnd">#15AABF</item>
+        <item name="wpLine">#D8E7EA</item>
+        <item name="wpChipBg">#DFEBEE</item>
+        <item name="wpStatusBar">#062A33</item>
+        <item name="wpCardStroke">#140B7285</item>
+        <item name="wpTrack">#14000000</item>
+        <item name="wpGreen">#12A870</item>
+        <item name="wpGreen1">#0E9F5E</item>
+        <item name="wpGreen2">#1EC97B</item>
+    </style>
+    <style name="Skin.S4d">
+        <item name="wpBg">#0C171A</item>
+        <item name="wpSurface">#14242A</item>
+        <item name="wpBrand">#22B8CF</item>
+        <item name="wpBrand2">#3BC9DB</item>
+        <item name="wpBrandSoft">#16323A</item>
+        <item name="wpHeaderStart">#051F26</item>
+        <item name="wpHeaderEnd">#0F7C8C</item>
+        <item name="wpLine">#1E333A</item>
+        <item name="wpChipBg">#1A2E34</item>
+        <item name="wpStatusBar">#051F26</item>
+        <item name="wpCardStroke">#2A3548</item>
+        <item name="wpTrack">#2A3548</item>
+        <item name="wpGreen">#2EBD85</item>
+        <item name="wpGreen1">#12B36C</item>
+        <item name="wpGreen2">#1EC97B</item>
+    </style>
+</resources>

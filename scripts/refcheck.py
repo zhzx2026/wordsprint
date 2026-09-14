@@ -1,0 +1,246 @@
+#!/usr/bin/env python3
+"""
+无 Gradle / 无 javac 环境下的一道粗筛：把「改完没编译过」最容易踩的坑先扫一遍。
+
+为什么需要它：本仓库的发版依赖 aapt2 + javac + d8（见 build.sh），本地/沙箱不一定有
+JDK；改完一大堆 Java 时，一个不存在的方法名、一个拼错的 R.id、少注册的 Activity，
+都能等到 CI 才炸。这个脚本用文本分析替代编译器，覆盖这些高频问题：
+
+  1. 资源引用：R.string / R.id / R.layout / R.drawable / ?attr 是否真的存在
+  2. 自定义类成员：Xxx.member 是否在 Xxx 里有声明（防手滑改名）
+  3. 调用参数个数：Xxx.m(args) 与 Xxx 里同名方法的参数个数是否对得上
+  4. 重复声明：同一个类里出现两次同名同参数类型的方法
+  5. 括号配平：文件被截断/粘贴漏行
+  6. AndroidManifest：Activity 是否注册、引用的类是否存在
+
+它不是编译器，别拿它当 CI 的替代品 —— 只是编辑期间的即时反馈。
+用法：python3 scripts/refcheck.py
+"""
+import os
+import re
+import sys
+import collections
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SRC = os.path.join(ROOT, 'src/com/aidemo/wordsprint')
+RES = os.path.join(ROOT, 'res')
+
+
+def read(p):
+    return open(p, encoding='utf-8').read()
+
+
+def strip_code(t):
+    """去掉注释与字符串字面量，括号/逗号计数才不会误判"""
+    t = re.sub(r'/\*.*?\*/', ' ', t, flags=re.S)
+    t = re.sub(r'//[^\n]*', ' ', t)
+    t = re.sub(r'"(?:\\.|[^"\\])*"', '""', t)
+    return re.sub(r"'(?:\\.|[^'\\])*'", "''", t)
+
+
+def balance_problems(texts):
+    out = []
+    for cls, t in texts.items():
+        st, line, p, b, sq = None, 1, 0, 0, 0
+        i = 0
+        while i < len(t):
+            c = t[i]
+            if st is None:
+                if c == '\n':
+                    line += 1
+                elif c == '"':
+                    st = 'str'
+                elif c == "'":
+                    st = 'chr'
+                elif c == '/' and i + 1 < len(t) and t[i + 1] == '/':
+                    st = 'line'
+                elif c == '/' and i + 1 < len(t) and t[i + 1] == '*':
+                    st = 'blk'
+                    i += 1
+                elif c == '(':
+                    p += 1
+                elif c == ')':
+                    p -= 1
+                elif c == '{':
+                    b += 1
+                elif c == '}':
+                    b -= 1
+                elif c == '[':
+                    sq += 1
+                elif c == ']':
+                    sq -= 1
+                if min(p, b, sq) < 0:
+                    out.append('%s.java:%d 括号配平被打破' % (cls, line))
+                    break
+            else:
+                if c == '\n':
+                    line += 1
+                    if st == 'line':
+                        st = None
+                elif st == 'str':
+                    if c == '\\':
+                        i += 1
+                    elif c == '"':
+                        st = None
+                elif st == 'chr':
+                    if c == '\\':
+                        i += 1
+                    elif c == "'":
+                        st = None
+                elif st == 'blk' and c == '*' and i + 1 < len(t) and t[i + 1] == '/':
+                    st = None
+                    i += 1
+            i += 1
+        if (p, b, sq) != (0, 0, 0):
+            out.append('%s.java 结尾括号没配平：()=%d {}=%d []=%d' % (cls, p, b, sq))
+    return out
+
+
+def resources():
+    strings = set(re.findall(r'<string name="([^"]+)"', read(os.path.join(RES, 'values/strings.xml'))))
+    values = set()                     # values/ 下的 color/dimen/bool/integer/array（R.color.x 等）
+    for d in ('values', 'values-night'):
+        p = os.path.join(RES, d)
+        if not os.path.isdir(p):
+            continue
+        for f in os.listdir(p):
+            if f.endswith('.xml'):
+                values |= set(re.findall(r'<(?:color|dimen|bool|integer|integer-array|string-array)\s+name="([^"]+)"',
+                                         read(os.path.join(p, f))))
+    names = set()
+    for d in ('layout', 'drawable', 'xml', 'menu', 'font', 'raw', 'anim', 'color'):
+        p = os.path.join(RES, d)
+        if os.path.isdir(p):
+            for f in os.listdir(p):
+                names.add(f.rsplit('.', 1)[0])
+    for f in os.listdir(os.path.join(RES, 'layout')):
+        if f.endswith('.xml'):
+            names |= set(re.findall(r'@\+id/(\w+)', read(os.path.join(RES, 'layout', f))))
+    styles = set()
+    for f in ('values/styles.xml', 'values/attrs.xml', 'values/skins.xml'):
+        p = os.path.join(RES, f)
+        if os.path.exists(p):
+            t = read(p)
+            styles |= set(re.findall(r'<(?:style|attr|declare-styleable) name="([^"]+)"', t))
+            styles |= set(re.findall(r'<item name="([^"]+)"', t))
+    # style 名里的点会被 R 变成下划线：<style name="Skin.S1"> → R.style.Skin_S1
+    for st in list(styles):
+        styles.add(st.replace('.', '_'))
+    return strings, names, styles, values
+
+
+def main():
+    texts = {}
+    for f in sorted(os.listdir(SRC)):
+        if f.endswith('.java'):
+            texts[f[:-5]] = read(os.path.join(SRC, f))
+
+    problems = balance_problems(texts)
+
+    strings, names, styles, values = resources()
+    for cls, t in texts.items():
+        for m in re.finditer(r'(?<![\w.])R\.(string|id|layout|drawable|style|attr|color|raw|array|font|anim)\.(\w+)', t):
+            kind, name = m.group(1), m.group(2)
+            if kind == 'string':
+                ok = name in strings
+            elif kind in ('style', 'attr'):
+                ok = name in styles or name in names
+            elif kind == 'color':
+                ok = name in values or name in names
+            else:
+                ok = name in names or name in values
+            if not ok:
+                problems.append('%s.java:%d  R.%s.%s 不存在' % (cls, t[:m.start()].count('\n') + 1, kind, name))
+    for d in ('layout', 'drawable', 'values', 'values-night'):
+        p = os.path.join(RES, d)
+        if not os.path.isdir(p):
+            continue
+        for f in sorted(os.listdir(p)):
+            if not f.endswith('.xml'):
+                continue
+            t = read(os.path.join(p, f))
+            for m in re.finditer(r'"@(?:\+)?(string|drawable|color|style|id|attr|layout|font|raw)/([A-Za-z0-9_.]+)"', t):
+                kind, name = m.group(1), m.group(2)
+                if kind == 'string':
+                    ok = name in strings
+                elif kind == 'color':
+                    ok = name in values or name in names
+                else:
+                    ok = name in names or name in styles or name in values
+                if not ok:
+                    problems.append('res/%s/%s  @%s/%s 不存在' % (d, f, kind, name))
+            for m in re.finditer(r'\?attr/(\w+)', t):
+                if m.group(1) not in styles and m.group(1) != 'wpXxx':   # 注释里的示意名
+                    problems.append('res/%s/%s  ?attr/%s 不存在' % (d, f, m.group(1)))
+
+    decls = collections.defaultdict(lambda: collections.defaultdict(set))
+    for cls, raw in texts.items():
+        t = strip_code(raw)
+        for m in re.finditer(r'(?<!\bnew\s)^    (?:(?:public|private|protected|static|final|synchronized|abstract|native|@\w+)\s+)*'
+                             r'([A-Za-z_][\w<>\[\], .]*?)\s+(\w+)\s*\(([^;{}()]*?)\)\s*(?:throws [\w,. ]+)?\s*[{;]', t, re.M):
+            decls[cls][m.group(2)].add(count_params(m.group(3)))
+
+    for cls, raw in texts.items():
+        t = strip_code(raw)
+        seen = collections.defaultdict(list)
+        for m in re.finditer(r'(?<!\bnew\s)^    (?:(?:public|private|protected|static|final|synchronized|abstract|native|@\w+)\s+)*'
+                             r'([A-Za-z_][\w<>\[\], .]*?)\s+(\w+)\s*\(([^;{}()]*?)\)\s*(?:throws [\w,. ]+)?\s*[{;]', t, re.M):
+            seen[(m.group(2), param_key(m.group(3)))].append(raw[:m.start()].count('\n') + 1)
+        for k, lines in seen.items():
+            if len(lines) > 1:
+                problems.append('%s.java 重复声明 %s(%s) 行 %s' % (cls, k[0], k[1], lines))
+        for m in re.finditer(r'(?<![\w.])([A-Z]\w*)\.(\w+)\s*\(', t):
+            c, mem = m.group(1), m.group(2)
+            if mem in ('this', 'class', 'super') or c not in decls or mem not in decls[c]:
+                continue
+            start = m.end() - 1
+            depth, i = 0, start
+            while i < len(t):
+                if t[i] == '(':
+                    depth += 1
+                elif t[i] == ')':
+                    depth -= 1
+                    if depth == 0:
+                        break
+                i += 1
+            n = count_params(t[start + 1:i])
+            if n not in decls[c][mem]:
+                problems.append('%s.java:%d  %s.%s(%d 参) 与声明 %s 不符'
+                                % (cls, raw[:m.start()].count('\n') + 1, c, mem, n, sorted(decls[c][mem])))
+
+    man = os.path.join(ROOT, 'AndroidManifest.xml')
+    if os.path.exists(man):
+        t = read(man)
+        registered = set(m.group(1) for m in re.finditer(r'android:name="\.(\w+)"', t))
+        for name in sorted(registered):
+            if name + '.java' not in [c + '.java' for c in texts]:
+                problems.append('AndroidManifest 引用的 %s 类不存在' % name)
+        for cls, raw in texts.items():
+            if re.search(r'class \w+ extends (Activity|android\.app\.Activity)', raw) and cls not in registered:
+                problems.append('%s 是 Activity 但 Manifest 没注册' % cls)
+
+    print('\n'.join(sorted(set(problems))) if problems else 'OK：资源 / 成员 / 参数 / 重复声明 / 括号 / Manifest 全部通过')
+    return 1 if problems else 0
+
+
+def count_params(s):
+    if not s.strip():
+        return 0
+    depth, n = 0, 1
+    for ch in s:
+        if ch in '(<[{':
+            depth += 1
+        elif ch in ')>]}':
+            depth -= 1
+        elif ch == ',' and depth == 0:
+            n += 1
+    return n
+
+
+def param_key(s):
+    return ','.join(re.sub(r'\s+', ' ', p).strip().rsplit(' ', 1)[0].replace('final ', '')
+                    for p in s.split(',') if p.strip())
+
+
+if __name__ == '__main__':
+    sys.exit(main())

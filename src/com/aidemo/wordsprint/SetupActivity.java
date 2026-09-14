@@ -37,6 +37,7 @@ public class SetupActivity extends Activity {
     @Override protected void onCreate(Bundle b) {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         super.onCreate(b);
+        Skin.apply(this);                       // 配色/字体/字号：必须在 setContentView 之前
         setContentView(R.layout.sheet_setup);
         setFinishOnTouchOutside(true);
         Db.ensureLoaded(this);
@@ -138,7 +139,7 @@ public class SetupActivity extends Activity {
                 android.widget.TextView body = new android.widget.TextView(SetupActivity.this);
                 body.setText(getString(R.string.reset_confirm, book.display()));
                 body.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f);
-                body.setTextColor(getResources().getColor(R.color.text_secondary));
+                body.setTextColor(Skin.c(this, R.attr.wpText2));
                 body.setLineSpacing(Ui.dp(SetupActivity.this, 4), 1f);
                 Ui.cardDialog(SetupActivity.this, getString(R.string.reset_progress), body,
                         getString(R.string.reset_yes), new Runnable() {
@@ -169,7 +170,7 @@ public class SetupActivity extends Activity {
         et.setHint(getString(R.string.size_hint));
         et.setText(String.valueOf(size));
         et.setTextSize(17);
-        et.setTextColor(getResources().getColor(R.color.text_primary));
+        et.setTextColor(Skin.c(this, R.attr.wpText));
         et.setBackgroundResource(R.drawable.bg_card_field);
         et.setTypeface(android.graphics.Typeface.MONOSPACE);
         int pd = (int) Ui.dp(this, 14);
@@ -195,7 +196,7 @@ public class SetupActivity extends Activity {
         int done = m.cardinality();
         int wrong = p.wrongs(book.id, book.n).cardinality();
         int pct = book.n == 0 ? 0 : done * 100 / book.n;
-        ring.setProgress(pct, getResources().getColor(R.color.text_primary), getResources().getColor(R.color.text_secondary));
+        ring.setProgress(pct, Skin.c(this, R.attr.wpText), Skin.c(this, R.attr.wpText2));
         tvStats.setText(getString(R.string.sheet_stats, done, book.n - done, wrong));
         tvCta.setText(done == 0 ? getString(R.string.start_brush_group, size)
                 : getString(R.string.continue_brush_group, p.next(book.id) / Math.max(1, size) + 1));
@@ -204,6 +205,7 @@ public class SetupActivity extends Activity {
         ((TextView) findViewById(R.id.btnReview)).setEnabled(true);
         tvLagVal.setText(getString(R.string.lag_n, lag));
         sizeRowHighlight();
+        Ui.finishSetup(this);                   // 字号自适应/大屏放大统一在这里收口
     }
 
     private void sizeRowHighlight() {

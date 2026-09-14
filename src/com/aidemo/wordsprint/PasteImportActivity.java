@@ -33,9 +33,14 @@ public class PasteImportActivity extends Activity {
     private TextView status, copyDiag;
     private String lastDiag = "";
 
+    @Override protected void attachBaseContext(android.content.Context base) {
+        super.attachBaseContext(Night.wrap(base));
+    }
+
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+        Skin.apply(this);
         setContentView(R.layout.activity_paste_import);
         et = (EditText) findViewById(R.id.etCode);
         status = (TextView) findViewById(R.id.tvStatus);
@@ -78,6 +83,7 @@ public class PasteImportActivity extends Activity {
                 toast(ok ? str(R.string.diag_copied) : str(R.string.copy_fail));
             }
         });
+        Ui.finishSetup(this);
     }
 
     private void doImport() {

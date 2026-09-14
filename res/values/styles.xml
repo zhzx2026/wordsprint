@@ -1,6 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.WordsPrint" parent="android:Theme.Material.Light.NoActionBar">
+    <!--
+      主题基线：定义全部 wp* 配色属性（默认 = 暖纸风）。所有页面主题都从它继承，
+      于是「?attr/wpXxx」永远能解析；换配色 = Skin.java 在 onCreate 里 applyStyle 一层 overlay。
+    -->
+    <style name="Theme.WordsPrint.Base" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- ===== 配色方案默认值（暖纸风）；皮肤 overlay 只覆盖这些属性 ===== -->
+        <item name="wpBg">@color/bg</item>
+        <item name="wpSurface">@color/surface</item>
+        <item name="wpText">@color/text_primary</item>
+        <item name="wpText2">@color/text_secondary</item>
+        <item name="wpBrand">@color/brand1</item>
+        <item name="wpBrand2">@color/brand2</item>
+        <item name="wpBrandSoft">@color/brand_soft</item>
+        <item name="wpHeaderStart">@color/header_grad_start</item>
+        <item name="wpHeaderEnd">@color/header_grad_end</item>
+        <item name="wpLine">@color/line</item>
+        <item name="wpChipBg">@color/chip_bg</item>
+        <item name="wpStatusBar">@color/status_bar</item>
+        <item name="wpGreen">@color/green</item>
+        <item name="wpGreenBg">@color/green_bg</item>
+        <item name="wpGreen1">@color/green_grad1</item>
+        <item name="wpGreen2">@color/green_grad2</item>
+        <item name="wpRed">@color/red</item>
+        <item name="wpRedBg">@color/red_bg</item>
+        <item name="wpAmber">@color/amber</item>
+        <item name="wpTrack">@color/track</item>
+        <item name="wpCardStroke">@color/card_stroke</item>
         <item name="android:windowBackground">@color/bg</item>
         <item name="android:statusBarColor">@color/status_bar</item>
         <item name="android:navigationBarColor">@color/bg</item>
@@ -11,19 +37,14 @@
         <item name="android:windowAnimationStyle">@style/Anim.Activity</item>
     </style>
 
+    <style name="Theme.WordsPrint" parent="Theme.WordsPrint.Base"/>
+
     <!-- 刷词页 / 深色页（扫码）：状态栏图标恒为浅色 -->
-    <style name="Theme.WordsPrint.Dark" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@color/bg</item>
-        <item name="android:statusBarColor">@color/status_bar</item>
-        <item name="android:navigationBarColor">@color/bg</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="android:textColorPrimary">@color/text_primary</item>
-        <item name="android:textColorSecondary">@color/text_secondary</item>
-        <item name="android:colorAccent">@color/brand1</item>
+    <style name="Theme.WordsPrint.Dark" parent="Theme.WordsPrint.Base">
         <item name="android:windowAnimationStyle">@style/Anim.PushUp</item>
     </style>
 
-    <style name="Theme.WordsPrint.Scan" parent="Theme.WordsPrint.Dark">
+<style name="Theme.WordsPrint.Scan" parent="Theme.WordsPrint.Dark">
         <item name="android:windowBackground">@android:color/black</item>
         <item name="android:statusBarColor">@android:color/black</item>
         <item name="android:navigationBarColor">@android:color/black</item>
@@ -43,14 +64,14 @@
         <item name="android:activityCloseExitAnimation">@anim/act_slide_out_down</item>
     </style>
 
-    <style name="Sheet" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="Sheet" parent="Theme.WordsPrint.Base">
         <item name="android:windowBackground">@color/transparent</item>
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowAnimationStyle">@style/Anim.Sheet</item>
         <item name="android:backgroundDimEnabled">true</item>
         <item name="android:backgroundDimAmount">0.45</item>
         <item name="android:statusBarColor">#66000000</item>
-        <item name="android:colorAccent">@color/brand1</item>
+        <item name="android:colorAccent">?attr/wpBrand</item>
     </style>
 
     <style name="Anim.Sheet" parent="@android:style/Animation.Dialog">
@@ -66,7 +87,7 @@
 
     <style name="Label">
         <item name="android:textSize">11sp</item>
-        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textColor">?attr/wpText2</item>
         <item name="android:letterSpacing">0.12</item>
     </style>
 
@@ -74,7 +95,7 @@
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:textSize">13sp</item>
-        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textColor">?attr/wpText2</item>
         <item name="android:textStyle">bold</item>
         <item name="android:paddingStart">4dp</item>
         <item name="android:paddingBottom">8dp</item>
@@ -98,13 +119,13 @@
     <style name="SettingTitle">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textColor">?attr/wpText</item>
         <item name="android:textSize">15sp</item>
     </style>
     <style name="SettingDesc">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
-        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textColor">?attr/wpText2</item>
         <item name="android:textSize">11.5sp</item>
         <item name="android:layout_marginTop">3dp</item>
     </style>
@@ -117,7 +138,7 @@
     <style name="SettingDivider">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">1dp</item>
-        <item name="android:background">@color/line</item>
+        <item name="android:background">?attr/wpLine</item>
     </style>
 
     <style name="StatVal">
@@ -125,13 +146,13 @@
         <item name="android:layout_height">wrap_content</item>
         <item name="android:textSize">21sp</item>
         <item name="android:textStyle">bold</item>
-        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textColor">?attr/wpText</item>
     </style>
     <style name="StatLbl">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:textSize">11sp</item>
-        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textColor">?attr/wpText2</item>
         <item name="android:layout_marginTop">3dp</item>
     </style>
 </resources>
