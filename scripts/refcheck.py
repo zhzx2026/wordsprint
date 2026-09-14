@@ -208,6 +208,26 @@ def main():
                 problems.append('%s.java:%d  %s.%s(%d 参) 与声明 %s 不符'
                                 % (cls, raw[:m.start()].count('\n') + 1, c, mem, n, sorted(decls[c][mem])))
 
+    # 「匿名类里的 this」：new Xxx() { ... this ... } 里的 this 是匿名类自己，
+    # 传给要 Context/Activity/View 的方法就编译不过（CI 抓过一次，规则写回脚本里）
+    risky = ('this,', 'this)', 'this.', 'this ')
+    for cls, raw in texts.items():
+        t = strip_code(raw)
+        for m in re.finditer(r'\bnew\s+[\w.<>\[\], ]*?\s*\(\s*[^()]*?\)\s*\{', t):
+            depth, i = 1, m.end()
+            while i < len(t) and depth > 0:
+                if t[i] == '{':
+                    depth += 1
+                elif t[i] == '}':
+                    depth -= 1
+                i += 1
+            body = t[m.end():i]
+            base = m.start()
+            for cm in re.finditer(r'(?<![\w.])this(?![\w])', body):
+                ctx = body[max(0, cm.start() - 40):cm.start() + 8].replace('\n', ' ')
+                problems.append('%s.java:%d  匿名类里的 this（%s…）：要写 外层类.this 或 getContext()'
+                                % (cls, raw[:base + cm.start()].count('\n') + 1, ctx.strip()))
+
     # 「String 当数组用」：字符串是 length()，数组才是 .length —— 这类手滑 CI 才炸，先拦下来
     for cls, raw in texts.items():
         t = strip_code(raw)

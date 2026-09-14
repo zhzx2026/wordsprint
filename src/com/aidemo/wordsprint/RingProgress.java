@@ -48,9 +48,9 @@ public class RingProgress extends View {
         float pad = arc.getStrokeWidth() / 2 + 2;
         rct.set(pad, pad, w - pad, h - pad);
         SweepGradient g = new SweepGradient(w / 2f, h / 2f, new int[]{
-                Skin.c(this, R.attr.wpBrand),
-                Skin.c(this, R.attr.wpBrand2),
-                Skin.c(this, R.attr.wpBrand)}, null);
+                Skin.c(getContext(), R.attr.wpBrand),      // View 里没有 Activity 的 this，取 getContext()
+                Skin.c(getContext(), R.attr.wpBrand2),
+                Skin.c(getContext(), R.attr.wpBrand)}, null);
         arc.setShader(g);
     }
 

@@ -139,7 +139,7 @@ public class SetupActivity extends Activity {
                 android.widget.TextView body = new android.widget.TextView(SetupActivity.this);
                 body.setText(getString(R.string.reset_confirm, book.display()));
                 body.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f);
-                body.setTextColor(Skin.c(this, R.attr.wpText2));
+                body.setTextColor(Skin.c(SetupActivity.this, R.attr.wpText2));
                 body.setLineSpacing(Ui.dp(SetupActivity.this, 4), 1f);
                 Ui.cardDialog(SetupActivity.this, getString(R.string.reset_progress), body,
                         getString(R.string.reset_yes), new Runnable() {
