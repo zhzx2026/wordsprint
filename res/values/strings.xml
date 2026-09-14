@@ -274,8 +274,10 @@
     <string name="ges_long">长按单词 = 查词详情</string>
     <string name="ges_once">手势：上滑收藏 · 下滑看释义 · 左右滑判定</string>
 
-    <string name="set_theme_title">配色方案</string>
-    <string name="set_theme_desc">换配色不影响深色模式；顶栏、按钮、热力图都会跟着变</string>
+    <string name="set_theme_title">深色模式</string>
+    <string name="set_theme_desc">跟随系统，或一直浅色 / 一直深色</string>
+    <string name="set_skin_title">配色方案</string>
+    <string name="set_skin_desc">五套配色，点一下立刻换；与深浅色各自独立</string>
     <string name="set_font_title">字体</string>
     <string name="set_font_poppins">Poppins</string>
     <string name="set_font_quicksand">Quicksand</string>
@@ -346,9 +348,6 @@
     <string name="set_phonetic_desc">单词下方显示音标</string>
     <string name="set_sound_desc">记住 / 回炉的轻音效与振动</string>
     <string name="set_anim_desc">释义淡入与换卡动画</string>
-    <string name="set_skin_title">配色方案</string>
-    <string name="set_skin_desc">五套配色，点一下立刻换</string>
-    <string name="set_theme_title">深浅色</string>
     <string name="default_size_desc">每组刷多少词</string>
     <string name="profile_rename">改名</string>
     <string name="ges_subtitle">六个位置，各挑一个动作</string>
@@ -356,7 +355,6 @@
     <string name="export_progress">导出 / 导入进度码</string>
     <string name="plan_import_desc2">扫码或粘贴「词本配置码」，导入时可选替换或合并</string>
     <string name="update_src_title">更新源</string>
-    <string name="update_auto">自动提示更新</string>
     <string name="update_auto_desc">启动时轻量检查一次，有新版再提示</string>
     <string name="update_check_now">检查更新</string>
     <string name="update_desc">覆盖安装不丢进度</string>

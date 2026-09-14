@@ -17,7 +17,9 @@ JDK；改完一大堆 Java 时，一个不存在的方法名、一个拼错的 R
 用法：python3 scripts/refcheck.py
 """
 import os
+import glob
 import re
+from collections import Counter
 import sys
 import collections
 
@@ -282,6 +284,15 @@ def main():
             if m and 'import' not in line:
                 problems.append('%s.java:%d  主机侧单测源码（run_tests.sh 会单编它）不能引用 %s：%s'
                                 % (name, i, m.group(1), line.strip()[:50]))
+
+    # 「资源重名」：同名 <string>/<style>/<color> 会在 aapt 阶段直接报 duplicate，本地先拦下来
+    for vf in sorted(glob.glob('res/values/*.xml')):
+        raw = open(vf, encoding='utf-8').read()
+        raw = re.sub(r'<!--.*?-->', '', raw, flags=re.S)
+        for kind in ('string', 'style', 'color', 'dimen', 'integer', 'bool'):
+            names = re.findall(r'<%s name="([^"]+)"' % kind, raw)
+            for dup in sorted({n for n, c in Counter(names).items() if c > 1}):
+                problems.append('%s  资源重名：%s/%s 定义了多次（aapt 会直接失败）' % (vf, kind, dup))
 
     # 「手势又写死了」：刷词页必须走 Ges 映射分发（用户 2026-09-14 明确要求「手势由用户自己定」）
     st = texts.get('StudyActivity', '')
