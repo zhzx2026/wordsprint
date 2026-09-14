@@ -36,11 +36,6 @@ public final class Ges {
 
     private Ges() {}
 
-    /** 每次进设置页/刷词页都从这里读，改完立刻生效 */
-    public static int[] of(Prefs p) { return decode(p == null ? null : p.str(Prefs.K_GES, null)); }
-
-    public static void save(Prefs p, int[] map) { if (p != null) p.set(Prefs.K_GES, encode(map)); }
-
     public static int[] decode(String s) {
         int[] out = DEF.clone();
         if (s == null || s.trim().isEmpty()) return out;

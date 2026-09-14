@@ -56,6 +56,12 @@ public class Prefs {
     public String str(String key, String def) { return p.getString(ns(key), def); }
     public void set(String key, String v) { p.edit().putString(ns(key), v).apply(); }
 
+    /** 手势映射：读（每次现读，设置页改完立刻生效；脏值由 Ges.decode 兜底） */
+    public int[] ges() { return Ges.decode(str(K_GES, null)); }
+
+    /** 手势映射：存（跟档案走） */
+    public void ges(int[] map) { set(K_GES, Ges.encode(map)); }
+
     public int night() { return p.getInt(K_NIGHT, 0); }
     public void setNight(int v) { p.edit().putInt(K_NIGHT, v).apply(); }
 

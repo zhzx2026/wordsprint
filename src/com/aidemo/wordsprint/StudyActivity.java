@@ -113,7 +113,7 @@ public class StudyActivity extends Activity {
         // 长按查词由手势里的 onLongPress 统一处理（把长按监听挂在 tvWord 上会吃掉手势事件）
 
         // 手势映射：由用户在「设置 → 手势操作」里自己定，这里只负责分发（见 Ges.java）
-        final int[] gesMap = Ges.of(prefs);
+        final int[] gesMap = prefs.ges();
         GestureDetector.SimpleOnGestureListener ges = new GestureDetector.SimpleOnGestureListener() {
             @Override public boolean onDown(MotionEvent e) { return true; }
             @Override public void onLongPress(MotionEvent e) { fire(Ges.LONG, gesMap); }
@@ -261,7 +261,7 @@ public class StudyActivity extends Activity {
 
     /** 按当前映射拼一句提示（用户自己改过映射后，这句话要跟着变） */
     private String gesHint() {
-        int[] m = Ges.of(prefs);
+        int[] m = prefs.ges();
         return getString(R.string.ges_hint_dyn,
                 getString(GesUi.slotLabel(Ges.LEFT)), getString(GesUi.actionLabel(m[Ges.LEFT])),
                 getString(GesUi.slotLabel(Ges.RIGHT)), getString(GesUi.actionLabel(m[Ges.RIGHT])),

@@ -48,7 +48,7 @@ public final class GesUi {
 
     public static void render(final Activity a, final LinearLayout box, final Runnable onChanged, boolean compact) {
         box.removeAllViews();
-        final int[] map = Ges.of(Prefs.of(a));
+        final int[] map = Prefs.of(a).ges();
         for (int slot = 0; slot < Ges.SLOTS; slot++) {
             final int s = slot;
             LinearLayout row = new LinearLayout(a);
@@ -84,7 +84,7 @@ public final class GesUi {
     /** 单选弹窗：列出该位置能绑的动作 */
     private static void pick(final Activity a, final LinearLayout box, final int slot, final Runnable onChanged) {
         final Prefs p = Prefs.of(a);
-        final int[] map = Ges.of(p);
+        final int[] map = p.ges();
         final int[] pick = {map[slot]};
 
         LinearLayout col = new LinearLayout(a);
@@ -105,7 +105,7 @@ public final class GesUi {
                     @Override public void onClick(View v) {
                         pick[0] = action;
                         // 立即存：单选直接生效，不再点「确定」（少一步）
-                        Ges.save(p, Ges.with(Ges.of(p), slot, action));
+                        p.ges(Ges.with(p.ges(), slot, action));
                         if (onChanged != null) onChanged.run();
                         render(a, box, onChanged);
                         android.app.Dialog d = (android.app.Dialog) row.getTag();

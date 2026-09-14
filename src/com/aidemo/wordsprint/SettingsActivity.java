@@ -154,7 +154,7 @@ public class SettingsActivity extends Activity {
         });
         findViewById(R.id.gesReset).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
-                Ges.save(pr, Ges.DEF.clone());
+                pr.ges(Ges.DEF.clone());
                 GesUi.render(SettingsActivity.this, gesBox, new Runnable() {
                     @Override public void run() { toast(getString(R.string.ges_saved)); }
                 });

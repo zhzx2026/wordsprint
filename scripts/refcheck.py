@@ -129,6 +129,38 @@ def resources():
     return strings, names, styles, values
 
 
+def _strip_java_comments(src):
+    """按行返回「去掉注释与字符串字面量」的代码（行数不变，报错能对准行号）。"""
+    out, i, n = [], 0, len(src)
+    in_block, in_line = False, False
+    cur = []
+    while i < n:
+        c = src[i]
+        nxt = src[i + 1] if i + 1 < n else ''
+        if c == '\n':
+            out.append(''.join(cur)); cur = []; in_line = False; i += 1; continue
+        if in_block:
+            if c == '*' and nxt == '/':
+                in_block = False; i += 2; continue
+            i += 1; continue
+        if in_line:
+            i += 1; continue
+        if c == '/' and nxt == '*':
+            in_block = True; i += 2; continue
+        if c == '/' and nxt == '/':
+            in_line = True; i += 2; continue
+        if c == '"' or c == chr(39):
+            quote = c; i += 1
+            while i < n and src[i] != quote:
+                if src[i] == chr(92):
+                    i += 1
+                i += 1
+            i += 1; cur.append(' "" '); continue
+        cur.append(c); i += 1
+    out.append(''.join(cur))
+    return out
+
+
 def main():
     texts = {}
     for f in sorted(os.listdir(SRC)):
@@ -236,6 +268,20 @@ def main():
                 problems.append('%s.java:%d  findViewById(R.id.%s)：不在本文件用到的布局里（%s）'
                                 % (cls, raw[:m.start()].count('\n') + 1, m.group(1),
                                    ','.join(sorted(layouts))))
+
+    # 「主机侧单测的源码不能碰 Android/Prefs」（CI 里这 13 个文件被 cp 到 test/src 单编，
+    #  一旦它们 import/引用 Prefs 或 Context，javac 直接 cannot find symbol → CI 红）
+    PURE = ('Engine', 'QREnc', 'QRUtil', 'Transfer', 'ProgressCode', 'Pack', 'PlanCode',
+            'Plan', 'Diary', 'Scale', 'WrongBook', 'ShareGeom', 'Ges')
+    for name in PURE:
+        body = texts.get(name)
+        if not body:
+            continue
+        for i, line in enumerate(_strip_java_comments(body), 1):
+            m = re.search(r'(?<!\w)(Prefs|Context|Activity|Uri|View)\b', line)
+            if m and 'import' not in line:
+                problems.append('%s.java:%d  主机侧单测源码（run_tests.sh 会单编它）不能引用 %s：%s'
+                                % (name, i, m.group(1), line.strip()[:50]))
 
     # 「手势又写死了」：刷词页必须走 Ges 映射分发（用户 2026-09-14 明确要求「手势由用户自己定」）
     st = texts.get('StudyActivity', '')
