@@ -75,7 +75,7 @@ public class SharePayloadTest {
             String r2 = buildRaw(names[i], "2026-12-31", 0, 50, 0, 999, 99999, 999, 0, 999, 0,
                     i == 1 ? rep('0', 182) : heat(100 + i));
             String u2 = base + "?d=" + PlanCode.pack(r2);
-            check(u2.length() < 470, "极端负载 URL 也别超长（" + names.length + "）：" + u2.length);
+            check(u2.length() < 470, "极端负载 URL 也别超长：" + u2.length());
             check(QRUtil.selfDecodes(QREnc.encode(u2.getBytes("UTF-8")), u2), "极端负载二维码自解码：name#" + i);
         }
 

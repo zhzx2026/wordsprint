@@ -208,6 +208,16 @@ def main():
                 problems.append('%s.java:%d  %s.%s(%d 参) 与声明 %s 不符'
                                 % (cls, raw[:m.start()].count('\n') + 1, c, mem, n, sorted(decls[c][mem])))
 
+    # 「String 当数组用」：字符串是 length()，数组才是 .length —— 这类手滑 CI 才炸，先拦下来
+    for cls, raw in texts.items():
+        t = strip_code(raw)
+        strings = set(re.findall(r'\bString\s+(\w+)\s*[=;,\)]', t))
+        strings |= set(re.findall(r'\bString\]\s*(\w+)', t))
+        for name in sorted(strings):
+            for m in re.finditer(r'(?<![\w.])' + re.escape(name) + r'\.length\b(?!\s*\()', t):
+                problems.append('%s.java:%d  %s 是 String，应该用 %s.length()'
+                                % (cls, raw[:m.start()].count('\n') + 1, name, name))
+
     man = os.path.join(ROOT, 'AndroidManifest.xml')
     if os.path.exists(man):
         t = read(man)
