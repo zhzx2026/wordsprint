@@ -57,6 +57,8 @@ public class ShareGeomTest {
 
         // 7) 四周留白：内容不许贴边（用户 2026-09-14：「图片上下左右都要隔一段」）
         check(ShareGeom.headerTop() >= ShareGeom.MARGIN, "渐变卡上缘在留白以内：" + fmt(ShareGeom.headerTop()));
+        check(Math.abs(ShareGeom.headerTop() - ShareGeom.cardLeft()) < 0.01f,
+                "上边的白边要和左右一样宽（对称）：top=" + fmt(ShareGeom.headerTop()) + " left=" + fmt(ShareGeom.cardLeft()));
         check(ShareGeom.cardLeft() >= ShareGeom.MARGIN, "卡片左缘在留白以内：" + fmt(ShareGeom.cardLeft()));
         check(ShareGeom.cardRight() <= ShareGeom.W - ShareGeom.MARGIN, "卡片右缘在留白以内：" + fmt(ShareGeom.cardRight()));
         check(ShareGeom.textLeft() > ShareGeom.cardLeft(), "文字在卡片边上再往里收一格");
@@ -80,6 +82,7 @@ public class ShareGeomTest {
 
         // 10) 二维码尺寸够扫（300px 卡片放 250px 二维码，剩一点余量）
         check(ShareGeom.QR_CARD_H >= 280, "二维码卡片高度够放大图");
+        check(ShareGeom.bottom() - (qrTop + ShareGeom.QR_CARD_H) >= 40, "二维码卡与下缘之间也留了一段");
 
         System.out.println("ALL SHARE GEOM TESTS PASS (" + checks + " checks)");
     }

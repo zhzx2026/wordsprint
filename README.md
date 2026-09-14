@@ -1,6 +1,6 @@
 # 刷单词 WordsPrint
 
-**当前版本：v2.5（dev）** <!-- CURRENT-VERSION -->
+**当前版本：v2.6（dev）** <!-- CURRENT-VERSION -->
 
 一个精致的**离线背单词 Android 应用**：以「整本课本」为单位刷词，覆盖中国主流教材版本。
 

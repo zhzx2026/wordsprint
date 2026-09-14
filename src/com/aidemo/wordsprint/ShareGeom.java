@@ -16,7 +16,7 @@ public final class ShareGeom {
 
     public static final int W = 1080;
     /** 竖版战绩图的画布高：四周留白 + 热力图卡片 + 二维码卡片 + 落款都要放得下 */
-    public static final int H = 1860;
+    public static final int H = 1900;
     /** 四周留白：内容不许贴边（用户要求「上下左右都要隔一段」） */
     public static final int MARGIN = 40;
     /** 留白之内再收一圈的内边距（文字/卡片离留白再远一点，看着才不挤） */
@@ -50,7 +50,8 @@ public final class ShareGeom {
     public static float bottom() { return H - MARGIN; }
 
     // ---- 竖向排布 ----
-    public static float headerTop() { return MARGIN; }
+    /** 渐变卡上边：和卡片左右缘对齐（四边的白边看着一样宽，不是上紧下松） */
+    public static float headerTop() { return cardLeft(); }
     public static float headerBottom() { return MARGIN + HEAD_H; }
     /** 渐变卡内部第 y 条基线的绝对位置（卡内仍是原来的相对坐标） */
     public static float headBaseline(float inner) { return MARGIN + inner; }
@@ -112,6 +113,7 @@ public final class ShareGeom {
         float qrBottom = qrTop(heatTop) + QR_CARD_H;
 
         if (cell <= 8) return "格子太小：" + cell;
+        if (headerTop() < MARGIN) return "渐变卡上缘顶到留白边：" + headerTop();
         if (cardLeft() < MARGIN) return "卡片左边越出留白：" + cardLeft();
         if (cardRight() > W - MARGIN) return "卡片右边越出留白：" + cardRight();
         if (textLeft() <= cardLeft()) return "文字顶到卡片边：" + textLeft();
