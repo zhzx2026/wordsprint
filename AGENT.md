@@ -27,7 +27,8 @@ wordsprint/
   libs/zxing-core.jar        3.5.3（仅用于解码 + 主机侧校验）
   test/                      主机侧 JVM 测试（EngineTest/QRHostTest/CodeHostTest/Sweep2 等）
                              统一入口：bash scripts/run_tests.sh（本地与 CI 同一条命令）
-  scripts/                   构建/发布/发布 GitHub 化 的辅助脚本
+  scripts/                   构建/发布/发布 GitHub 化 的辅助脚本；refcheck.py = 无 JDK 时的静态粗筛
+  share/index.html           战绩二维码指向的在线页（jsDelivr 加速；契约见 share/README.md）
   wordsprint.keystore        ⚠️ 签名钥匙：不入 git（.gitignore 已挡），但必须异地备份！丢了=以后所有版本无法覆盖安装（用户数据全丢）
 ```
 
@@ -206,3 +207,14 @@ PUSH_TOKEN=<用户临时提供的 fine-grained PAT> bash scripts/promote.sh 1.0.
 - 用户报 bug 用真机现象描述（"扫不出来""强制退出"），先复现思路→定位根因→修复→**给他 APK 实测**→他说行才算完。
 - 改 UI 前想清楚：结构/动画按设计稿，配色不许偏离暖纸风。
 - 每次交付把新 APK 拷到工作区根目录 `刷单词-vX.Y.Z.apk`（供 adb 安装），别覆盖旧版本文件。
+
+## 🧰 改完代码先跑这三条（沙箱里没有 javac，别等 CI 才发现）
+```bash
+python3 scripts/refcheck.py          # 资源引用/R.id/R.string/成员名/参数个数/重复声明/括号/匿名类里的 this/Manifest
+node test/share_page_test.js         # share/index.html 里手写 inflate 的解码测试（改了页面或 payload 必跑）
+bash scripts/run_tests.sh            # 有 JDK 时的完整主机测试（Engine/QR/CodeHost/Pack/SharePayload）
+```
+- **点号命名的 style 必须写 `parent=""`**：`<style name="Skin.S1">` 会被 aapt2 当成 `parent="Skin"`，
+  报 `resource style/Skin not found`（2026-09-14 踩过）。
+- 在线战绩页地址跟着版本通道走：dev 包读 `@dev`、stable 包读 `@main`（`ShareCard.pageBase`）；
+  `scripts/publish_dev.sh` 会把 `share/` 一起推到 dev 分支，所以测试包里的二维码当场能打开。
