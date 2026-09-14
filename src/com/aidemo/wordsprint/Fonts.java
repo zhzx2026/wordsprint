@@ -81,12 +81,24 @@ public final class Fonts {
         if (mode == 2) return 1.35f;
         float dp = shortSideDp(c);
         float s = 1f + (dp - 400f) / 100f * 0.08f;
-        return Math.max(0.95f, Math.min(1.45f, s));
+        return Math.max(1f, Math.min(1.45f, s));      // 只放大不缩小：小屏保持原样
     }
+
+    /**
+     * 每个 TextView 的「原始字号 / 上次写入的字号」记在这里，让缩放可以反复调用而不叠加
+     * （2026-09-14 用户报的「每次点击字体都变大一点」就是这里叠加出来的：以前是拿当前字号再乘倍率）。
+     * 用 WeakHashMap：视图被回收后条目自动消失，不会把整棵树留在内存里。
+     */
+    private static final java.util.Map<TextView, float[]> BASE =
+            new java.util.WeakHashMap<TextView, float[]>();
 
     /**
      * 整棵视图树统一处理：套内置字体（单层 a）+ 按倍率放大字号。
      * 在 setContentView（或自建弹窗卡片）之后调用一次即可；等宽字体（进度码）会被保留。
+     *
+     * ⚠️ 幂等：同一个 TextView 反复走这里不会累积放大（第二次起只是把同一个结果再写一遍）。
+     *    但别把它塞进 refresh()/getView() 这类每次点击都会跑的方法里 —— 那些路径上**新增的行**
+     *    才需要补缩放，整页收口只该在 onCreate 末尾调一次 {@link Ui#finishSetup}。
      */
     public static void scaleTree(android.view.View root, Context c) {
         if (root == null) return;
@@ -104,8 +116,11 @@ public final class Fonts {
                 t.setTypeface(typeface(t.getContext() == null ? c : t.getContext(), bold));
             }
             if (k > 1.001f) {
-                float sp = t.getTextSize() / t.getResources().getDisplayMetrics().scaledDensity;
-                t.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, sp * k);
+                // 幂等三步：① 首次见到这个 TextView（或别处刚改过字号）→ 以「当前值」为原始字号；
+                //           ② 目标字号 = 原始字号 × 倍率；③ 写回去并记住写了什么。
+                float[] rec = Scale.step(BASE.get(t), t.getTextSize(), k);   // 幂等算术见 Scale（有主机侧测试）
+                BASE.put(t, rec);
+                t.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, rec[1]);
             }
         }
         if (v instanceof android.view.ViewGroup) {

@@ -97,10 +97,9 @@ public class SearchActivity extends Activity {
                 return true;
             }
         });
-        Ui.finishSetup(this);
         input.requestFocus();
         try { getWindow().setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE); } catch (Throwable ignored) {}
-        Ui.finishSetup(this);
+        Ui.finishSetup(this);                   // 整页只收口一次（重复调用虽然已经幂等，但没必要）
     }
 
     private void doSearch(final String q) {

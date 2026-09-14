@@ -218,5 +218,8 @@ bash scripts/run_tests.sh            # 有 JDK 时的完整主机测试（Engine
 ```
 - **点号命名的 style 必须写 `parent=""`**：`<style name="Skin.S1">` 会被 aapt2 当成 `parent="Skin"`，
   报 `resource style/Skin not found`（2026-09-14 踩过）。
+- **`Ui.finishSetup` 只能放在 onCreate 末尾**：它是「整棵树按倍率缩字号」的收口，塞进
+  refresh()/onClick 这类每次点击都会跑的路径就会越点越大（2026-09-14 用户报的「字体每次点击都变大一下」）。
+  新增的行/卡片要补缩放时用 `Fonts.scaleTree(那一小块, ctx)`；缩放本身已幂等（见 `Scale.java` + ScaleTest）。
 - 在线战绩页地址跟着版本通道走：dev 包读 `@dev`、stable 包读 `@main`（`ShareCard.pageBase`）；
   `scripts/publish_dev.sh` 会把 `share/` 一起推到 dev 分支，所以测试包里的二维码当场能打开。

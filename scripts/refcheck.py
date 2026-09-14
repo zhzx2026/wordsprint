@@ -237,6 +237,29 @@ def main():
                                 % (cls, raw[:m.start()].count('\n') + 1, m.group(1),
                                    ','.join(sorted(layouts))))
 
+    # 「整页收口被塞进每次点击都会跑的路径」：Ui.finishSetup = 整棵树缩字号，放进 refresh/onClick
+    # 这类重复路径就会越点越大（2026-09-14 用户报的「字体每次点击都变大一下」）。新增行才用 Fonts.scaleTree。
+    REPEAT = re.compile(r'^(refresh|render|bind\w*|update\w*|getView|getItemViewType|onClick|onTap|onItemClick|'
+                        r'apply\w*|reload|notify\w*|run|siz\w*Highlight|start\w*|show\w*|fill|updateHud)$')
+    # 只认「声明」形状：4 空格缩进 + 修饰符 + 返回类型 + 名字(...) {，避免把 refresh(); 这种调用当方法名
+    METHOD_DECL = re.compile(r'^\s{4}(?:@Override\s+)?(?:(?:public|private|protected|static|final|synchronized|abstract)\s+)*'
+                             r'[\w<>\[\],.]+\s+(\w+)\s*\([^;{}]*\)\s*(?:throws [\w,. ]+)?\{\s*$')
+    for cls, raw in texts.items():
+        lines = raw.split('\n')
+        for i, l in enumerate(lines):
+            if 'Ui.finishSetup' not in l:
+                continue
+            owner = '?'
+            for j in range(i, -1, -1):
+                m = METHOD_DECL.match(lines[j])
+                if m:
+                    owner = m.group(1)
+                    break
+            if REPEAT.match(owner):
+                problems.append('%s.java:%d  Ui.finishSetup 在 %s() 里 —— 这个方法每次点击都会跑，'
+                                '整页收口只该在 onCreate 末尾调一次（新增行请用 Fonts.scaleTree）'
+                                % (cls, i + 1, owner))
+
     # 「findViewById 的强制转型和布局里的控件类型对不上」：运行起来才炸的 ClassCastException
     SUPER = {'LinearLayout': {'ViewGroup', 'View'}, 'FrameLayout': {'ViewGroup', 'View'},
              'RelativeLayout': {'ViewGroup', 'View'}, 'ScrollView': {'ViewGroup', 'View'},

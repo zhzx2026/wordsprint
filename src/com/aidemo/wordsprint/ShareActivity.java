@@ -74,12 +74,6 @@ public class ShareActivity extends Activity {
         row.addView(send, lp2);
 
         setContentView(root);
-        Ui.finishSetup(this);
-
-        final TextView tip = new TextView(this);
-        tip.setTextSize(11.5f);
-        tip.setTextColor(Skin.c(this, R.attr.wpText2));
-        tip.setGravity(Gravity.CENTER);
 
         save.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { saveImage(); }

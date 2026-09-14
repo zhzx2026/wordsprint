@@ -152,6 +152,7 @@ public class SetupActivity extends Activity {
         });
 
         refresh();
+        Ui.finishSetup(this);       // 字号/配色整页收口：只在这里做一次（refresh() 每次点击都会跑，别放那儿）
     }
 
     private boolean isCustom(int s) {
@@ -205,7 +206,6 @@ public class SetupActivity extends Activity {
         ((TextView) findViewById(R.id.btnReview)).setEnabled(true);
         tvLagVal.setText(getString(R.string.lag_n, lag));
         sizeRowHighlight();
-        Ui.finishSetup(this);                   // 字号自适应/大屏放大统一在这里收口
     }
 
     private void sizeRowHighlight() {
