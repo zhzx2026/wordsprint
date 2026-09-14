@@ -114,7 +114,7 @@ public final class GesUi {
                 });
             }
             col.addView(row);
-            if (action == pick[0]) row.activate();     // 当前值高亮（bg_row_tap 的 activated 态）
+            if (action == pick[0]) row.setActivated(true);   // 当前值高亮（bg_row_tap 的 activated 态）
         }
         android.app.AlertDialog dlg = Ui.cardDialogEx(a, a.getString(slotLabel(slot)),
                 Ui.scrollable(col, 300), null, null, a.getString(R.string.cancel), null, true);

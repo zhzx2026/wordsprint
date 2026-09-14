@@ -294,6 +294,15 @@ def main():
             for dup in sorted({n for n, c in Counter(names).items() if c > 1}):
                 problems.append('%s  资源重名：%s/%s 定义了多次（aapt 会直接失败）' % (vf, kind, dup))
 
+    # 「瞎写 View API」：TextView/View 上没有的方法名（这轮踩过 row.activate()），javac 才报，先拦
+    BAD_VIEW_API = ('activate(', 'setActive(', 'setHighLight(', 'setTextColorRes(', 'addChild(')
+    for name, body in sorted(texts.items()):
+        for i, line in enumerate(_strip_java_comments(body), 1):
+            for bad in BAD_VIEW_API:
+                if bad in line and 'BAD_VIEW_API' not in line:
+                    problems.append('%s.java:%d  View/TextView 上没有 %s 这个方法：%s'
+                                    % (name, i, bad.rstrip('('), line.strip()[:46]))
+
     # 「手势又写死了」：刷词页必须走 Ges 映射分发（用户 2026-09-14 明确要求「手势由用户自己定」）
     st = texts.get('StudyActivity', '')
     if st:
