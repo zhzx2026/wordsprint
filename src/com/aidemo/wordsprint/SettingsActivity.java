@@ -29,11 +29,15 @@ public class SettingsActivity extends Activity {
         findViewById(R.id.btnBack).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { finish(); }
         });
-        findViewById(R.id.btnExport).setOnClickListener(new View.OnClickListener() {
+        findViewById(R.id.rowExport).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { startActivity(new Intent(SettingsActivity.this, ExportActivity.class)); }
         });
-        findViewById(R.id.btnScan).setOnClickListener(new View.OnClickListener() {
+        findViewById(R.id.rowScan).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { startActivity(new Intent(SettingsActivity.this, ScanActivity.class)); }
+        });
+        // 顶栏里的用户名：点一下就改名（原来只能长按档案条目，藏太深）
+        findViewById(R.id.rowName).setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { askRename(); }
         });
         try {                                   // 页脚带版本号：装机实测时一眼确认装的是哪一版
             android.widget.TextView foot = (android.widget.TextView) findViewById(R.id.tvVersionFooter);
@@ -143,6 +147,21 @@ public class SettingsActivity extends Activity {
             @Override public void onClick(View v) { startActivity(new Intent(SettingsActivity.this, FavoritesActivity.class)); }
         });
 
+        // 手势：六个位置各挑一个动作（用户自己定，见 Ges/GesUi）
+        final LinearLayout gesBox = (LinearLayout) findViewById(R.id.gesBox);
+        GesUi.render(this, gesBox, new Runnable() {
+            @Override public void run() { toast(getString(R.string.ges_saved)); }
+        });
+        findViewById(R.id.gesReset).setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                Ges.save(pr, Ges.DEF.clone());
+                GesUi.render(SettingsActivity.this, gesBox, new Runnable() {
+                    @Override public void run() { toast(getString(R.string.ges_saved)); }
+                });
+                toast(getString(R.string.ges_reset_done));
+            }
+        });
+
         // —— 应用内更新：stable / dev ——
         final LinearLayout srcRow = (LinearLayout) findViewById(R.id.srcChips);
         String[] srcNames = {getString(R.string.update_src_stable), getString(R.string.update_src_dev)};
@@ -186,13 +205,45 @@ public class SettingsActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         try {
+            ((TextView) findViewById(R.id.tvNameNow)).setText(
+                    Prefs.activeName().isEmpty() ? getString(R.string.profile_title) : Prefs.activeName());
             ((TextView) findViewById(R.id.tvProfileNow)).setText(
-                    Prefs.activeName() + " · " + getString(R.string.profile_hint));
+                    Prefs.profiles().list.size() + " 个档案 · " + getString(R.string.profile_hint));
             ((TextView) findViewById(R.id.tvPlanNow)).setText(
                     getString(R.string.plan_in, PlanStore.get(this).size()));
             ((TextView) findViewById(R.id.tvFavNow)).setText(
                     Favorites.count() == 0 ? getString(R.string.fav_empty) : getString(R.string.fav_count, Favorites.count()));
         } catch (Throwable ignored) {}
+    }
+
+    /** 改名：一个输入框搞定（当前档案） */
+    private void askRename() {
+        final android.widget.EditText et = new android.widget.EditText(this);
+        et.setText(Prefs.activeName());
+        et.setSingleLine(true);
+        et.setSelection(et.getText().length());
+        et.setHint(R.string.profile_rename_hint);
+        et.setTextSize(16f);
+        et.setTextColor(Skin.c(this, R.attr.wpText));
+        et.setBackgroundResource(R.drawable.bg_card_field);
+        int pd = (int) Ui.dp(this, 12);
+        et.setPadding(pd, pd, pd, pd);
+        Ui.cardDialogPrimary(this, getString(R.string.profile_rename_title),
+                Ui.scrollable(et, 120), getString(R.string.profile_renamed), new Runnable() {
+                    @Override public void run() {
+                        String name = et.getText() == null ? "" : et.getText().toString();
+                        if (Prefs.renameProfile(SettingsActivity.this, Prefs.activeId(), name)) {
+                            ((TextView) findViewById(R.id.tvNameNow)).setText(Prefs.activeName());
+                            toast(getString(R.string.profile_renamed));
+                        } else {
+                            toast(getString(R.string.profile_name_hint));
+                        }
+                    }
+                }, getString(R.string.cancel), null, true);
+    }
+
+    private void toast(String s) {
+        try { android.widget.Toast.makeText(this, s, android.widget.Toast.LENGTH_SHORT).show(); } catch (Throwable ignored) {}
     }
 
     private void bind(int id, final String key, final boolean def) {

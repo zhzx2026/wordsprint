@@ -1,26 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 首页可滚动区（作为词书列表的 header 挂上去，往下滚就收走，不挤占书单空间） -->
+<!--
+  首页顶部（v2.4 重排）：作为书单 ListView 的 header 挂在列表上。
+  层级只有三层，从上到下：今天怎么样了（目标卡）→ 这段时间怎么样（热力图卡）→ 去哪里（快捷入口 + 书单）。
+
+  设计约定（改版请沿用，别再往卡里塞第四种字号）：
+    · 分组/卡片：圆角 20dp、内边距 16dp、卡片之间 14dp
+    · 数字：24sp 粗体；行标题 14sp 粗体；说明 11.5sp 次要色
+    · 状态一律用「勾/圆点 + 颜色」，不靠文字长短表达
+  id 与 MainActivity.java 对应，改名要两边一起改（scripts/refcheck.py 会查）。
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:paddingStart="14dp"
     android:paddingEnd="14dp"
-    android:paddingTop="12dp">
+    android:paddingTop="4dp"
+    android:paddingBottom="6dp">
 
-    <!-- ===== 今日目标 ===== -->
+    <!-- ============ ① 今天 ============ -->
     <LinearLayout
         android:id="@+id/goalCard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:background="@drawable/bg_card_22"
-        android:clickable="true"
-        android:focusable="true"
+        android:background="@drawable/bg_card_20"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
         android:paddingTop="14dp"
-        android:paddingBottom="4dp">
+        android:paddingBottom="14dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -29,13 +37,12 @@
             android:gravity="center_vertical">
 
             <TextView
-                android:id="@+id/goalTitle"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="@string/goal_title"
                 android:textColor="?attr/wpText"
-                android:textSize="15sp"
+                android:textSize="14sp"
                 android:textStyle="bold"/>
 
             <TextView
@@ -43,40 +50,41 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="@drawable/bg_pill_green"
-                android:paddingStart="9dp"
-                android:paddingEnd="9dp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
                 android:paddingTop="4dp"
                 android:paddingBottom="4dp"
                 android:text="@string/goal_met"
-                android:textColor="#FFFFFFFF"
+                android:textColor="?attr/wpGreen"
                 android:textSize="11.5sp"
-                android:textStyle="bold"/>
+                android:textStyle="bold"
+                android:visibility="gone"/>
         </LinearLayout>
 
         <TextView
             android:id="@+id/goalSub"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="@string/goal_progress"
-            android:textColor="?attr/wpText2"
-            android:textSize="12.5sp"/>
+            android:layout_marginTop="6dp"
+            android:text="@string/goal_title"
+            android:textColor="?attr/wpText"
+            android:textSize="24sp"
+            android:textStyle="bold"/>
 
         <ProgressBar
             android:id="@+id/goalBar"
             style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="match_parent"
-            android:layout_height="7dp"
+            android:layout_height="8dp"
             android:layout_marginTop="10dp"
             android:max="100"
-            android:progress="0"
             android:progressDrawable="@drawable/progress_line"/>
 
-        <!-- 三个习惯勾选：刷词目标 / 温习 / 自测 -->
+        <!-- 三个习惯：一行三个，勾选状态由 MainActivity 上色 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="14dp"
             android:orientation="horizontal">
 
             <LinearLayout
@@ -84,91 +92,70 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:gravity="center"
                 android:orientation="vertical"
-                android:paddingTop="8dp"
-                android:paddingBottom="10dp">
-
+                android:gravity="center">
                 <TextView
                     android:id="@+id/habitWordMark"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="○"
                     android:textColor="?attr/wpText2"
-                    android:textSize="17sp"/>
-
+                    android:textSize="15sp"
+                    android:textStyle="bold"/>
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="@string/goal_title"
+                    android:layout_marginTop="3dp"
+                    android:text="@string/habit_word"
                     android:textColor="?attr/wpText2"
                     android:textSize="11.5sp"/>
             </LinearLayout>
-
-            <View
-                android:layout_width="1dp"
-                android:layout_height="34dp"
-                android:layout_gravity="center_vertical"
-                android:background="?attr/wpLine"/>
 
             <LinearLayout
                 android:id="@+id/habitRev"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:gravity="center"
                 android:orientation="vertical"
-                android:paddingTop="8dp"
-                android:paddingBottom="10dp">
-
+                android:gravity="center">
                 <TextView
                     android:id="@+id/habitRevMark"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="○"
                     android:textColor="?attr/wpText2"
-                    android:textSize="17sp"/>
-
+                    android:textSize="15sp"
+                    android:textStyle="bold"/>
                 <TextView
                     android:id="@+id/habitRevSub"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
+                    android:layout_marginTop="3dp"
                     android:text="@string/habit_rev"
                     android:textColor="?attr/wpText2"
                     android:textSize="11.5sp"/>
             </LinearLayout>
-
-            <View
-                android:layout_width="1dp"
-                android:layout_height="34dp"
-                android:layout_gravity="center_vertical"
-                android:background="?attr/wpLine"/>
 
             <LinearLayout
                 android:id="@+id/habitTest"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:gravity="center"
                 android:orientation="vertical"
-                android:paddingTop="8dp"
-                android:paddingBottom="10dp">
-
+                android:gravity="center">
                 <TextView
                     android:id="@+id/habitTestMark"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="○"
                     android:textColor="?attr/wpText2"
-                    android:textSize="17sp"/>
-
+                    android:textSize="15sp"
+                    android:textStyle="bold"/>
                 <TextView
                     android:id="@+id/habitTestSub"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
+                    android:layout_marginTop="3dp"
                     android:text="@string/habit_test"
                     android:textColor="?attr/wpText2"
                     android:textSize="11.5sp"/>
@@ -176,17 +163,17 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- ===== 学习热力图 ===== -->
+    <!-- ============ ② 热力图 ============ -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="12dp"
         android:orientation="vertical"
-        android:background="@drawable/bg_card_22"
+        android:background="@drawable/bg_card_20"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
         android:paddingTop="14dp"
-        android:paddingBottom="16dp">
+        android:paddingBottom="14dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -200,16 +187,21 @@
                 android:layout_weight="1"
                 android:text="@string/heat_title"
                 android:textColor="?attr/wpText"
-                android:textSize="15sp"
+                android:textSize="14sp"
                 android:textStyle="bold"/>
 
             <TextView
                 android:id="@+id/heatStreak"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:background="@drawable/bg_pill_white20"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
                 android:text="@string/streak_cur"
                 android:textColor="?attr/wpAmber"
-                android:textSize="12.5sp"
+                android:textSize="11.5sp"
                 android:textStyle="bold"/>
         </LinearLayout>
 
@@ -230,12 +222,19 @@
             android:scrollbars="none"
             android:clipToPadding="false">
 
-            <com.aidemo.wordsprint.HeatView
-                android:id="@+id/heat"
+            <LinearLayout
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <com.aidemo.wordsprint.HeatView
+                    android:id="@+id/heat"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"/>
+            </LinearLayout>
         </HorizontalScrollView>
 
+        <!-- 图例 + 最高连续 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -282,79 +281,40 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- ===== 快捷入口 ===== -->
+    <!-- ============ ③ 去哪里 ============ -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
+        android:layout_marginTop="14dp"
         android:orientation="horizontal">
 
-        <LinearLayout
+        <TextView
             android:id="@+id/quickSearch"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:background="@drawable/bg_card_field"
-            android:paddingTop="11dp"
-            android:paddingBottom="11dp">
+            style="@style/QuickAction"
+            android:text="@string/quick_search"/>
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/quick_search"
-                android:textColor="?attr/wpText"
-                android:textSize="13.5sp"
-                android:textStyle="bold"/>
-        </LinearLayout>
-
-        <LinearLayout
+        <TextView
             android:id="@+id/quickFav"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
+            style="@style/QuickAction"
             android:layout_marginStart="8dp"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:background="@drawable/bg_card_field"
-            android:paddingTop="11dp"
-            android:paddingBottom="11dp">
+            android:text="@string/quick_fav"/>
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/quick_fav"
-                android:textColor="?attr/wpText"
-                android:textSize="13.5sp"
-                android:textStyle="bold"/>
-        </LinearLayout>
-
-        <LinearLayout
+        <TextView
             android:id="@+id/quickShare"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
+            style="@style/QuickAction"
             android:layout_marginStart="8dp"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:background="@drawable/bg_card_field"
-            android:paddingTop="11dp"
-            android:paddingBottom="11dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/quick_share"
-                android:textColor="?attr/wpText"
-                android:textSize="13.5sp"
-                android:textStyle="bold"/>
-        </LinearLayout>
+            android:text="@string/quick_share"/>
     </LinearLayout>
 
     <TextView
         android:id="@+id/shelfTitle"
-        style="@style/SectionHead"
-        android:layout_marginTop="18dp"
-        android:text="@string/select_book"/>
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:layout_marginBottom="4dp"
+        android:paddingStart="4dp"
+        android:text="@string/shelf_title"
+        android:textColor="?attr/wpText2"
+        android:textSize="13sp"
+        android:textStyle="bold"/>
 </LinearLayout>

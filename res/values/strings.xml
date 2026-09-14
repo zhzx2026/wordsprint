@@ -313,4 +313,55 @@
     <string name="wrong_left_n">还要对 %1$d 次</string>
     <string name="wrong_more_n">… 共 %1$d 个错词，点「错词复习」逐个击破</string>
     <string name="wrong_review_done">错题本还剩 %1$d 个词 · 合计还要对 %2$d 次</string>
+
+    <!-- ===== 手势操作（可自定义：设置页六个位置各挑一个动作） ===== -->
+    <string name="ges_slot_up">上滑</string>
+    <string name="ges_slot_down">下滑</string>
+    <string name="ges_slot_left">左滑</string>
+    <string name="ges_slot_right">右滑</string>
+    <string name="ges_slot_tap">点一下</string>
+    <string name="ges_slot_long">长按</string>
+
+    <string name="ges_act_none">不绑定</string>
+    <string name="ges_act_fav">收藏 / 取消收藏</string>
+    <string name="ges_act_reveal">看释义（翻面）</string>
+    <string name="ges_act_know">记住了</string>
+    <string name="ges_act_unknown">不认识（进错题本）</string>
+    <string name="ges_act_speak">朗读单词</string>
+    <string name="ges_act_lookup">查词详情</string>
+    <string name="ges_act_skip">跳过这个词</string>
+
+    <string name="ges_pick_title">%1$s 绑哪个动作？</string>
+    <string name="ges_pick_desc">点一下直接生效，不用确定。</string>
+    <string name="ges_hint_dyn">手势：%1$s= %2$s · %3$s= %4$s · %5$s= %6$s · %7$s= %8$s</string>
+    <string name="ges_reset">恢复默认手势</string>
+    <string name="ges_reset_done">已恢复默认手势</string>
+    <string name="ges_note">点按有个例外：没翻面时先翻面，翻面后再点才执行你绑的动作（谁都先想看一眼答案）。</string>
+
+    <!-- ===== 设置页（v2.4 分组重排） ===== -->
+    <string name="set_study_title">学习</string>
+    <string name="set_mine_title">我的</string>
+    <string name="set_data_title">数据</string>
+    <string name="set_speak_desc">看卡与翻卡时自动发音</string>
+    <string name="set_phonetic_desc">单词下方显示音标</string>
+    <string name="set_sound_desc">记住 / 回炉的轻音效与振动</string>
+    <string name="set_anim_desc">释义淡入与换卡动画</string>
+    <string name="set_skin_title">配色方案</string>
+    <string name="set_skin_desc">五套配色，点一下立刻换</string>
+    <string name="set_theme_title">深浅色</string>
+    <string name="default_size_desc">每组刷多少词</string>
+    <string name="profile_rename">改名</string>
+    <string name="ges_subtitle">六个位置，各挑一个动作</string>
+    <string name="ges_reset_desc">改回出厂那套（上滑收藏 · 下滑释义 · 左右判定）</string>
+    <string name="export_progress">导出 / 导入进度码</string>
+    <string name="plan_import_desc2">扫码或粘贴「词本配置码」，导入时可选替换或合并</string>
+    <string name="update_src_title">更新源</string>
+    <string name="update_auto">自动提示更新</string>
+    <string name="update_auto_desc">启动时轻量检查一次，有新版再提示</string>
+    <string name="update_check_now">检查更新</string>
+    <string name="update_desc">覆盖安装不丢进度</string>
+    <string name="ges_saved">已更新手势</string>
+    <string name="profile_rename_title">改个名字</string>
+    <string name="habit_word">刷词</string>
+    <string name="shelf_title">词书库</string>
 </resources>

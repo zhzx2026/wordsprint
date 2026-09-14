@@ -36,6 +36,8 @@ public class Prefs {
     public static final String K_PROFILES = "p_profiles", K_ACTIVE = "p_active";
     /** 手势提示（首次进刷词页显示一行提示） */
     public static final String K_GES_HINT = "g_ges_hint";
+    /** 手势映射（六个数字：上,下,左,右,点,长；见 Ges.java）—— 用户自己定，跟着档案走 */
+    public static final String K_GES = "g_ges";
 
     public static final int FONT_POPPINS = 0, FONT_QUICKSAND = 1, FONT_SYSTEM = 2;
     public static final int SCALE_AUTO = 1;

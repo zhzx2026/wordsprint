@@ -237,6 +237,15 @@ def main():
                                 % (cls, raw[:m.start()].count('\n') + 1, m.group(1),
                                    ','.join(sorted(layouts))))
 
+    # 「手势又写死了」：刷词页必须走 Ges 映射分发（用户 2026-09-14 明确要求「手势由用户自己定」）
+    st = texts.get('StudyActivity', '')
+    if st:
+        if 'fire(Ges.' not in st:
+            problems.append('StudyActivity.java 没走 Ges 的手势分发（手势必须可被用户自定义，别写死方向→动作）')
+        for m in re.finditer(r'(?:toggleFav\(\)|answer\((?:true|false)\));[^\n]*//\s*(?:上滑|下滑|左滑|右滑)', st):
+            problems.append('StudyActivity.java:%d  出现「方向写死」的注释/调用：%s'
+                            % (st[:m.start()].count('\n') + 1, m.group(0).strip()[:40]))
+
     # 「整页收口被塞进每次点击都会跑的路径」：Ui.finishSetup = 整棵树缩字号，放进 refresh/onClick
     # 这类重复路径就会越点越大（2026-09-14 用户报的「字体每次点击都变大一下」）。新增行才用 Fonts.scaleTree。
     REPEAT = re.compile(r'^(refresh|render|bind\w*|update\w*|getView|getItemViewType|onClick|onTap|onItemClick|'

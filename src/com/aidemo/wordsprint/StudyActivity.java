@@ -89,8 +89,8 @@ public class StudyActivity extends Activity {
         if (mode == MODE_TEST) tvGroupPill.setText(R.string.habit_test);
         if (mode != MODE_WORD) tvHint.setText(mode == MODE_TEST ? "想起来的单词，翻面核对" : getString(R.string.tap_reveal));
         if (mode == MODE_WORD && prefs.i(Prefs.K_GES_HINT, 1) == 1) {
-            tvGroupPill.setText(getString(R.string.ges_once));
-            prefs.set(Prefs.K_GES_HINT, 0);                 // 只提示一次
+            tvGroupPill.setText(gesHint());                 // 只提示一次，且按用户自己的映射来说
+            prefs.set(Prefs.K_GES_HINT, 0);
         }
 
         findViewById(R.id.btnClose).setOnClickListener(new View.OnClickListener() {
@@ -112,35 +112,21 @@ public class StudyActivity extends Activity {
         });
         // 长按查词由手势里的 onLongPress 统一处理（把长按监听挂在 tvWord 上会吃掉手势事件）
 
-        /**
-         * 四向手势（用户 2026-09-14 定）：
-         *   上滑 = 收藏/取消收藏  下滑 = 看释义（翻面）
-         *   左滑 = 不认识（回炉）  右滑 = 记住了
-         *   点一下 = 翻面，翻面后再点 = 朗读；长按 = 查词详情
-         */
+        // 手势映射：由用户在「设置 → 手势操作」里自己定，这里只负责分发（见 Ges.java）
+        final int[] gesMap = Ges.of(prefs);
         GestureDetector.SimpleOnGestureListener ges = new GestureDetector.SimpleOnGestureListener() {
             @Override public boolean onDown(MotionEvent e) { return true; }
-            @Override public void onLongPress(MotionEvent e) {
-                if (engine.current() < 0) return;
-                Words.detail(StudyActivity.this, book.word(engine.current()),
-                        new Words.Hit(book, engine.current()));
-            }
-            @Override public boolean onSingleTapUp(MotionEvent e) {
-                if (!engine.flipped() && !engine.busy()) reveal();
-                else if (engine.flipped() && engine.current() >= 0) sfx.speak(book.word(engine.current()));
-                return true;
-            }
+            @Override public void onLongPress(MotionEvent e) { fire(Ges.LONG, gesMap); }
+            @Override public boolean onSingleTapUp(MotionEvent e) { fire(Ges.TAP, gesMap); return true; }
             @Override public boolean onFling(MotionEvent e1, MotionEvent e2, float vx, float vy) {
                 if (engine.current() < 0 || engine.busy()) return false;
                 float dx = e2.getX() - e1.getX(), dy = e2.getY() - e1.getY();
-                if (Math.abs(dx) > 110 && Math.abs(dx) > Math.abs(dy)) {     // 左右：判定
-                    if (!engine.flipped()) reveal();
-                    answer(dx > 0);
+                if (Math.abs(dx) > 110 && Math.abs(dx) > Math.abs(dy)) {
+                    fire(dx > 0 ? Ges.RIGHT : Ges.LEFT, gesMap);
                     return true;
                 }
-                if (Math.abs(dy) > 90 && Math.abs(dy) > Math.abs(dx)) {      // 上下：收藏 / 翻面
-                    if (dy < 0) toggleFav();                                  // 上滑 = 收藏
-                    else if (!engine.flipped()) reveal();                     // 下滑 = 看释义
+                if (Math.abs(dy) > 90 && Math.abs(dy) > Math.abs(dx)) {
+                    fire(dy < 0 ? Ges.UP : Ges.DOWN, gesMap);
                     return true;
                 }
                 return false;
@@ -273,6 +259,16 @@ public class StudyActivity extends Activity {
         if (prefs.on(Prefs.K_SPEAK, true) && mode != MODE_TEST) sfx.speak(book.word(w));
     }
 
+    /** 按当前映射拼一句提示（用户自己改过映射后，这句话要跟着变） */
+    private String gesHint() {
+        int[] m = Ges.of(prefs);
+        return getString(R.string.ges_hint_dyn,
+                getString(GesUi.slotLabel(Ges.LEFT)), getString(GesUi.actionLabel(m[Ges.LEFT])),
+                getString(GesUi.slotLabel(Ges.RIGHT)), getString(GesUi.actionLabel(m[Ges.RIGHT])),
+                getString(GesUi.slotLabel(Ges.UP)), getString(GesUi.actionLabel(m[Ges.UP])),
+                getString(GesUi.slotLabel(Ges.DOWN)), getString(GesUi.actionLabel(m[Ges.DOWN])));
+    }
+
     private void updateFav() {
         int w = engine.current();
         boolean has = w >= 0 && Favorites.has(book.id, w);
@@ -286,6 +282,39 @@ public class StudyActivity extends Activity {
         updateFav();
         Toast.makeText(this, now ? R.string.fav_added : R.string.fav_removed, Toast.LENGTH_SHORT).show();
         if (now) sfx.ok();
+    }
+
+    /**
+     * 按用户的手势映射执行动作。
+     * 「点按」有个特殊待遇：没翻面时先翻面（这是所有人的第一反应），翻面后再点才执行用户绑的动作
+     * —— 否则把「点按」绑成收藏的人会觉得「点一下怎么不看释义了」。
+     */
+    private void fire(int slot, int[] map) {
+        if (engine.current() < 0 || engine.busy()) return;
+        int action = slot >= 0 && slot < map.length ? map[slot] : Ges.NONE;
+        if (slot == Ges.TAP && !engine.flipped()) {
+            reveal();
+            if (action == Ges.REVEAL) return;              // 就是「翻面」本身，已经做完了
+            return;
+        }
+        switch (action) {
+            case Ges.FAV: toggleFav(); break;
+            case Ges.REVEAL: if (!engine.flipped()) reveal(); else sfx.speak(book.word(engine.current())); break;
+            case Ges.KNOW: if (!engine.flipped()) reveal(); answer(true); break;
+            case Ges.UNKNOWN: if (!engine.flipped()) reveal(); answer(false); break;
+            case Ges.SPEAK: sfx.speak(book.word(engine.current())); break;
+            case Ges.LOOKUP: Words.detail(this, book.word(engine.current()), new Words.Hit(book, engine.current())); break;
+            case Ges.SKIP: skipWord(); break;
+            default: break;                                // 不绑定：什么都不做
+        }
+    }
+
+    /** 跳过当前词：不计对错、不进错题本，等于「这词我先放过」 */
+    private void skipWord() {
+        if (engine.current() < 0 || engine.busy()) return;
+        tick();
+        engine.next();
+        updateHud();
     }
 
     /** 翻卡 = 布局重排 + 淡入（非 3D 翻转） */

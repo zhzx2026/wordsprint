@@ -102,6 +102,26 @@
         <item name="android:paddingTop">14dp</item>
     </style>
 
+    <!-- 设置页的一张卡：统一圆角/内边距，组内各行用 SettingRow -->
+    <style name="CardBox">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:background">@drawable/bg_card_20</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">16dp</item>
+    </style>
+    <!-- 首页三个快捷入口：等宽、居中的小胶囊 -->
+    <style name="QuickAction">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">42dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:gravity">center</item>
+        <item name="android:background">@drawable/bg_card_20</item>
+        <item name="android:textColor">?attr/wpBrand</item>
+        <item name="android:textSize">13.5sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
     <style name="SettingRow">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>

@@ -59,7 +59,7 @@ public class ProfileActivity extends Activity {
             @Override public void onItemClick(android.widget.AdapterView<?> parent, View v, int pos, long id) {
                 Profiles.P p = (Profiles.P) parent.getItemAtPosition(pos);
                 if (p == null) return;
-                if (p.id.equals(Prefs.activeId())) { toast(getString(R.string.profile_current)); return; }
+                if (p.id.equals(Prefs.activeId())) { askRename(p); return; }   // 点自己 = 改名
                 Prefs.switchProfile(ProfileActivity.this, p.id);
                 PlanStore.forget();
                 toast(getString(R.string.profile_switch_to, p.name));
@@ -91,6 +91,32 @@ public class ProfileActivity extends Activity {
         toast(getString(R.string.profile_switch_to, name));
         adapter.notifyDataSetChanged();
         if (firstRun) { firstRun = false; finish(); }
+    }
+
+    /** 改名：点自己那一行，或长按菜单里选「改名」 */
+    private void askRename(final Profiles.P p) {
+        final EditText et = new EditText(this);
+        et.setText(p.name);
+        et.setSingleLine(true);
+        et.setSelection(et.getText().length());
+        et.setHint(R.string.profile_rename_hint);
+        et.setTextSize(16f);
+        et.setTextColor(Skin.c(this, R.attr.wpText));
+        et.setBackgroundResource(R.drawable.bg_card_field);
+        int pd = (int) Ui.dp(this, 12);
+        et.setPadding(pd, pd, pd, pd);
+        Ui.cardDialogPrimary(this, getString(R.string.profile_rename_title),
+                Ui.scrollable(et, 120), getString(R.string.profile_renamed), new Runnable() {
+                    @Override public void run() {
+                        String name = et.getText() == null ? "" : et.getText().toString();
+                        if (Prefs.renameProfile(ProfileActivity.this, p.id, name)) {
+                            toast(getString(R.string.profile_renamed));
+                            adapter.notifyDataSetChanged();
+                        } else {
+                            toast(getString(R.string.profile_name_hint));
+                        }
+                    }
+                }, getString(R.string.cancel), null, true);
     }
 
     /** 长按档案：改名 / 删除 */
