@@ -224,6 +224,9 @@ def main():
             body = t[m.end():i]
             base = m.start()
             for cm in re.finditer(r'(?<![\w.])this(?![\w])', body):
+                # 这份代码里唯一合法的匿名类 this：把 Runnable 自己丢回 Handler（postDelayed(this, …)）
+                if re.match(r'this\s*,\s*\d', body[cm.start():cm.start() + 14]):
+                    continue
                 ctx = body[max(0, cm.start() - 40):cm.start() + 8].replace('\n', ' ')
                 problems.append('%s.java:%d  匿名类里的 this（%s…）：要写 外层类.this 或 getContext()'
                                 % (cls, raw[:base + cm.start()].count('\n') + 1, ctx.strip()))

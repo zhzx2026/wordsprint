@@ -38,7 +38,10 @@ public class SharePayloadTest {
     }
 
     public static void main(String[] args) throws Exception {
-        String base = "https://cdn.jsdelivr.net/gh/zhzx2026/wordsprint@main/share/index.html";
+        // 与实际 pageBase() 一致：dev 包读 dev 分支，stable 包读 main
+        String baseDev = "https://cdn.jsdelivr.net/gh/zhzx2026/wordsprint@dev/share/index.html";
+        String baseMain = "https://cdn.jsdelivr.net/gh/zhzx2026/wordsprint@main/share/index.html";
+        String base = baseDev;
 
         // 1) 往返 + zlib 封装
         String raw = buildRaw("小明", "2026-09-14", 57, 100, 12, 30, 1234, 88, 14, 9, 12, heat(7));
@@ -94,6 +97,13 @@ public class SharePayloadTest {
         check(o.plan != null && o.plan.items.size() == 2 && o.plan.goal == 100, "配置码要能从脏文本里解出来：" + o.why);
         check(PlanCode.parse(PlanCode.pack(raw)).plan == null, "分享负载不是配置码，必须老实说解不开");
         check(PlanCode.parse("WPB1." + payload).plan == null, "WPB1 前缀 + 分享负载也要老实失败，别乱认");
+
+        // 7) 两个分支的地址都要能扫（长度相同，但别哪天换了 CDN 路径就漏掉一边）
+        for (String b : new String[]{baseDev, baseMain}) {
+            String u = b + "?d=" + PlanCode.pack(raw);
+            check(u.length() < 420, "地址长度：" + b);
+            check(QRUtil.selfDecodes(QREnc.encode(u.getBytes("UTF-8")), u), "二维码自解码：" + b);
+        }
 
         System.out.println("ALL SHARE PAYLOAD TESTS PASS (" + checks + " checks)");
     }

@@ -5,8 +5,12 @@
 所以放在仓库里、用 jsDelivr 加速即可：
 
 ```
-https://cdn.jsdelivr.net/gh/zhzx2026/wordsprint@main/share/index.html?d=<payload>
+https://cdn.jsdelivr.net/gh/zhzx2026/wordsprint@<分支>/share/index.html?d=<payload>
 ```
+
+分支不是写死的，由 App 按自己的版本通道选（见 `ShareCard.pageBase`）：
+**dev 版 → `@dev`**（staging CI 每次构建都会把 `share/` 一起发到 dev 分支，测试包里的二维码当场能开），
+**stable 版 → `@main`**（转正后 main 上自然有这份文件）。
 
 - 为什么用 jsDelivr：国内可访问、微信内置浏览器能直接打开、不会像 GitHub Pages 那样被墙。
   换分支/改文件后 CDN 有缓存，需要 `?d=` 变化或等缓存刷新（jsDelivr 对 `@main` 缓存较短）。

@@ -58,13 +58,22 @@ public final class ShareCard {
         return s;
     }
 
-    /** 在线战绩页地址（jsDelivr 加速的仓库文件，国内可访问、不会触发下载） */
-    public static String pageBase() {
-        return "https://cdn.jsdelivr.net/gh/zhzx2026/wordsprint@main/share/index.html";
+    /**
+     * 在线战绩页地址（jsDelivr 加速的仓库文件，国内可访问、不会触发下载）。
+     *
+     * 分支跟着版本通道走：dev 版读 `dev` 分支（staging CI 每次都会把 share/ 一起发上去，
+     * 所以测试包里的二维码当场就能打开），stable 版读 `main`（转正后 main 上自然有这份页面）。
+     * 这样不用「发版前记得手动改地址」这种迟早会忘的约定。
+     */
+    public static String pageBase(Activity a) {
+        String v = Update.myName(a);
+        boolean stable = v != null && v.endsWith(".0");
+        return "https://cdn.jsdelivr.net/gh/zhzx2026/wordsprint@" + (stable ? "main" : "dev")
+                + "/share/index.html";
     }
 
     public static String url(Activity a, Stats s) {
-        return pageBase() + "?d=" + payload(s);
+        return pageBase(a) + "?d=" + payload(s);
     }
 
     /** 分享负载：极简键值行 → deflate → base64url（放二维码里，越短越清楚） */
