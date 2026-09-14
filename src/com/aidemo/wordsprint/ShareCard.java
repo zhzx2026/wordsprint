@@ -20,9 +20,10 @@ import java.util.List;
  */
 public final class ShareCard {
 
-    public static final int W = 1080;
-    public static final int H = 1660;
-    private static final int PAD = 56;
+    // 版面尺寸全在 ShareGeom（纯几何 + 主机侧测试），这里只是引用
+    public static final int W = ShareGeom.W;
+    public static final int H = ShareGeom.H;
+    private static final int PAD = ShareGeom.PAD;
 
     private ShareCard() {}
 
@@ -166,8 +167,8 @@ public final class ShareCard {
         }
 
         // ===== 今日目标完成情况 =====
-        float y = headH + 10;
-        RectF card = new RectF(PAD - 14, y, W - PAD + 14, y + 250);
+        float y = ShareGeom.goalTop();
+        RectF card = new RectF(PAD - 14, y, W - PAD + 14, y + ShareGeom.GOAL_CARD_H);
         Paint cp = new Paint(Paint.ANTI_ALIAS_FLAG);
         cp.setColor(surface);
         c.drawRoundRect(card, 34, 34, cp);
@@ -215,8 +216,15 @@ public final class ShareCard {
         }
 
         // ===== 热力图（26 周） =====
-        float hy = y + 300;
-        RectF heatCard = new RectF(PAD - 14, hy, W - PAD + 14, hy + 400);
+        // 尺寸全部由 ShareGeom 算：「最高连续」那行放在网格**下面**，不会压到星期标签（一/三/五/日）
+        float hy = ShareGeom.heatTop();
+        int[] ramp = HeatView.ramp(a, Prefs.of(a));
+        float gap = ShareGeom.CELL_GAP;
+        float gridLeft = ShareGeom.gridLeft(), gridTop = ShareGeom.gridTop(hy);
+        float cell = ShareGeom.cell(), gridH = ShareGeom.gridH();
+        float heatCardH = ShareGeom.heatCardH();
+
+        RectF heatCard = new RectF(PAD - 14, hy, W - PAD + 14, hy + heatCardH);
         c.drawRoundRect(heatCard, 34, 34, cp);
 
         tp.setTypeface(tfb);
@@ -228,20 +236,21 @@ public final class ShareCard {
         tp.setColor(text2);
         c.drawText(a.getString(R.string.share_heat) + " · " + a.getString(R.string.heat_sub), PAD + 18, hy + 106, tp);
 
-        int[] ramp = HeatView.ramp(a, Prefs.of(a));
-        float labelW = 46, labelH = 30;
         List<String> days = new ArrayList<String>();
-        float cell = (W - PAD * 2 - 36 - labelW - 25 * 6) / 26f;
-        HeatView.paint(c, s.diary, s.date, PAD + 18 + labelW, hy + 140 + labelH,
-                cell, 6, 26, ramp, text2, Skin.c(a, R.attr.wpLine), text2, tp, days);
+        HeatView.paint(c, s.diary, s.date, gridLeft, gridTop,
+                cell, gap, ShareGeom.HEAT_COLS, ramp, text2, Skin.c(a, R.attr.wpLine), text2, tp, days);
+        String geomBad = ShareGeom.check();                 // 版面自检：错了只写日志，不让分享失败
+        if (geomBad != null) android.util.Log.w("ShareCard", "战绩图版面异常：" + geomBad);
 
         tp.setTextSize(24);
         tp.setColor(text2);
-        c.drawText(a.getString(R.string.streak_best) + " " + s.best + " 天", PAD + 18, hy + 366, tp);
+        c.drawText(a.getString(R.string.streak_best) + " " + getString2(a, R.string.days_unit, s.best)
+                        + " · " + getString2(a, R.string.streak_done_days, s.doneDays),
+                PAD + 18, gridTop + gridH + 44, tp);
 
         // ===== 底部：二维码 + 落款 =====
-        float qy = hy + 440;
-        RectF qrCard = new RectF(PAD - 14, qy, W - PAD + 14, qy + 300);
+        float qy = ShareGeom.qrTop(hy);
+        RectF qrCard = new RectF(PAD - 14, qy, W - PAD + 14, qy + ShareGeom.QR_CARD_H);
         cp.setColor(surface);
         c.drawRoundRect(qrCard, 34, 34, cp);
 
@@ -286,5 +295,10 @@ public final class ShareCard {
 
     private static float measure(Paint p, String s) {
         return p.measureText(s);
+    }
+
+    /** 带参数的字符串（分享图里直接拼「12 天」这种，不走 TextView） */
+    private static String getString2(Activity a, int res, int n) {
+        try { return a.getString(res, n); } catch (Throwable t) { return " " + n; }
     }
 }

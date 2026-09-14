@@ -215,9 +215,29 @@ public class Prefs {
     public java.util.BitSet mastered(String bid, int n) { return bitsOf(bid, "p", n); }
     public void saveMastered(String bid, java.util.BitSet bs) { putBits(bid, "p", bs); }
 
-    /** 错词本：标记过「不认识」且尚未在回炉中记住的词 */
-    public java.util.BitSet wrongs(String bid, int n) { return bitsOf(bid, "w", n); }
-    public void saveWrongs(String bid, java.util.BitSet bs) { putBits(bid, "w", bs); }
+    /**
+     * 错题本：规则见 {@link WrongBook}（错一次就进；要连续答对 3 次才出；订正期间再错还要多对一次）。
+     * 老版本只存了「错词 BitSet」（槽位 w），这里读到就用 {@link WrongBook#fromLegacy} 迁移一次，
+     * 迁移结果写进新槽位 wc —— 老用户升级后错题本不会丢。
+     */
+    public WrongBook wrongBook(String bid) {
+        String s = p.getString(ns(bk(bid, "wc")), null);
+        if (s != null) return WrongBook.decode(s);
+        java.util.BitSet legacy = bitsOf(bid, "w", 0);
+        WrongBook wb = WrongBook.fromLegacy(legacy);
+        if (!wb.isEmpty()) saveWrongBook(bid, wb);
+        return wb;
+    }
+
+    public void saveWrongBook(String bid, WrongBook wb) {
+        p.edit().putString(ns(bk(bid, "wc")), wb.encode()).apply();
+    }
+
+    /** 在册错词（旧接口保留：词书详情的计数、错词复习队列都用它） */
+    public java.util.BitSet wrongs(String bid, int n) { return wrongBook(bid).ids(); }
+
+    /** 旧接口保留：整体写入（按「还差 NEED 次」收进来） */
+    public void saveWrongs(String bid, java.util.BitSet bs) { saveWrongBook(bid, WrongBook.fromLegacy(bs)); }
 
     private java.util.BitSet bitsOf(String bid, String slot, int n) {
         String s = p.getString(ns(bk(bid, slot)), null);
@@ -260,14 +280,15 @@ public class Prefs {
 
     public void clearBook(String bid) {
         SharedPreferences.Editor e = p.edit();
-        for (String k : new String[]{"p", "n", "g", "o", "l", "t", "w"}) e.remove(ns(bk(bid, k)));
+        for (String k : new String[]{"p", "n", "g", "o", "l", "t", "w", "wc"}) e.remove(ns(bk(bid, k)));
         e.apply();
     }
 
     /** 「重刷整本」：只清掌握位图与组指针，保留分组设置 */
     public void resetBookProgress(String bid) {
         SharedPreferences.Editor e = p.edit();
-        e.remove(ns(bk(bid, "p"))).remove(ns(bk(bid, "w"))).putInt(ns(bk(bid, "n")), 0);
+        e.remove(ns(bk(bid, "p"))).remove(ns(bk(bid, "w"))).remove(ns(bk(bid, "wc")))
+                .putInt(ns(bk(bid, "n")), 0);
         e.apply();
     }
 

@@ -28,7 +28,8 @@ public class StudyActivity extends Activity {
     private Engine engine;
     private int mode = MODE_WORD;
     private boolean reviewMode;                 // 错词/收藏复习：不推进组指针
-    private java.util.BitSet wrongs;
+    private java.util.BitSet wrongs;                 // 在册错词（从 WrongBook 派生，给计数/队列用）
+    private WrongBook wb;                            // 错题本本体（订正次数在这里）
     private boolean finishedAll;
     private long startTs;
     private long lastTick;
@@ -57,7 +58,8 @@ public class StudyActivity extends Activity {
         mode = getIntent().getIntExtra("mode", getIntent().getBooleanExtra("review", false) ? MODE_WRONG : MODE_WORD);
         reviewMode = mode == MODE_WRONG || mode == MODE_FAV;
         final boolean redo = getIntent().getBooleanExtra("redo", false);
-        wrongs = prefs.wrongs(book.id, book.n);
+        wb = prefs.wrongBook(book.id);
+        wrongs = wb.ids();
 
         card = findViewById(R.id.card);
         actions = findViewById(R.id.actions);
@@ -204,6 +206,7 @@ public class StudyActivity extends Activity {
         if (mode == MODE_WRONG || mode == MODE_FAV) {
             List<Integer> ids = new ArrayList<Integer>();
             if (mode == MODE_WRONG) {
+                wrongs = wb.ids();                     // 每次进复习都按最新在册词来
                 for (int i = wrongs.nextSetBit(0); i >= 0; i = wrongs.nextSetBit(i + 1)) ids.add(i);
             } else {
                 ids.addAll(Favorites.ids(book.id));
@@ -235,26 +238,29 @@ public class StudyActivity extends Activity {
     private void fill(int w) {
         if (w < 0) return;
         if (!groupWords.contains(w)) groupWords.add(w);
+        final boolean test = mode == MODE_TEST;
         tvWord.setVisibility(View.VISIBLE);
         tvMeaning.setVisibility(View.VISIBLE);
-        if (mode == MODE_TEST) {                       // 自测：先给中文，翻面才看到单词
-            tvWord.setText("?");
-            tvMeaning.setText(book.mean(w));
-            tvMeaning.setVisibility(View.VISIBLE);
+        if (test) {
+            // 自测 = 看中文想英文：中文就是题面（放大字），英文等翻面才给
+            String mean = book.mean(w);
+            tvWord.setText(mean);
+            tvWord.setTextSize(Fonts.wordSize(this, Math.min(18, Math.max(2, mean.length()))));
         } else {
             tvWord.setText(book.word(w));
-            tvMeaning.setText(book.mean(w));
+            tvWord.setTextSize(Fonts.wordSize(this, book.word(w).length()));
         }
-        tvWord.setTextSize(Fonts.wordSize(this, mode == MODE_TEST ? 1 : book.word(w).length()));
+        tvMeaning.setText(book.mean(w));
         String ph = book.ph(w);
-        boolean showPh = prefs.on(Prefs.K_PHON, true) && !ph.isEmpty() && mode != MODE_TEST;
-        tvPhonetic.setText(ph.isEmpty() ? ph : "/" + ph + "/");
+        boolean showPh = !test && prefs.on(Prefs.K_PHON, true) && !ph.isEmpty();
+        tvPhonetic.setText(ph.isEmpty() ? "" : "/" + ph + "/");
         tvPhonetic.setVisibility(showPh ? View.VISIBLE : View.GONE);
         meaningBox.animate().cancel();
-        meaningBox.setVisibility(View.GONE);
         meaningBox.setAlpha(1f);
         meaningBox.setTranslationY(0f);
-        if (mode == MODE_TEST) { tvMeaning.setVisibility(View.INVISIBLE); }
+        // 刷词：释义要翻面才给；自测：中文已经在词面上了，释义框先空着
+        meaningBox.setVisibility(View.GONE);
+        tvHint.setText(test ? getString(R.string.test_tap_reveal) : getString(R.string.tap_reveal));
         tvHint.setVisibility(View.VISIBLE);
         tvHint.setAlpha(1f);
         actions.animate().cancel();
@@ -288,6 +294,7 @@ public class StudyActivity extends Activity {
         if (mode == MODE_TEST) {
             tvWord.setText(book.word(engine.current()));
             tvWord.setTextSize(Fonts.wordSize(this, book.word(engine.current()).length()));
+            tvMeaning.setText(book.mean(engine.current()));       // 中文挪到释义行，方便对照
             tvMeaning.setVisibility(View.VISIBLE);
             String ph = book.ph(engine.current());
             if (prefs.on(Prefs.K_PHON, true) && !ph.isEmpty()) {
@@ -318,14 +325,22 @@ public class StudyActivity extends Activity {
         tick();                                    // 把这段停留时间记到今天的时长里
         engine.answer(ok);
         if (ok) {
-            wrongs.clear(w);
-            prefs.saveWrongs(book.id, wrongs);
+            boolean inBook = wb.has(w);
+            boolean cleared = wb.correct(w);       // 答对一次就往「出本」推一步（要连对 3 次）
+            prefs.saveWrongBook(book.id, wb);
+            wrongs = wb.ids();
+            if (inBook && !cleared) toast(getString(R.string.wrong_still, wb.left(w)));
+            else if (cleared) toast(getString(R.string.wrong_cleared));
             if (reviewMode) DiaryStore.reviewed(true);
             if (mode == MODE_TEST) DiaryStore.tested();
             sfx.ok();
         } else {
-            if (!wrongs.get(w)) { wrongs.set(w); prefs.saveWrongs(book.id, wrongs); }
+            boolean was = wb.has(w);
+            int need = wb.miss(w);                 // 错一次就进本；在订正的再错，还差次数 +1
+            prefs.saveWrongBook(book.id, wb);
+            wrongs = wb.ids();
             if (mode == MODE_TEST) DiaryStore.tested();
+            toast(was ? getString(R.string.wrong_add_more, need) : getString(R.string.wrong_added_book, need));
             sfx.miss();
         }
         updateHud();
@@ -354,8 +369,8 @@ public class StudyActivity extends Activity {
                         : reviewMode ? R.string.review_done
                         : (finishedAll ? R.string.book_done : R.string.session_done));
         String sub = reviewMode
-                ? "错词全部过完一轮，保持节奏"
-                : mode == MODE_TEST ? "自测完成，今天又多练了一轮"
+                ? getString(R.string.wrong_review_done, wb.size(), wb.remaining())
+                : mode == MODE_TEST ? getString(R.string.test_done)
                 : finishedAll
                 ? book.pub + "《" + book.display() + "》" + book.n + " 词全部拿下"
                 : book.display() + " · 本组全部记住，下一组继续";
@@ -383,9 +398,7 @@ public class StudyActivity extends Activity {
         LinearLayout box = (LinearLayout) findViewById(R.id.wrongBox);
         box.removeAllViews();
         List<Integer> still = new ArrayList<Integer>();
-        int last = engine.current();
-        if (last >= 0 && !wrongs.get(last)) still.add(last);
-        for (int i = 0; i < book.n; i++) if (wrongs.get(i)) still.add(i);
+        for (int i : wb.toArray()) still.add(i);           // 在册错词（含刚进来的；已出本的不会在这）
         View wrap = findViewById(R.id.wrongWrap);
         if (still.isEmpty() || mode == MODE_TEST) { wrap.setVisibility(View.GONE); return; }
         wrap.setVisibility(View.VISIBLE);
@@ -395,7 +408,7 @@ public class StudyActivity extends Activity {
             TextView tv = new TextView(this);
             tv.setTextSize(13.5f);
             tv.setTextColor(Skin.c(this, R.attr.wpText));
-            tv.setText(book.word(w) + "  ·  " + book.mean(w));
+            tv.setText(book.word(w) + "  ·  " + book.mean(w) + "   [" + getString(R.string.wrong_left_n, wb.left(w)) + "]");
             tv.setMaxLines(1);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
@@ -405,7 +418,7 @@ public class StudyActivity extends Activity {
         }
         if (still.size() > lim) {
             TextView more = new TextView(this);
-            more.setText("… 共 " + still.size() + " 个错词，点「错词复习」逐个击破");
+            more.setText(getString(R.string.wrong_more_n, still.size()));
             more.setTextSize(12f);
             more.setTextColor(Skin.c(this, R.attr.wpText2));
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
@@ -413,6 +426,10 @@ public class StudyActivity extends Activity {
             lp.topMargin = (int) Ui.dp(this, 8);
             box.addView(more);
         }
+    }
+
+    private void toast(String s) {
+        try { Toast.makeText(this, s, Toast.LENGTH_SHORT).show(); } catch (Throwable ignored) {}
     }
 
     /** 自测：把本组刚刷过的词拿来做「看中文想英文」的反向自测（计入今日自测） */
@@ -444,7 +461,7 @@ public class StudyActivity extends Activity {
         if (book == null || engine == null) return;
         prefs.saveMastered(book.id, engine.masteredBitSet());
         if (mode == MODE_WORD) prefs.setNext(book.id, engine.pos);
-        prefs.saveWrongs(book.id, wrongs);
+        prefs.saveWrongBook(book.id, wb);
         prefs.touchBook(book.id);
         tick();
         DiaryStore.save();

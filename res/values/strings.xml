@@ -303,4 +303,14 @@
     <string name="total_words_n">%1$d 词</string>
     <string name="book_pick_title">选择要加入的词书</string>
     <string name="about_count_short">已掌握 %1$d 词 · 连续 %2$d 天</string>
+    <!-- 自测（看中文想英文）与错题本订正（用户 2026-09-14 定的规则） -->
+    <string name="test_tap_reveal">想好了点一下，翻面对答案</string>
+    <string name="test_done">自测完成，今天又多练了一轮</string>
+    <string name="wrong_added_book">已进错题本：订正要对 %1$d 次</string>
+    <string name="wrong_add_more">又错一次：还得对 %1$d 次</string>
+    <string name="wrong_still">订正中：还要对 %1$d 次</string>
+    <string name="wrong_cleared">订正完成，出错题本 ✓</string>
+    <string name="wrong_left_n">还要对 %1$d 次</string>
+    <string name="wrong_more_n">… 共 %1$d 个错词，点「错词复习」逐个击破</string>
+    <string name="wrong_review_done">错题本还剩 %1$d 个词 · 合计还要对 %2$d 次</string>
 </resources>
