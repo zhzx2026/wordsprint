@@ -1,0 +1,8 @@
+{
+ "versionCode": 34,
+ "versionName": "2.13",
+ "url": "https://raw.githubusercontent.com/zhzx2026/wordsprint/dev/wordsprint.apk",
+ "notes": "CI staging v2.13（code 34）",
+ "force": false,
+ "channel": "dev"
+}

@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#16213A">
+<title>刷单词 · 学习战绩</title>
+<!-- 单词字体与 App 同一套（Poppins 子集，字母 a 是单层写法）；取不到就退回系统字体 -->
+<style>
+@font-face{font-family:'wpword';src:url('../res/font/wp_word.ttf') format('truetype');font-display:swap}
+:root{
+  --bg:#F6F3EC; --surface:#fff; --text:#1B2430; --text2:#5C6672; --line:#E8E3D8;
+  --brand:#3D5AF1; --brand2:#5E76FF; --green:#17B26A; --greenbg:#E7F8EF;
+  --head1:#16213A; --head2:#3D5AF1; --chip:#EFEAE0; --track:#14000000;
+  --h0:#ECEAE3; --h1:#C9E9D3; --h2:#7ED09B; --h3:#37A96A; --h4:#1B7A46;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0F1620; --surface:#18212E; --text:#EAF0F7; --text2:#9DA9B8; --line:#27313F;
+        --chip:#1E2836; --track:#26FFFFFF; --h0:#1B2430; --h1:#1E4A32; --h2:#276B45; --h3:#2F8F58; --h4:#42B876;}
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text)}
+body{font:16px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;
+     padding-bottom:28px;-webkit-text-size-adjust:100%}
+.wrap{max-width:520px;margin:0 auto}
+.hero{position:relative;background:linear-gradient(120deg,var(--head1),var(--head2));color:#fff;
+      padding:22px 22px 30px;border-radius:0 0 26px 26px;overflow:hidden}
+.hero:after{content:'';position:absolute;right:-60px;top:-70px;width:220px;height:220px;border-radius:50%;
+      background:rgba(255,255,255,.10)}
+.brand{font-size:13px;letter-spacing:.04em;opacity:.85}
+.who{margin-top:6px;font-size:26px;font-weight:700;display:flex;align-items:baseline;gap:10px}
+.who small{font-size:12px;font-weight:400;opacity:.8}
+.slogan{margin-top:2px;font-size:19px;font-weight:700}
+.big{margin-top:16px;display:flex;align-items:flex-end;gap:10px}
+.big b{font-size:52px;line-height:1;font-weight:700;letter-spacing:-1px}
+.big span{font-size:12px;opacity:.85;padding-bottom:6px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:18px;position:relative;z-index:1}
+.grid div{text-align:center}
+.grid b{display:block;font-size:19px;font-weight:700}
+.grid span{font-size:11px;opacity:.8}
+.card{background:var(--surface);border-radius:20px;margin:14px 14px 0;padding:16px 16px 18px;
+      box-shadow:0 6px 18px rgba(22,33,58,.06);border:1px solid rgba(160,128,96,.06)}
+.card h2{margin:0;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:space-between}
+.card h2 em{font-style:normal;font-size:12px;color:var(--text2);font-weight:400}
+.prog{margin-top:12px;height:10px;border-radius:6px;background:var(--track);overflow:hidden}
+.prog i{display:block;height:100%;width:0;border-radius:6px;background:linear-gradient(90deg,var(--brand2),var(--brand));
+      transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.prog.done i{background:linear-gradient(90deg,#1EC97B,var(--green))}
+.row{margin-top:10px;display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--text2)}
+.tick{font-size:15px;font-weight:700}
+.tick.on{color:var(--green)}
+.habits{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.habits span{font-size:12px;text-align:center;padding:8px 4px;border-radius:12px;background:var(--chip);color:var(--text2)}
+.habits span.on{background:var(--greenbg);color:var(--green);font-weight:700}
+.heat{margin-top:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+.heatin{display:flex;gap:3px;min-width:max-content}
+.heatin .col{display:flex;flex-direction:column;gap:3px}
+.heatin i{width:11px;height:11px;border-radius:3px;background:var(--h0);display:block}
+.heatin i.l1{background:var(--h1)} .heatin i.l2{background:var(--h2)}
+.heatin i.l3{background:var(--h3)} .heatin i.l4{background:var(--h4)}
+.legend{margin-top:10px;display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2);justify-content:flex-end}
+.legend i{width:11px;height:11px;border-radius:3px;display:block;background:var(--h0)}
+.legend i.l1{background:var(--h1)}.legend i.l2{background:var(--h2)}.legend i.l3{background:var(--h3)}.legend i.l4{background:var(--h4)}
+.meta{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);font-size:12px;color:var(--text2);line-height:1.8}
+.word{font-family:'wpword',-apple-system,'PingFang SC',sans-serif}
+footer{margin:18px 22px 0;font-size:11.5px;color:var(--text2);text-align:center;line-height:1.8}
+.bad{background:var(--surface);border-radius:20px;margin:14px;padding:22px;text-align:center;color:var(--text2);font-size:14px;line-height:1.9}
+.bad b{display:block;color:var(--text);font-size:17px;margin-bottom:8px}
+a{color:var(--brand);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <header class="hero">
+    <div class="brand">刷单词 · WordsPrint</div>
+    <div class="who"><b id="fName">我</b><small id="fDate"></small></div>
+    <div class="slogan" id="fSlogan">今天也把单词刷了</div>
+    <div class="big"><b id="fTotal">0</b><span>累计掌握</span></div>
+    <div class="grid" id="fGrid"></div>
+  </header>
+
+  <section class="card">
+    <h2>每日目标 <em id="fGoalPct"></em></h2>
+    <div class="prog" id="fProg"><i></i></div>
+    <div class="row"><span id="fGoalText">—</span><span class="tick" id="fTick">○</span></div>
+    <div class="habits" id="fHabits"></div>
+  </section>
+
+  <section class="card">
+    <h2>学习热力图 <em>最近 26 周 · 一格一天</em></h2>
+    <div class="heat"><div class="heatin" id="fHeat"></div></div>
+    <div class="legend"><span>少</span><i></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><span>多</span></div>
+    <div class="meta" id="fMeta"></div>
+  </section>
+
+  <footer>
+    这张页读的是二维码里的数据，想更新就回 App 重新生成战绩图。<br>
+    <span class="word">Keep going — every day counts.</span>
+  </footer>
+</div>
+
+<script>
+/* =========================================================================
+   战绩负载解码
+   App 侧（ShareCard.payload）：键值行 → raw deflate → base64url（去掉 =）
+   键：n 名字 · d 日期 · t 今日新词 · g 目标 · s 连续 · b 最高连续
+       m 累计掌握 · k 达标天数 · r 温习分钟 · f 收藏数 · h 182 天等级串
+   本文件自带一个最小 inflate，方便任何浏览器/微信内置浏览器都能打开。
+   ========================================================================= */
+var WPI = (function(){
+  'use strict';
+  var LB=[3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,67,83,99,115,131,163,195,227,258];
+  var LE=[0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0];
+  var DB=[1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577];
+  var DE=[0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13];
+  var CLO=[16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15];
+
+  function Huff(lengths){
+    var MAXB=15, count=new Array(MAXB+1), i;
+    for(i=0;i<=MAXB;i++) count[i]=0;
+    for(i=0;i<lengths.length;i++) count[lengths[i]]++;
+    count[0]=0;
+    var offs=new Array(MAXB+2); offs[1]=0;
+    for(i=1;i<=MAXB;i++) offs[i+1]=offs[i]+count[i];
+    var symbol=new Array(lengths.length);
+    for(i=0;i<lengths.length;i++) if(lengths[i]) symbol[offs[lengths[i]]++]=i;
+    this.counts=count; this.symbols=symbol;
+  }
+  function decSym(h, rd){
+    var code=0, first=0, index=0, len, count;
+    for(len=1;len<=15;len++){
+      code |= rd(1);
+      count = h.counts[len];
+      if(code - first < count) return h.symbols[index + (code - first)];
+      index += count; first += count; first <<= 1; code <<= 1;
+    }
+    throw new Error('huffman');
+  }
+  function fixed(){
+    var l=new Array(288), i;
+    for(i=0;i<144;i++) l[i]=8;
+    for(i=144;i<256;i++) l[i]=9;
+    for(i=256;i<280;i++) l[i]=7;
+    for(i=280;i<288;i++) l[i]=8;
+    var d=new Array(30); for(i=0;i<30;i++) d[i]=5;
+    return {lit:new Huff(l), dist:new Huff(d)};
+  }
+  function inflateRaw(data){
+    var pos=0, bit=0, out=[], fixedT=null;
+    function rd(n){
+      var v=0, i;
+      for(i=0;i<n;i++){
+        if(pos>=data.length) throw new Error('eof');
+        v |= ((data[pos]>>bit)&1) << i;
+        bit++; if(bit===8){bit=0;pos++;}
+      }
+      return v;
+    }
+    function align(){ if(bit){bit=0;pos++;} }
+    for(;;){
+      var last=rd(1), type=rd(2), i, n;
+      if(type===0){
+        align();
+        if(pos+4>data.length) throw new Error('eof');
+        var len=data[pos]|(data[pos+1]<<8), nlen=data[pos+2]|(data[pos+3]<<8);
+        pos+=4;
+        if((len ^ 0xFFFF)!==nlen) throw new Error('stored');
+        for(i=0;i<len;i++) out.push(data[pos++]);
+      } else if(type===1 || type===2){
+        var litT, distT, lb, db;
+        if(type===1){ if(!fixedT) fixedT=fixed(); litT=fixedT.lit; distT=fixedT.dist; }
+        else {
+          var hlit=rd(5)+257, hdist=rd(5)+1, hclen=rd(4)+4;
+          var clen=new Array(19);
+          for(i=0;i<19;i++) clen[i]=0;
+          for(i=0;i<hclen;i++) clen[CLO[i]]=rd(3);
+          var clT=new Huff(clen);
+          lb=new Array(hlit+hdist); n=0;
+          while(n<lb.length){
+            var sym=decSym(clT, rd);
+            if(sym<16) lb[n++]=sym;
+            else if(sym===16){ var p=lb[n-1], r=3+rd(2); while(r-->0) lb[n++]=p; }
+            else if(sym===17){ var r17=3+rd(3); while(r17-->0) lb[n++]=0; }
+            else { var r18=11+rd(7); while(r18-->0) lb[n++]=0; }
+          }
+          litT=new Huff(lb.slice(0,hlit));
+          distT=new Huff(lb.slice(hlit));
+        }
+        for(;;){
+          var s=decSym(litT, rd);
+          if(s<256){ out.push(s); continue; }
+          if(s===256) break;
+          var li=s-257; if(li>=29) throw new Error('len');
+          var l2=LB[li]+rd(LE[li]);
+          var ds=decSym(distT, rd);
+          var dist=DB[ds]+rd(DE[ds]);
+          if(dist>out.length) throw new Error('dist');
+          for(i=0;i<l2;i++) out.push(out[out.length-dist]);
+        }
+      } else throw new Error('btype3');
+      if(last) break;
+    }
+    return out;
+  }
+  function utf8(bytes){
+    if(window.TextDecoder) return new TextDecoder('utf-8').decode(new Uint8Array(bytes));
+    var s='', i=0;
+    while(i<bytes.length){
+      var c=bytes[i++];
+      if(c<0x80) s+=String.fromCharCode(c);
+      else if(c<0xE0) s+=String.fromCharCode(((c&0x1F)<<6)|(bytes[i++]&0x3F));
+      else if(c<0xF0) s+=String.fromCharCode(((c&0x0F)<<12)|((bytes[i++]&0x3F)<<6)|(bytes[i++]&0x3F));
+      else { var cp=((c&0x07)<<18)|((bytes[i++]&0x3F)<<12)|((bytes[i++]&0x3F)<<6)|(bytes[i++]&0x3F);
+             cp-=0x10000; s+=String.fromCharCode(0xD800+(cp>>10),0xDC00+(cp&1023)); }
+    }
+    return s;
+  }
+  function b64u(str){
+    var s=String(str).replace(/-/g,'+').replace(/_/g,'/').replace(/[^A-Za-z0-9+/]/g,'');
+    while(s.length % 4) s+='=';
+    var bin=window.atob(s), out=new Array(bin.length), i;
+    for(i=0;i<bin.length;i++) out[i]=bin.charCodeAt(i);
+    return out;
+  }
+  function payload(str){
+    var raw=utf8(inflateRaw(zlibSafe(b64u(str))));
+    var o={}, lines=raw.split('\n'), i, k;
+    for(i=0;i<lines.length;i++){
+      k=lines[i].indexOf('=');
+      if(k>0) o[lines[i].slice(0,k)]=lines[i].slice(k+1);
+    }
+    return o;
+  }
+  /* Java 侧是 new Deflater(9) + DeflaterOutputStream（zlib 封装：2 字节头 + 4 字节 adler32）。
+     有头就去头，adler32 不用管（inflate 读到最后一个块就停）；没有头就按裸 deflate 解。 */
+  function zlibSafe(bytes){
+    if(bytes.length > 2){
+      var cmf=bytes[0], flg=bytes[1];
+      if((cmf & 0x0F) === 8 && ((cmf<<8|flg) % 31) === 0){ return bytes.slice(2); }
+    }
+    return bytes;
+  }
+  return {inflateRaw:inflateRaw, payload:payload, b64u:b64u, utf8:utf8, zlibSafe:zlibSafe};
+})();
+if (typeof module !== 'undefined' && module.exports) module.exports = WPI;   /* 主机侧测试用 */
+</script>
+
+<script>
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+  var LBL = { d_today:'今日新词', d_streak:'连续打卡', d_best:'最高连续', d_days:'达标天数' };
+
+  function para(name, def){
+    /* 取负载：?d=… 也容忍 ?p=… / #d=…；再容忍被别的预览服务包一层（URL 被 percent-encode，
+       变成 …%3Fd%3D<payload>）—— 这样页面挂到任何会渲染 HTML 的托管点都能打开。 */
+    var href = window.location.href || '';
+    var m = /[?&#](?:d|p)=([A-Za-z0-9\-_+/=]+)/.exec(href);
+    if (m) return m[1];
+    m = /(?:%3F|%26|%23)(?:d|p)(?:%3D|=)([A-Za-z0-9\-_+/=]+)/i.exec(href);
+    return m ? m[1] : def;
+  }
+  function bad(msg){
+    var app = $('app');
+    app.innerHTML = '<div class="bad"><b>打不开这张战绩图</b>' + msg +
+      '<br><br>扫码时请用微信「扫一扫」或相机直接打开链接；<br>也可以在 App 里重新生成一张战绩图。</div>';
+  }
+  function fmtDate(d){
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || '');
+    return m ? (m[1] + '年' + (+m[2]) + '月' + (+m[3]) + '日') : (d || '');
+  }
+  function daysAgo(dateStr, n){
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr); if(!m) return null;
+    var t = Date.UTC(+m[1], +m[2]-1, +m[3]);
+    t -= n * 86400000;
+    var dt = new Date(t);
+    return dt.getUTCFullYear() + '-' + ('0'+(dt.getUTCMonth()+1)).slice(-2) + '-' + ('0'+dt.getUTCDate()).slice(-2);
+  }
+  function weekday(dateStr){
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr); if(!m) return 0;
+    return (new Date(Date.UTC(+m[1], +m[2]-1, +m[3])).getUTCDay() + 6) % 7;   /* 周一 = 0 */
+  }
+  function num(v, def){ var n = parseInt(v, 10); return isFinite(n) ? n : (def || 0); }
+
+  function render(p){
+    var name = p.n || '我', date = p.d || '', total = num(p.m), today = num(p.t), goal = Math.max(1, num(p.g, 50));
+    var streak = num(p.s), best = num(p.b), days = num(p.k), rev = num(p.r), favs = num(p.f);
+    var tested = num(p.x), heat = p.h || '';
+    var done = today >= goal;
+
+    $('fName').textContent = name;
+    $('fDate').textContent = fmtDate(date);
+    $('fTotal').textContent = total;
+    $('fGrid').innerHTML =
+      cell(today, LBL.d_today) + cell(streak + ' 天', LBL.d_streak) +
+      cell(best + ' 天', LBL.d_best) + cell(days + ' 天', LBL.d_days);
+
+    $('fGoalPct').textContent = Math.min(100, Math.round(today * 100 / goal)) + '%';
+    $('fProg').className = 'prog' + (done ? ' done' : '');
+    $('fProg').firstChild.style.width = Math.min(100, today * 100 / goal) + '%';
+    $('fGoalText').textContent = '已刷 ' + today + ' / ' + goal + ' 词';
+    var tick = $('fTick');
+    tick.textContent = done ? '✓ 达标' : '○ 还差 ' + (goal - today);
+    if(done) tick.className = 'tick on'; else tick.className = 'tick';
+    $('fHabits').innerHTML =
+      habit(done, '每日目标') + habit(rev >= 3, '温习 ' + rev + '′') + habit(tested >= 10, '自测 ' + tested + ' 张');
+
+    /* 热力图：182 天，按真实星期几对齐（列 = 周，行 = 周一…周日），最后一列不满就留空 */
+    var nDays = heat.length;
+    var first = daysAgo(date, nDays - 1);
+    var lead = weekday(first);
+    var cells = [], i2;
+    for(i2 = 0; i2 < lead; i2++) cells.push(null);              // 首周之前的位置是空的
+    for(i2 = 0; i2 < nDays; i2++) cells.push(num(heat.charAt(i2)));
+    while(cells.length % 7) cells.push(null);                   // 末周之后（未来那几天）也空着
+    var html = '';
+    for(i2 = 0; i2 < cells.length; i2 += 7){
+      html += '<div class="col">';
+      for(var r = 0; r < 7; r++){
+        var v = cells[i2 + r];
+        html += '<i class="' + (v ? 'l' + Math.min(4, v) : '') + '"></i>';
+      }
+      html += '</div>';
+    }
+    $('fHeat').innerHTML = html;
+    var heatBox = $('fHeat').parentNode;
+    heatBox.scrollLeft = heatBox.scrollWidth;
+
+    $('fMeta').innerHTML =
+      '连续打卡 <b>' + streak + ' 天</b> · 历史最高 <b>' + best + ' 天</b><br>' +
+      '达标天数 <b>' + days + ' 天</b> · 温习 <b>' + rev + ' 分钟</b> · 收藏 <b>' + favs + '</b> 个词';
+  }
+  function cell(big, small){ return '<div><b>' + big + '</b><span>' + small + '</span></div>'; }
+  function habit(on, text){ return '<span class="' + (on ? 'on' : '') + '">' + (on ? '✓ ' : '○ ') + text + '</span>'; }
+
+  function boot(){
+    var d = para('d', '');
+    if(!d){ render({n:'我', d:new Date().toISOString().slice(0,10), t:0, g:50, m:0, h:''}); return; }
+    var p;
+    try { p = WPI.payload(d); }
+    catch(e){ bad('这串数据可能被聊天软件截断了。'); return; }
+    if(!p || !p.d){ bad('数据格式不对。'); return; }
+    try { render(p); } catch(e){ bad('渲染出错了：' + (e && e.message ? e.message : e)); }
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+})();
+</script>
+</body>
+</html>
