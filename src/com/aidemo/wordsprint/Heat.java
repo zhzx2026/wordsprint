@@ -47,20 +47,45 @@ public final class Heat {
         return n;
     }
 
+    // ---------------- 星期标签：一/三/五/日 要留够地方 ----------------
+
+    /** 标签离网格左边缘的距离 = cell * LABEL_OFF（与 HeatView.paint 里画的偏移一致） */
+    public static final float LABEL_OFF = 1.7f;
+
+    /** 星期标签字号（px）：跟格子走，但有上下限（格子小了也不能看不清） */
+    public static float labelFont(float cell, float fontMin, float fontMax) {
+        float f = cell * 0.92f;
+        return f < fontMin ? fontMin : (f > fontMax ? fontMax : f);
+    }
+
     /**
-     * 挑格子大小（单位与 avail/labelW 一致，都是 px）。tries 必须从大到小排列。
+     * 星期标签（一/三/五/日）需要占多宽：它画在网格左边、偏移 cell*LABEL_OFF，
+     * 还要再加一个字的宽度，且不小于 minW。
      *
-     *   ① 先找「整个 span 都放得下」的**最大**格子 —— 用户选了 3 个月就老老实实铺 13 周，
-     *      格子能多大就多大（上限由 tries[0] 卡住，18dp，免得 13 周拉成一排巨大方块）；
-     *   ② 万一这个跨度整屏放不下（比如手机上选「1 年」），就取**最小**格子尽量多画几周 ——
-     *      宁可少画几周，也不能把格子放大成半年、把「一年」缩水成四个月。
+     * 用户 2026-09-15：「3、6 月的周 1357 被遮住了」—— 3 个月档格子放到 18dp 时，
+     * 老代码只给标签留 24dp，而 18*1.7=30.6dp 已经跑到视图外面 → 四个标签整列被切掉。
      */
-    public static float chooseCell(float avail, float labelW, float gapRatio, float[] tries, int span) {
-        if (tries == null || tries.length == 0) return 0f;
+    public static float labelWidth(float cell, float fontMin, float fontMax, float minW) {
+        float w = cell * LABEL_OFF + labelFont(cell, fontMin, fontMax);
+        return w < minW ? minW : w;
+    }
+
+    /**
+     * 一次算好整张网格：{cell, labelW, cols}。
+     * 选格子的同时把标签宽度也算出来（标签宽度会影响能放几列），
+     * 保证「标签不被切」和「网格不越界」两个条件同时成立。
+     */
+    public static float[] layout(float avail, float minLabelW, float gapRatio, float[] tries, int span,
+                                 float fontMin, float fontMax) {
+        if (tries == null || tries.length == 0) return new float[]{0f, minLabelW, 1f};
         for (float cell : tries) {
-            if (colsFor(avail, labelW, gapRatio, cell, span) >= span) return cell;   // ① 铺满整个跨度
+            float lw = labelWidth(cell, fontMin, fontMax, minLabelW);
+            int n = colsFor(avail, lw, gapRatio, cell, span);
+            if (n >= span) return new float[]{cell, lw, n};          // 这个格子够大，且整个跨度放得下
         }
-        return tries[tries.length - 1];                                             // ② 最小格子，多画几周
+        float cell = tries[tries.length - 1];                         // 实在放不下：最小格子尽量多画几周
+        float lw = labelWidth(cell, fontMin, fontMax, minLabelW);
+        return new float[]{cell, lw, colsFor(avail, lw, gapRatio, cell, span)};
     }
 
     /** 可选的展示跨度（周）：3 个月 / 6 个月 / 1 年 —— 用户 2026-09-15「可以只显示这 3 个月的 / 用户可以选择啊」 */

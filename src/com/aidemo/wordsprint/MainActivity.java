@@ -201,6 +201,8 @@ public class MainActivity extends Activity {
     /** 热力图那句小字：说清「看的是多久」，实际没铺满所选跨度时按实际月数说 */
     private void updateHeatSub() {
         int spanIdx = Prefs.of(this).i(Prefs.K_HEAT_SPAN, 0);
+        // 跨度是跟着档案存的：切档案回来，这排「3 个月/6 个月/1 年」的高亮也要跟着换
+        Ui.select((LinearLayout) findViewById(R.id.heatSpanRow), spanIdx);
         int want = Heat.spanWeeks(spanIdx);
         int got = heat == null ? want : heat.cols();
         String label;
@@ -211,7 +213,8 @@ public class MainActivity extends Activity {
         } else {
             label = getString(R.string.heat_span_actual, Math.max(1, (got + 2) / 4));   // 约几个月
         }
-        ((TextView) findViewById(R.id.heatSub)).setText(getString(R.string.heat_sub, label));
+        ((TextView) findViewById(R.id.heatSub)).setText(
+                getString(R.string.heat_now, label) + " · " + getString(R.string.heat_sub));
     }
 
     private void mark(int id, boolean done) {

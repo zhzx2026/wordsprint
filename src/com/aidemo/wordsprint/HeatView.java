@@ -21,6 +21,11 @@ import java.util.List;
  *   · 再窄 → 用最小格子，列数尽力而为。
  * 现在整张网格一定落在卡片里，右边不会再切半格、也不需要横向滑动。
  *
+ * 另一处细节：左边的星期标签（一/三/五/日）画在网格外沿，格子放大到 18dp 时
+ * 「偏移 1.7 格 + 一个字」要 43dp，只留 24dp 就会整列被视图边界切掉 ——
+ * 所以标签预留宽度也跟着格子一起算（{@link Heat#layout}），用户 2026-09-15
+ * 反馈的「3、6 月的周 1357 被遮住了」就是这个问题。
+ *
  * 颜色 = 当前配色的品牌色 4 档深浅（0 档 = 空），达标的当天加一个描边圈。
  * 画法抽成静态 {@link #paint}，战绩分享图（ShareCard）直接复用同一段代码 —— 屏幕上看到的
  * 和分享出去的必然是同一张图，不会出现「分享图里对不上」。
@@ -37,6 +42,10 @@ public class HeatView extends View {
     static final float[] CELL_TRIES_DP = {18f, 16f, 14f, 12f, 10.5f, 9f, 8f, 7f, 6f};
     /** 间隔与格子的比例（保持 3.6/13 的观感） */
     static final float GAP_RATIO = 3.6f / 13f;
+    /** 星期标签至少留这么宽（dp）；格子大时按 Heat.labelWidth 再放大，免得「一/三/五/日」被切 */
+    static final float LABEL_MIN_W_DP = 24f;
+    /** 星期标签字号下限 / 上限（dp） */
+    static final float LABEL_FONT_MIN_DP = 9.5f, LABEL_FONT_MAX_DP = 12f;
 
     private Diary diary;
     private String today = Diary.today();
@@ -93,19 +102,27 @@ public class HeatView extends View {
         float avail = (wm == MeasureSpec.UNSPECIFIED || ws <= 0)
                 ? 0f : (ws - getPaddingLeft() - getPaddingRight());
         if (avail > 0f) {
-            // 自适应：先按「用户选的跨度」铺满，放不下就缩小格子
+            // 自适应：按「用户选的跨度」铺满，放不下就缩小格子。
+            // 注意标签宽度也跟着格子走（Heat.layout 一起算）——格子放到 18dp 时标签要占 43dp，
+            // 否则「一/三/五/日」那四个字会被视图左边界切掉（用户 2026-09-15 反馈）
             float[] tries = new float[CELL_TRIES_DP.length];
             for (int i = 0; i < tries.length; i++) tries[i] = CELL_TRIES_DP[i] * dn;
-            // 用户选的跨度优先：选 3 个月就铺 13 周、格子尽量大；选一年就铺 53 周、格子相应变小
-            cell = Heat.chooseCell(avail, labelW, GAP_RATIO, tries, span);
+            float[] fit = Heat.layout(avail, LABEL_MIN_W_DP * dn, GAP_RATIO, tries, span,
+                    LABEL_FONT_MIN_DP * dn, LABEL_FONT_MAX_DP * dn);
+            cell = fit[0];
+            labelW = fit[1];
+            cols = (int) fit[2];
             gap = cell * GAP_RATIO;
-            cols = Heat.colsFor(avail, labelW, GAP_RATIO, cell, span);
         } else {
             // 没有可用宽度（理论上不会发生：宽度由父容器给）：按跨度撑开
             cell = CELL_TRIES_DP[0] * dn;
             gap = cell * GAP_RATIO;
             cols = span;
+            labelW = Heat.labelWidth(cell, LABEL_FONT_MIN_DP * dn, LABEL_FONT_MAX_DP * dn, LABEL_MIN_W_DP * dn);
         }
+        // 上面那行月份小字（9月/10月…）画在网格上方，格子大时也得给足高度，别被卡片顶边切
+        labelH = Math.max(18f * dn, cell * 0.45f + Heat.labelFont(cell,
+                LABEL_FONT_MIN_DP * dn, LABEL_FONT_MAX_DP * dn) * 1.25f);
         int w = neededWidth(), h = neededHeight();
         int measuredW = wm == MeasureSpec.EXACTLY ? ws
                 : (avail > 0f ? Math.min(w, (int) avail) : w);
@@ -118,8 +135,9 @@ public class HeatView extends View {
         int[] ramp = ramp(getContext(), Prefs.of(getContext()));
         Paint tp = new Paint(Paint.ANTI_ALIAS_FLAG);
         // 格子自适应变小后，一/三/五/日 和「9月」这些小字也不能跟着缩到看不清：
-        // 给个 9.5dp 的下限（上限 12dp，免得挤出预留的那一行）
-        tp.setTextSize(Math.min(12f * dn, Math.max(cell * 0.92f, 9.5f * dn)));
+        // 用 Heat.labelFont（9.5dp ~ 12dp），和 onMeasure 里 labelWidth 预留的宽度完全一致 ——
+        // 两个字宽 = 偏移 + 一个字，所以永远不会切到字
+        tp.setTextSize(Heat.labelFont(cell, LABEL_FONT_MIN_DP * dn, LABEL_FONT_MAX_DP * dn));
         tp.setColor(Skin.c(getContext(), R.attr.wpText2));
         // 空格子用 ramp[0]（浅灰）——以前用 wpSurface，和卡片底色一样，整张网格「看不见格子」
         paint(cv, diary, today, labelW, labelH, cell, gap, cols, ramp,

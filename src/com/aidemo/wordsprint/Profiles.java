@@ -83,6 +83,44 @@ public class Profiles {
         return s.isEmpty() ? "我" : s;
     }
 
+
+    // ---------------- 命名空间归属（「多个档案真的隔开了吗」的算术部分） ----------------
+
+    /**
+     * 学习数据键：跟着档案走的那一批。删档案时要按这个清单把数据**真的**清掉，
+     * 而全局键（主题/配色/字体/更新源/档案列表本身）绝不能碰。
+     *
+     *   b_…       每本书的进度（掌握位图 / 组指针 / 错题本 / 上次打开时间）
+     *   d_…       每天的刷词数（老键，进度码还用它）
+     *   s_…       语音/音标/音效/动画这些学习开关
+     *   diary_v1  每日日志（热力图、连续打卡、目标）
+     *   fav_v1    收藏
+     *   g_goal    默认每日目标
+     *   g_ges     手势映射
+     *   g_size    每本默认分组大小
+     *   g_heat_span 热力图展示跨度
+     */
+    public static boolean isProfileKey(String key) {
+        if (key == null || key.isEmpty()) return false;
+        if (key.startsWith("b_") || key.startsWith("d_") || key.startsWith("s_")) return true;
+        return key.equals("diary_v1") || key.equals("fav_v1") || key.equals("g_goal")
+                || key.equals("g_ges") || key.equals("g_size") || key.equals("g_heat_span");
+    }
+
+    /**
+     * 这条 SharedPreferences 键是不是档案 id 的数据（删档案时按它挑键）。
+     *
+     *   · 非遗留档案：键必须带 u&lt;id&gt;_ 前缀 —— 这个前缀是档案独占的，带前缀就等于它的，
+     *     以后新增学习数据键也不会漏删；
+     *   · 遗留档案（id=0）：数据用**无前缀**的老键，而全局设置也在这一层（p_profiles /
+     *     g_skin / u_url…），所以只认 {@link #isProfileKey} 里那几个家族，绝不误删设置。
+     */
+    public static boolean ownedBy(String id, String key) {
+        if (id == null || key == null) return false;
+        if (LEGACY_ID.equals(id)) return isProfileKey(key);
+        return key.startsWith("u" + id + "_");
+    }
+
     public String encode() {
         StringBuilder sb = new StringBuilder("v1\n");
         for (P p : list) sb.append(p.id).append('\t').append(p.name).append('\t').append(p.created).append('\n');

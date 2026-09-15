@@ -40,21 +40,32 @@ public class HeatRampTest {
 
     /** 与 HeatView 里的常量保持一致 */
     static final float GAP_RATIO = 3.6f / 13f;
-    static final float LABEL_W_DP = 24f;
+    static final float LABEL_W_DP = 24f;               // 标签最小预留宽度
+    static final float LABEL_FONT_MIN_DP = 9.5f, LABEL_FONT_MAX_DP = 12f;
     static final float[] TRIES_DP = {18f, 16f, 14f, 12f, 10.5f, 9f, 8f, 7f, 6f};
-    /** 按「屏幕宽度 + 密度 + 展示跨度」算实际排布（与 HeatView.onMeasure 同一套调用） */
+
+    /** 按「屏幕宽度 + 密度 + 展示跨度」算实际排布（与 HeatView.onMeasure 走同一个 Heat.layout） */
     static float[] fit(float availDp, float density, int spanWeeks) {
-        float avail = availDp * density, labelW = LABEL_W_DP * density;
+        float avail = availDp * density;
         float[] tries = new float[TRIES_DP.length];
         for (int i = 0; i < tries.length; i++) tries[i] = TRIES_DP[i] * density;
-        float cell = Heat.chooseCell(avail, labelW, GAP_RATIO, tries, spanWeeks);
-        int cols = Heat.colsFor(avail, labelW, GAP_RATIO, cell, spanWeeks);
-        return new float[]{cell, cols};
+        return Heat.layout(avail, LABEL_W_DP * density, GAP_RATIO, tries, spanWeeks,
+                LABEL_FONT_MIN_DP * density, LABEL_FONT_MAX_DP * density);
     }
 
-    /** 网格右边缘到左标签起点的距离（必须 ≤ 可用宽度，否则就是「右边超过屏幕」） */
-    static float gridRight(float cell, int cols, float density) {
-        return LABEL_W_DP * density + cols * cell * (1f + GAP_RATIO);
+    /** 网格左边缘的 x（= 标签预留宽度），右边缘必须 ≤ 可用宽度 */
+    static float gridRight(float labelW, float cell, int cols) {
+        return labelW + cols * cell * (1f + GAP_RATIO);
+    }
+
+    /**
+     * 星期标签（一/三/五/日）画在网格左边，偏移 cell*1.7，再加一个字宽 —— 这就是它需要的空间。
+     * 用户 2026-09-15：「3、6 月的周 1357 被遮住了」：3 个月档格子放到 18dp，
+     * 偏移 30.6dp 已经超过老的固定 24dp 预留 → 四个标签整列被切出视图。
+     */
+    static float labelNeed(float cell, float density) {
+        return cell * Heat.LABEL_OFF + Heat.labelFont(cell,
+                LABEL_FONT_MIN_DP * density, LABEL_FONT_MAX_DP * density);
     }
 
     public static void main(String[] args) {
@@ -107,9 +118,14 @@ public class HeatRampTest {
                 for (float d : new float[]{1.5f, 2f, 2.75f, 3f, 3.5f}) {
                     float availDp = availDp(sd);
                     float[] r = fit(availDp, d, span);
-                    float cell = r[0];
-                    int cols = (int) r[1];
-                    float right = gridRight(cell, cols, d);
+                    float cell = r[0], labelW = r[1];
+                    int cols = (int) r[2];
+                    float right = gridRight(labelW, cell, cols);
+                    // 标签必须整整齐齐落在预留宽度里（否则「一/三/五/日」被视图左边界切掉）
+                    check(labelW >= labelNeed(cell, d) - 0.01f, String.format(
+                            "跨度 %d / 屏幕 %.0fdp@%.2f：星期标签要放得下（预留 %.1fdp < 需要 %.1fdp，格子 %.1fdp）",
+                            span, sd, d, labelW / d, labelNeed(cell, d) / d, cell / d));
+                    check(labelW >= LABEL_W_DP * d - 0.01f, "标签预留宽度不低于下限");
                     float avail = availDp * d;
                     check(right <= avail + 0.01f, String.format(
                             "跨度 %d 周 / 屏幕 %.0fdp@%.2f：网格不能超出可用宽度（右 %.1f > 可用 %.1f）",
@@ -130,17 +146,24 @@ public class HeatRampTest {
                 }
             }
         }
-        // 3 个月这一档：格子要明显更大（6.1 寸屏上大约 18dp）
+        // 3 个月这一档：格子要明显更大（6.1 寸屏上大约 18dp），且标签要放得下
         float[] three = fit(availDp(393f), 3f, Heat.SPAN_3M);
-        check((int) three[1] == Heat.SPAN_3M, "3 个月 = 13 周，正好铺满");
+        check((int) three[2] == Heat.SPAN_3M, "3 个月 = 13 周，正好铺满");
         check(three[0] >= 16f * 3f, "3 个月档的格子不小于 16dp，实际 " + (three[0] / 3f) + "dp");
+        check(three[1] >= 36f * 3f - 0.01f, "3 个月大格子时标签要额外留宽（≈39dp），实际 " + (three[1] / 3f) + "dp");
         // 1 年这一档：小屏放不下整天年 → 用最小格子多画几周（不能变成「放大格子只画半年」）
         float[] year = fit(availDp(360f), 3f, Heat.SPAN_1Y);
-        check((int) year[1] >= Heat.SPAN_6M, "360dp 小屏选「1 年」至少画半年，实际 " + (int) year[1] + " 周");
+        check((int) year[2] >= Heat.SPAN_6M, "360dp 小屏选「1 年」至少画半年，实际 " + (int) year[2] + " 周");
         check(year[0] <= 6f * 3f + 0.01f, "放不下整天年时应该用最小格子（别放大格子缩跨度）");
         // 平板：一年档要真的铺满一年
         float[] padYear = fit(availDp(1024f), 2f, Heat.SPAN_1Y);
-        check((int) padYear[1] == Heat.SPAN_1Y, "平板选 1 年要铺满 53 周，实际 " + (int) padYear[1]);
+        check((int) padYear[2] == Heat.SPAN_1Y, "平板选 1 年要铺满 53 周，实际 " + (int) padYear[2]);
+        // 标签算术本身：小格子时保底下限 24dp，大格子时按「偏移 + 一个字」放大
+        check(Heat.labelWidth(6f, 9.5f, 12f, 24f) == 24f, "小格子时标签宽度取 24dp 下限");
+        check(Heat.labelWidth(18f, 9.5f, 12f, 24f) >= 18f * 1.7f + 12f - 0.01f, "18dp 格子时标签要留够 43dp 左右");
+        check(Heat.labelFont(6f, 9.5f, 12f) == 9.5f, "小格子标签字号有下限 9.5dp");
+        check(Heat.labelFont(18f, 9.5f, 12f) == 12f, "大格子标签字号封顶 12dp");
+        check(Heat.LABEL_OFF == 1.7f, "标签偏移比例要和 HeatView.paint 里画的一致");
         // 跨度选择：默认与映射
         check(Heat.spanWeeks(0) == Heat.SPAN_3M, "选项 0 = 3 个月");
         check(Heat.spanWeeks(1) == Heat.SPAN_6M, "选项 1 = 6 个月");
@@ -148,8 +171,9 @@ public class HeatRampTest {
         check(Heat.spanWeeks(99) == Heat.SPAN_3M, "越界的选项退回默认（3 个月）");
         // 极窄屏也不能崩
         float[] tiny = fit(200f, 3f, Heat.SPAN_1Y);
-        check((int) tiny[1] >= 1 && tiny[0] > 0, "极窄屏也能排出格子");
-        check(gridRight(tiny[0], (int) tiny[1], 3f) <= 200f * 3f + 0.01f, "极窄屏也不越界");
+        check((int) tiny[2] >= 1 && tiny[0] > 0, "极窄屏也能排出格子");
+        check(gridRight(tiny[1], tiny[0], (int) tiny[2]) <= 200f * 3f + 0.01f, "极窄屏也不越界");
+        check(tiny[1] >= labelNeed(tiny[0], 3f) - 0.01f, "极窄屏的标签也不能被切");
 
         System.out.println("ALL HEAT RAMP TESTS PASS (" + checks + " checks)");
     }

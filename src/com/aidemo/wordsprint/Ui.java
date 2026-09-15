@@ -58,6 +58,12 @@ public class Ui {
         }
     }
 
+    /** 只改高亮、不重建：切档案后「跟着档案走」的选择（比如热力图跨度）要跟着刷新 */
+    public static void select(LinearLayout row, int idx) {
+        if (row == null) return;
+        for (int j = 0; j < row.getChildCount(); j++) row.getChildAt(j).setActivated(j == idx);
+    }
+
     /** 等宽分段（顺序 2 选） */
     public static void fillRowEqual(LinearLayout row, String[] items, int sel, final ChipTap tap) {
         row.removeAllViews();

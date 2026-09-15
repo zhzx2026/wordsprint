@@ -283,7 +283,7 @@ def main():
     # 「主机侧单测的源码不能碰 Android/Prefs」（CI 里这 13 个文件被 cp 到 test/src 单编，
     #  一旦它们 import/引用 Prefs 或 Context，javac 直接 cannot find symbol → CI 红）
     PURE = ('Engine', 'QREnc', 'QRUtil', 'Transfer', 'ProgressCode', 'Pack', 'ZipB64',
-            'Diary', 'Scale', 'WrongBook', 'ShareGeom', 'Ges', 'Heat', 'BookEdit', 'Vers')
+            'Diary', 'Scale', 'WrongBook', 'ShareGeom', 'Ges', 'Heat', 'BookEdit', 'Vers', 'Profiles')
     for name in PURE:
         body = texts.get(name)
         if not body:

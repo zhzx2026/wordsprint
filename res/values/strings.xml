@@ -183,7 +183,8 @@
     <string name="habit_undone">未完成</string>
 
     <string name="heat_title">学习热力图</string>
-    <string name="heat_sub">%1$s · 一格一天 · 越深刷得越多</string>
+    <string name="heat_sub">一格一天 · 越深刷得越多</string>
+    <string name="heat_now">最近 %1$s</string>
     <string name="heat_span_3m">3 个月</string>
     <string name="heat_span_6m">6 个月</string>
     <string name="heat_span_1y">1 年</string>

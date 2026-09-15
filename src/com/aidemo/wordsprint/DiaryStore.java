@@ -42,10 +42,20 @@ public final class DiaryStore {
         }
     }
 
-    /** 切档案/删档案后调用：先落盘再丢缓存，下次读的是新档案的数据 */
+    /**
+     * 切档案/删档案后调用：**只丢内存缓存**，不落盘。
+     *
+     * 以前这里是「先 save() 再清缓存」，而调用方已经先把 activeId 改成新档案了 →
+     * 旧的日记会被写进**新档案**的命名空间（等于把上一个人的热力图/目标复制给下一个人）。
+     * 现在改成：切档案前先 {@link #flush()}（按旧命名空间落盘），切完只丢缓存。
+     */
     public static synchronized void forget() {
-        try { save(); } catch (Throwable ignored) {}
         cache = null;
+    }
+
+    /** 把当前内存里的日记按**当前**命名空间落盘（切档案之前必须调一次） */
+    public static synchronized void flush() {
+        try { save(); } catch (Throwable ignored) {}
     }
 
     public static synchronized void save() {

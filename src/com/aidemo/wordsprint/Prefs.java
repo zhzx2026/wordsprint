@@ -156,12 +156,28 @@ public class Prefs {
         return false;
     }
 
+    /**
+     * 换当前档案：**先按旧命名空间落盘，再切，最后丢缓存**。
+     *
+     * 顺序不能反（用户 2026-09-15 问「多个用户档案真的隔开了吗」时查出来的问题）：
+     * 旧代码先把 activeId 改成新档案，再调 DiaryStore.forget()，
+     * 而 forget() 内部会 save() —— 于是上一个档案的日记被写进新档案的槽里，
+     * 新档案一进去就看到别人的热力图/目标/连续天数。
+     */
+    private static void setActiveProfile(Prefs pr, String id) {
+        DiaryStore.flush();                     // ← 此刻 ns 还是旧档案，先落盘
+        activeId = id;
+        pr.p.edit().putString(K_ACTIVE, id).apply();
+        DiaryStore.forget();                    // ← 只丢缓存（不再写盘），下次读的是新档案
+        Favorites.forget();
+    }
+
     /** 建档案并切过去（useLegacy=true 时占用遗留命名空间 → 老进度归它） */
     public static Profiles.P createProfile(Context c, String name, boolean useLegacy) {
         Prefs pr = of(c);
         Profiles.P p0 = profiles().add(name, useLegacy);
-        activeId = p0.id;
-        pr.p.edit().putString(K_PROFILES, profiles().encode()).putString(K_ACTIVE, p0.id).apply();
+        pr.p.edit().putString(K_PROFILES, profiles().encode()).apply();
+        setActiveProfile(pr, p0.id);                    // 老档案的日记先落盘，再切到新档案（新档案是空的）
         return p0;
     }
 
@@ -169,10 +185,7 @@ public class Prefs {
     public static void switchProfile(Context c, String id) {
         Prefs pr = of(c);
         if (profiles().byId(id) == null) return;
-        activeId = id;
-        pr.p.edit().putString(K_ACTIVE, id).apply();
-        DiaryStore.forget();
-        Favorites.forget();
+        setActiveProfile(pr, id);
     }
 
     public static boolean renameProfile(Context c, String id, String name) {
@@ -182,20 +195,28 @@ public class Prefs {
         return true;
     }
 
-    /** 删档案 + 抹掉它的全部学习数据（至少留一个档案） */
+    /**
+     * 删档案 + 抹掉它的全部学习数据（至少留一个档案）。
+     *
+     * 两点跟以前不一样：
+     *   ① 挑键用 {@link Profiles#ownedBy}：遗留档案（id=0）的数据是**无前缀**的老键，
+     *      以前写死 "u0_" 前缀 → 删了遗留档案数据一条没删，新档案还能靠 orphanLegacy 把它们捡回来；
+     *   ② 切到剩下那个档案时走 {@link #setActiveProfile}，别再把被删档案的缓存写进 surviving 档案。
+     */
     public static boolean deleteProfile(Context c, String id) {
         Prefs pr = of(c);
         if (!profiles().remove(id)) return false;
         SharedPreferences.Editor e = pr.p.edit();
         List<String> del = new ArrayList<String>();
-        String pre = "u" + id + "_";
-        for (String k : pr.p.getAll().keySet()) if (k.startsWith(pre)) del.add(k);
+        for (String k : pr.p.getAll().keySet()) if (Profiles.ownedBy(id, k)) del.add(k);
         for (String k : del) e.remove(k);
-        if (id.equals(activeId)) {
-            activeId = profiles().list.get(0).id;
-            e.putString(K_ACTIVE, activeId);
+        boolean wasActive = id.equals(activeId);
+        if (wasActive) {
+            // 被删档案的内存缓存直接丢掉（不要 flush，那会把它的数据写回去）
             DiaryStore.forget();
             Favorites.forget();
+            activeId = profiles().list.get(0).id;
+            e.putString(K_ACTIVE, activeId);
         }
         e.putString(K_PROFILES, profiles().encode()).apply();
         return true;
@@ -287,9 +308,18 @@ public class Prefs {
 
     public void touchBook(String bid) { p.edit().putLong(ns(bk(bid, "t")), System.currentTimeMillis()).apply(); }
 
+    /** 这条键是不是当前档案的（多档案下「上次打开的书」「导出」都别把别人的数据算进来） */
+    private boolean mine(String rawKey) {
+        String pre = nsPrefix();
+        if (!rawKey.startsWith(pre)) return false;
+        if (!pre.isEmpty()) return true;                    // u<id>_ 前缀明确是它的
+        return Profiles.isProfileKey(rawKey);               // 遗留命名空间：只认学习数据键
+    }
+
     public String lastBookId() {
         String best = null; long bt = 0;
         for (String k : p.getAll().keySet()) {
+            if (!mine(k)) continue;
             String raw = stripNs(k);
             if (raw.endsWith("_t") && raw.startsWith("b_")) {
                 long v = p.getLong(k, 0);
@@ -361,6 +391,7 @@ public class Prefs {
     public java.util.List<Transfer.DayRec> exportDays() {
         java.util.List<Transfer.DayRec> out = new ArrayList<Transfer.DayRec>();
         for (String k : p.getAll().keySet()) {
+            if (!mine(k)) continue;                         // 只导出当前档案的天数
             String raw = stripNs(k);
             if (!raw.startsWith("d_") || raw.length() != 10) continue;
             int cnt = p.getInt(k, 0);
