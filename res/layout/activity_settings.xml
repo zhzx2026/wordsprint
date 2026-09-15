@@ -370,34 +370,6 @@
                     </LinearLayout>
                 </LinearLayout>
 
-                <!-- 下载进度：装包时一直挂在这儿，用户在哪一页都看得见（用户反馈「更新进度条没有」） -->
-                <LinearLayout
-                    android:id="@+id/updateProgressBox"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:visibility="gone"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:paddingBottom="12dp">
-
-                    <ProgressBar
-                        android:id="@+id/pbUpdate"
-                        style="?android:attr/progressBarStyleHorizontal"
-                        android:layout_width="match_parent"
-                        android:layout_height="8dp"
-                        android:max="100"
-                        android:progress="0"
-                        android:progressDrawable="@drawable/progress_update"/>
-
-                    <TextView
-                        android:id="@+id/tvUpdateProgress"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:textColor="?attr/wpText2"
-                        android:textSize="11.5sp"/>
-                </LinearLayout>
                 <LinearLayout
                     android:id="@+id/srcChips"
                     android:layout_width="match_parent"

@@ -48,26 +48,31 @@ public final class Heat {
     }
 
     /**
-     * 挑格子大小（单位与 avail/labelW 一致，都是 px）。
+     * 挑格子大小（单位与 avail/labelW 一致，都是 px）。tries 必须从大到小排列。
      *
-     * 规则：
-     *   ① 能用「够大的格子」铺满一年（maxCols）就铺满一年；
-     *   ② 否则退而求其次：取「能放下至少 minCols 列」的最大格子（半年起步，字大一些）；
-     *   ③ 屏幕实在太窄（连最小格子都放不下半年）就用最小格子，列数尽力而为。
-     *
-     * tries 必须是从大到小排列的候选格子边长。
+     *   ① 先找「整个 span 都放得下」的**最大**格子 —— 用户选了 3 个月就老老实实铺 13 周，
+     *      格子能多大就多大（上限由 tries[0] 卡住，18dp，免得 13 周拉成一排巨大方块）；
+     *   ② 万一这个跨度整屏放不下（比如手机上选「1 年」），就取**最小**格子尽量多画几周 ——
+     *      宁可少画几周，也不能把格子放大成半年、把「一年」缩水成四个月。
      */
-    public static float chooseCell(float avail, float labelW, float gapRatio, float[] tries,
-                                   int minCols, int maxCols, float minCellForFull) {
+    public static float chooseCell(float avail, float labelW, float gapRatio, float[] tries, int span) {
         if (tries == null || tries.length == 0) return 0f;
-        float fallback = tries[tries.length - 1];
-        boolean gotMin = false;
         for (float cell : tries) {
-            int n = colsFor(avail, labelW, gapRatio, cell, maxCols);
-            if (n >= maxCols && cell >= minCellForFull) return cell;      // ① 整年，格子也够大
-            if (!gotMin && n >= minCols) { fallback = cell; gotMin = true; }   // ② 半年起步
+            if (colsFor(avail, labelW, gapRatio, cell, span) >= span) return cell;   // ① 铺满整个跨度
         }
-        return fallback;
+        return tries[tries.length - 1];                                             // ② 最小格子，多画几周
+    }
+
+    /** 可选的展示跨度（周）：3 个月 / 6 个月 / 1 年 —— 用户 2026-09-15「可以只显示这 3 个月的 / 用户可以选择啊」 */
+    public static final int SPAN_3M = 13, SPAN_6M = 26, SPAN_1Y = 53;
+
+    /** 跨度选项的周数 */
+    public static int spanWeeks(int idx) {
+        switch (idx) {
+            case 1: return SPAN_6M;
+            case 2: return SPAN_1Y;
+            default: return SPAN_3M;
+        }
     }
 
     /** 按档位取色（0..4，越界自动收敛，别让脏数据把格子画成透明） */

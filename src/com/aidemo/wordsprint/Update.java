@@ -72,6 +72,11 @@ public class Update {
     public static Info newest() { return latest; }
     public static void clearNewest() { latest = null; }
 
+    // ---------- 进度弹窗（唯一的进度入口：用户 2026-09-15「进度条是弹窗不是设置界面」） ----------
+    private static AlertDialog progressDlg;
+    private static Activity progressHost;
+    private static Runnable cancelHook;         // 当前下载的「取消」动作
+
     public static int myCode(Context c) {
         try { return c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionCode; }
         catch (Exception e) { return 0; }
@@ -213,6 +218,7 @@ public class Update {
 
     /** 安装权限检查 → 下载 → 拉起安装器 */
     private static void begin(Activity a, Info info) {
+        if (busy) { showProgress(a); return; }      // 已在下载：别开第二条，把进度弹窗亮出来就行
         if (!canInstall(a)) {
             pending = info;
             Toast.makeText(a, R.string.update_need_perm, Toast.LENGTH_LONG).show();
@@ -242,7 +248,25 @@ public class Update {
     private static void download(final Activity a, final Info info) {
         final File f = new File(a.getExternalFilesDir(null), "update.apk");
         final boolean[] cancel = {false};
-        final android.app.AlertDialog[] ref = new android.app.AlertDialog[1];
+        cancelHook = new Runnable() {
+            @Override public void run() { cancel[0] = true; }
+        };
+        busy = true;
+        pct = -1;
+        line = a.getString(R.string.update_downloading);
+        presentProgress(a, info);
+        new Thread(new Runnable() {
+            @Override public void run() { runDownload(a, info, f, cancel); }
+        }).start();
+    }
+
+    /**
+     * 建/重挂进度弹窗。下载中如果用户把弹窗关掉或切了页面，再点一次「立即更新」会走到这里，
+     * 而不是开始第二次下载（{@link #showProgress}）。
+     */
+    private static void presentProgress(final Activity a, final Info info) {
+        dismissProgress();
+        progressHost = a;
         float d = a.getResources().getDisplayMetrics().density;
         android.widget.ProgressBar pb = new android.widget.ProgressBar(a, null,
                 android.R.attr.progressBarStyleHorizontal);
@@ -299,23 +323,33 @@ public class Update {
         col.addView(cancelBtn, clp);
         cancelBtn.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
-                cancel[0] = true;
-                try { if (ref[0] != null) ref[0].dismiss(); } catch (Throwable ignored) {}
+                if (cancelHook != null) cancelHook.run();
+                dismissProgress();
                 try { Toast.makeText(a, R.string.update_cancelled, Toast.LENGTH_SHORT).show(); } catch (Throwable ignored) {}
             }
         });
         // 走 Ui.presentCard：统一去掉系统对话框那层白面板（圆角外不再露白），且不可点外部误关
-        final AlertDialog dlg = Ui.presentCard(a, col, false);
-        ref[0] = dlg;
+        progressDlg = Ui.presentCard(a, col, false);
+    }
 
-        final int curCode = myCode(a);
-        busy = true;
-        pct = -1;
-        line = a.getString(R.string.update_downloading);
-        new Thread(new Runnable() {
-            @Override public void run() {
-                HttpURLConnection c = null;
-                long startedAt = System.currentTimeMillis();
+    /** 下载中但看不到进度弹窗（用户切了页面 / 弹窗被系统收走）时，把它重新拉起来 */
+    public static void showProgress(Activity a) {
+        if (!busy || cancelHook == null) return;
+        if (progressDlg != null && progressHost == a && progressDlg.isShowing()) return;
+        Info info = new Info();
+        info.name = myName(a);
+        presentProgress(a, info);
+    }
+
+    private static void dismissProgress() {
+        try { if (progressDlg != null) progressDlg.dismiss(); } catch (Throwable ignored) {}
+        progressDlg = null;
+    }
+
+    /** 真正的下载循环（进度写进全局状态，弹窗每 300ms 自己读） */
+    private static void runDownload(final Activity a, final Info info, final File f, final boolean[] cancel) {
+        HttpURLConnection c = null;
+        long startedAt = System.currentTimeMillis();
                 try {
                     c = (HttpURLConnection) new URL(info.url).openConnection();
                     c.setConnectTimeout(8000);
@@ -340,24 +374,18 @@ public class Update {
                             lastPct = curPct;
                             final String kb = String.format("%.1f MB / %.1f MB",
                                     got / 1048576.0, Math.max(0, total) / 1048576.0);
-                            final int fpct = curPct;
                             final long fgot = got;
                             final long t0 = System.currentTimeMillis() - startedAt;
                             final String speed = t0 > 600
                                     ? String.format(" · %.1f MB/s", fgot / 1048576.0 / (t0 / 1000.0)) : "";
                             final String text = a.getString(R.string.update_progress, curPct) + "   " + kb + speed;
-                            pct = fpct;                        // 全局进度（设置页/首页也读它）
+                            pct = fpct;                        // 全局进度（进度弹窗每 300ms 读它）
                             line = text;
-                            a.runOnUiThread(new Runnable() {
-                                @Override public void run() {
-                                    pb.setProgress(fpct);
-                                    st.setText(text);
-                                }
-                            });
                         }
                     }
                     out.flush(); out.close(); in.close();
                     busy = false;
+                    cancelHook = null;
                     if (cancel[0]) {
                         pct = -1; line = "";
                         try { if (f.exists()) f.delete(); } catch (Throwable ignored) {}
@@ -365,27 +393,25 @@ public class Update {
                     }
                     a.runOnUiThread(new Runnable() {
                         @Override public void run() {
-                            try { dlg.dismiss(); } catch (Throwable ignored) {}
+                            dismissProgress();
                             install(a, f, info);
                         }
                     });
                 } catch (final Exception e) {
-                    busy = false; pct = -1;
+                    busy = false; pct = -1; cancelHook = null;
                     line = "";
                     try { if (f.exists()) f.delete(); } catch (Exception ignored) {}
                     final String em = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
                     a.runOnUiThread(new Runnable() {
                         @Override public void run() {
-                            try { dlg.dismiss(); } catch (Throwable ignored) {}
+                            dismissProgress();
                             if (cancel[0] || a.isFinishing()) return;
                             Toast.makeText(a, a.getString(R.string.update_fail, em), Toast.LENGTH_LONG).show();
                         }
                     });
-                } finally {
-                    if (c != null) try { c.disconnect(); } catch (Exception ignored) {}
-                }
-            }
-        }).start();
+        } finally {
+            if (c != null) try { c.disconnect(); } catch (Exception ignored) {}
+        }
     }
 
     private static void install(final Activity a, File f, Info info) {

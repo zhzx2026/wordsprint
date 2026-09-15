@@ -183,7 +183,11 @@
     <string name="habit_undone">未完成</string>
 
     <string name="heat_title">学习热力图</string>
-    <string name="heat_sub">最近一年 · 一格一天 · 越深刷得越多</string>
+    <string name="heat_sub">%1$s · 一格一天 · 越深刷得越多</string>
+    <string name="heat_span_3m">3 个月</string>
+    <string name="heat_span_6m">6 个月</string>
+    <string name="heat_span_1y">1 年</string>
+    <string name="heat_span_actual">最近 %1$d 个月</string>
     <string name="heat_today">今天</string>
     <string name="heat_none">这天没学</string>
     <string name="heat_day_info">%1$s · 新词 %2$d · 温习 %3$d · 自测 %4$d（目标 %5$d）</string>

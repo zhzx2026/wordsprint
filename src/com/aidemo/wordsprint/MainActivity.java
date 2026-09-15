@@ -109,6 +109,17 @@ public class MainActivity extends Activity {
             }
         });
 
+        // 热力图看多久：3 个月 / 6 个月 / 1 年（选完记住，下次打开还是它）
+        Ui.fillRow((LinearLayout) dash.findViewById(R.id.heatSpanRow),
+                new String[]{getString(R.string.heat_span_3m), getString(R.string.heat_span_6m),
+                        getString(R.string.heat_span_1y)},
+                Prefs.of(this).i(Prefs.K_HEAT_SPAN, 0), new Ui.ChipTap() {
+                    @Override public void onTap(int idx, TextView chip) {
+                        Prefs.of(MainActivity.this).set(Prefs.K_HEAT_SPAN, idx);
+                        heat.setSpan(Heat.spanWeeks(idx));
+                    }
+                });
+
         dash.findViewById(R.id.goalCard).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { pickGoal(); }
         });
@@ -163,7 +174,13 @@ public class MainActivity extends Activity {
                         getString(R.string.up_banner, info.name, Update.myName(this)));
             }
         }
+        heat.setSpan(Heat.spanWeeks(Prefs.of(this).i(Prefs.K_HEAT_SPAN, 0)));
         heat.setData(dy, Diary.today());
+        updateHeatSub();
+        // 真正的列数要等这一帧量完才知道（手机选「1 年」放不下会少画几周），量完再修正文案
+        heat.post(new Runnable() {
+            @Override public void run() { updateHeatSub(); }
+        });
         int[] ramp = HeatView.ramp(this, Prefs.of(this));
         int[] ids = {R.id.heatL1, R.id.heatL2, R.id.heatL3, R.id.heatL4};
         for (int i = 0; i < ids.length; i++) {
@@ -179,6 +196,22 @@ public class MainActivity extends Activity {
                 getString(R.string.streak_best) + " " + getString(R.string.days_unit, best) + " · "
                         + getString(R.string.streak_done_days) + " " + dy.doneDays());
         // 热力图现在按屏幕宽度自适应，不再需要「滚到最右边」
+    }
+
+    /** 热力图那句小字：说清「看的是多久」，实际没铺满所选跨度时按实际月数说 */
+    private void updateHeatSub() {
+        int spanIdx = Prefs.of(this).i(Prefs.K_HEAT_SPAN, 0);
+        int want = Heat.spanWeeks(spanIdx);
+        int got = heat == null ? want : heat.cols();
+        String label;
+        if (got >= want) {
+            label = spanIdx == 2 ? getString(R.string.heat_span_1y)
+                    : spanIdx == 1 ? getString(R.string.heat_span_6m)
+                    : getString(R.string.heat_span_3m);
+        } else {
+            label = getString(R.string.heat_span_actual, Math.max(1, (got + 2) / 4));   // 约几个月
+        }
+        ((TextView) findViewById(R.id.heatSub)).setText(getString(R.string.heat_sub, label));
     }
 
     private void mark(int id, boolean done) {

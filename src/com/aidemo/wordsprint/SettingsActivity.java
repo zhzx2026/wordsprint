@@ -219,11 +219,10 @@ public class SettingsActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
-        // 装包时进度一直挂在这一页；同时每 60 秒静默查一次更新（「不够灵敏」的补救）
+        // 每 60 秒静默查一次更新（「不够灵敏」的补救）。
+        // 下载进度不在这儿显示 —— 用户要的是「进度就放在下载弹窗里」。
         Update.startWatch(this, new Update.Watch() {
-            @Override public void onTick(int pct, String line) {
-                applyUpdateProgress(pct, line);
-            }
+            @Override public void onTick(int pct, String line) { }
             @Override public void onFound(Update.Info info) {
                 if (state != null) state.setText(getString(R.string.update_found_v, info.name, Update.myName(SettingsActivity.this)));
                 Update.showFound(SettingsActivity.this, info);
@@ -242,21 +241,6 @@ public class SettingsActivity extends Activity {
     @Override protected void onPause() {
         super.onPause();
         Update.stopWatch();
-    }
-
-    /** 把全局下载进度画到设置页这条进度条上（不在下载就整块收起来） */
-    private void applyUpdateProgress(int pct, String line) {
-        try {
-            View box = findViewById(R.id.updateProgressBox);
-            if (box == null) return;
-            boolean show = Update.isBusy();
-            box.setVisibility(show ? View.VISIBLE : View.GONE);
-            if (!show) return;
-            android.widget.ProgressBar pb = (android.widget.ProgressBar) findViewById(R.id.pbUpdate);
-            if (pb != null && pct >= 0) pb.setProgress(pct);
-            android.widget.TextView tv = (android.widget.TextView) findViewById(R.id.tvUpdateProgress);
-            if (tv != null && line != null && line.length() > 0) tv.setText(line);
-        } catch (Throwable ignored) {}
     }
 
     /** 改名：一个输入框搞定（当前档案） */

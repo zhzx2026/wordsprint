@@ -31,14 +31,12 @@ public class HeatView extends View {
 
     /** 最多展示 53 周（一年） */
     public static final int WEEKS = 53;
-    /** 手机上一屏至少给半年，不然历史太短看不出趋势 */
-    public static final int MIN_WEEKS = 26;
+    /** 展示跨度：默认「3 个月」（用户 2026-09-15：可以只显示这 3 个月的 / 用户可以选择） */
+    public static final int DEF_SPAN = Heat.SPAN_3M;
+    /** 候选格子边长（dp，从大到小）：跨度短时格子可以很大，所以上限给到 18dp */
+    static final float[] CELL_TRIES_DP = {18f, 16f, 14f, 12f, 10.5f, 9f, 8f, 7f, 6f};
     /** 间隔与格子的比例（保持 3.6/13 的观感） */
     static final float GAP_RATIO = 3.6f / 13f;
-    /** 铺满一年时允许的最小格子（dp）：再小就只铺半年、把格子放大 */
-    static final float MIN_CELL_FOR_YEAR = 7.5f;
-    /** 候选格子边长（dp，从大到小） */
-    static final float[] CELL_TRIES_DP = {13.5f, 12f, 10.5f, 9f, 8f, 7f, 6f};
 
     private Diary diary;
     private String today = Diary.today();
@@ -46,6 +44,7 @@ public class HeatView extends View {
 
     private float cell = 12f, gap = 3.4f, labelW = 22f, labelH = 16f;
     private int cols = WEEKS;
+    private int span = DEF_SPAN;                 // 想展示多少周（3 个月 / 半年 / 一年）
     private float dn = 1f;                       // 屏幕密度（自适应算尺寸用）
     private final List<String> cellDays = new ArrayList<String>();
 
@@ -72,6 +71,17 @@ public class HeatView extends View {
     /** 当前实际展示的周数（自适应算出来的；有主机测试盯着它别越界） */
     public int cols() { return cols; }
 
+    /** 展示跨度（周）：3 个月 13 / 半年 26 / 一年 53 —— 设置里选，存在 Prefs */
+    public void setSpan(int weeks) {
+        int w = weeks <= Heat.SPAN_3M ? Heat.SPAN_3M : (weeks >= Heat.SPAN_1Y ? Heat.SPAN_1Y : weeks);
+        if (w == span) return;
+        span = w;
+        requestLayout();
+        invalidate();
+    }
+
+    public int span() { return span; }
+
     /** 当前格子边长（px） */
     public float cellSize() { return cell; }
 
@@ -83,18 +93,18 @@ public class HeatView extends View {
         float avail = (wm == MeasureSpec.UNSPECIFIED || ws <= 0)
                 ? 0f : (ws - getPaddingLeft() - getPaddingRight());
         if (avail > 0f) {
-            // 自适应：先按「整年」试，放不下就放大格子只铺半年
+            // 自适应：先按「用户选的跨度」铺满，放不下就缩小格子
             float[] tries = new float[CELL_TRIES_DP.length];
             for (int i = 0; i < tries.length; i++) tries[i] = CELL_TRIES_DP[i] * dn;
-            cell = Heat.chooseCell(avail, labelW, GAP_RATIO, tries,
-                    MIN_WEEKS, WEEKS, MIN_CELL_FOR_YEAR * dn);
+            // 用户选的跨度优先：选 3 个月就铺 13 周、格子尽量大；选一年就铺 53 周、格子相应变小
+            cell = Heat.chooseCell(avail, labelW, GAP_RATIO, tries, span);
             gap = cell * GAP_RATIO;
-            cols = Heat.colsFor(avail, labelW, GAP_RATIO, cell, WEEKS);
+            cols = Heat.colsFor(avail, labelW, GAP_RATIO, cell, span);
         } else {
-            // 没有可用宽度（比如被塞进横向滚动容器）：按最大周数撑开
+            // 没有可用宽度（理论上不会发生：宽度由父容器给）：按跨度撑开
             cell = CELL_TRIES_DP[0] * dn;
             gap = cell * GAP_RATIO;
-            cols = WEEKS;
+            cols = span;
         }
         int w = neededWidth(), h = neededHeight();
         int measuredW = wm == MeasureSpec.EXACTLY ? ws

@@ -41,17 +41,14 @@ public class HeatRampTest {
     /** 与 HeatView 里的常量保持一致 */
     static final float GAP_RATIO = 3.6f / 13f;
     static final float LABEL_W_DP = 24f;
-    static final float[] TRIES_DP = {13.5f, 12f, 10.5f, 9f, 8f, 7f, 6f};
-    static final float MIN_CELL_FOR_YEAR_DP = 7.5f;
-    static final int MIN_WEEKS = 26, MAX_WEEKS = 53;
-
-    static float[] fit(float availDp, float density) {
+    static final float[] TRIES_DP = {18f, 16f, 14f, 12f, 10.5f, 9f, 8f, 7f, 6f};
+    /** 按「屏幕宽度 + 密度 + 展示跨度」算实际排布（与 HeatView.onMeasure 同一套调用） */
+    static float[] fit(float availDp, float density, int spanWeeks) {
         float avail = availDp * density, labelW = LABEL_W_DP * density;
         float[] tries = new float[TRIES_DP.length];
         for (int i = 0; i < tries.length; i++) tries[i] = TRIES_DP[i] * density;
-        float cell = Heat.chooseCell(avail, labelW, GAP_RATIO, tries, MIN_WEEKS, MAX_WEEKS,
-                MIN_CELL_FOR_YEAR_DP * density);
-        int cols = Heat.colsFor(avail, labelW, GAP_RATIO, cell, MAX_WEEKS);
+        float cell = Heat.chooseCell(avail, labelW, GAP_RATIO, tries, spanWeeks);
+        int cols = Heat.colsFor(avail, labelW, GAP_RATIO, cell, spanWeeks);
         return new float[]{cell, cols};
     }
 
@@ -101,36 +98,56 @@ public class HeatRampTest {
         check(Heat.contrast(0xFFFFFFFF, 0xFFFFFFFF) == 1.0, "同色对比度 = 1");
 
         // ---------------- 自适应排布：右边绝不能超出可用宽度 ----------------
-        // 背景：用户 2026-09-15「热力图右边超过屏幕」—— 原来固定 53 周 ≈ 907dp，
-        // 手机上靠横向滚动，右边那一截就顶出去了。现在必须「宽度给定 → 排得进去」。
+        // 背景：用户 2026-09-15 先反馈「热力图右边超过屏幕」（固定 53 周≈907dp 塞进 300dp 卡片），
+        // 再要求「可以只显示这 3 个月的 / 用户可以选择啊」。所以这里把三档跨度都验一遍。
         float[] screens = {320f, 360f, 393f, 411f, 480f, 600f, 800f, 1024f, 1280f};
-        for (float sd : screens) {
-            for (float d : new float[]{1.5f, 2f, 2.75f, 3f, 3.5f}) {
-                float availDp = availDp(sd);
-                float[] r = fit(availDp, d);
-                float cell = r[0];
-                int cols = (int) r[1];
-                float right = gridRight(cell, cols, d);
-                float avail = availDp * d;
-                check(right <= avail + 0.01f, String.format(
-                        "屏幕 %.0fdp@%.2f：网格不能超出可用宽度（右 %.1f > 可用 %.1f）", sd, d, right, avail));
-                check(cols >= MIN_WEEKS || cell <= TRIES_DP[TRIES_DP.length - 1] * d + 0.01f, String.format(
-                        "屏幕 %.0fdp@%.2f：至少要铺半年（当前 %d 列）", sd, d, cols));
-                check(cols <= MAX_WEEKS, "列数不超过一年");
-                check(cell >= 6f * d - 0.01f && cell <= 13.5f * d + 0.01f,
-                        "格子尺寸落在候选范围内：" + cell);
+        int[] spans = {Heat.SPAN_3M, Heat.SPAN_6M, Heat.SPAN_1Y};
+        for (int span : spans) {
+            for (float sd : screens) {
+                for (float d : new float[]{1.5f, 2f, 2.75f, 3f, 3.5f}) {
+                    float availDp = availDp(sd);
+                    float[] r = fit(availDp, d, span);
+                    float cell = r[0];
+                    int cols = (int) r[1];
+                    float right = gridRight(cell, cols, d);
+                    float avail = availDp * d;
+                    check(right <= avail + 0.01f, String.format(
+                            "跨度 %d 周 / 屏幕 %.0fdp@%.2f：网格不能超出可用宽度（右 %.1f > 可用 %.1f）",
+                            span, sd, d, right, avail));
+                    check(cols <= span, "列数不能超过用户选的跨度");
+                    check(cell >= 6f * d - 0.01f && cell <= 18f * d + 0.01f, "格子尺寸落在候选范围内：" + cell);
+                    // 短跨度必须铺满；「1 年」在小屏上铺不下，但至少要给出半年以上
+                    if (sd >= 360f) {
+                        if (span <= Heat.SPAN_6M) {
+                            check(cols == span, String.format("屏幕 %.0fdp 应能铺满 %d 周（实际 %d）", sd, span, cols));
+                        } else if (sd >= 800f) {
+                            check(cols == span, String.format("大屏 %.0fdp 应能铺满一年（实际 %d 周）", sd, cols));
+                        } else {
+                            check(cols >= Heat.SPAN_6M,
+                                    String.format("小屏 %.0fdp 选「1 年」至少给半年（实际 %d 周）", sd, cols));
+                        }
+                    }
+                }
             }
         }
-        // 一般手机：半年以上、格子别小到看不清
-        float[] phone = fit(availDp(393f), 3f);
-        check((int) phone[1] >= 26, "6.1 寸手机至少铺半年，实际 " + (int) phone[1] + " 周");
-        check(phone[0] >= 8f * 3f, "手机上的格子不小于 8dp（看得清），实际 " + (phone[0] / 3f) + "dp");
-        // 平板 / 大屏：能铺满一年就铺满一年
-        float[] pad = fit(availDp(1024f), 2f);
-        check((int) pad[1] == MAX_WEEKS, "平板（1024dp）应铺满一年，实际 " + (int) pad[1] + " 周");
-        check(pad[0] >= MIN_CELL_FOR_YEAR_DP * 2f, "铺满一年时格子也不小于 7.5dp");
+        // 3 个月这一档：格子要明显更大（6.1 寸屏上大约 18dp）
+        float[] three = fit(availDp(393f), 3f, Heat.SPAN_3M);
+        check((int) three[1] == Heat.SPAN_3M, "3 个月 = 13 周，正好铺满");
+        check(three[0] >= 16f * 3f, "3 个月档的格子不小于 16dp，实际 " + (three[0] / 3f) + "dp");
+        // 1 年这一档：小屏放不下整天年 → 用最小格子多画几周（不能变成「放大格子只画半年」）
+        float[] year = fit(availDp(360f), 3f, Heat.SPAN_1Y);
+        check((int) year[1] >= Heat.SPAN_6M, "360dp 小屏选「1 年」至少画半年，实际 " + (int) year[1] + " 周");
+        check(year[0] <= 6f * 3f + 0.01f, "放不下整天年时应该用最小格子（别放大格子缩跨度）");
+        // 平板：一年档要真的铺满一年
+        float[] padYear = fit(availDp(1024f), 2f, Heat.SPAN_1Y);
+        check((int) padYear[1] == Heat.SPAN_1Y, "平板选 1 年要铺满 53 周，实际 " + (int) padYear[1]);
+        // 跨度选择：默认与映射
+        check(Heat.spanWeeks(0) == Heat.SPAN_3M, "选项 0 = 3 个月");
+        check(Heat.spanWeeks(1) == Heat.SPAN_6M, "选项 1 = 6 个月");
+        check(Heat.spanWeeks(2) == Heat.SPAN_1Y, "选项 2 = 1 年");
+        check(Heat.spanWeeks(99) == Heat.SPAN_3M, "越界的选项退回默认（3 个月）");
         // 极窄屏也不能崩
-        float[] tiny = fit(200f, 3f);
+        float[] tiny = fit(200f, 3f, Heat.SPAN_1Y);
         check((int) tiny[1] >= 1 && tiny[0] > 0, "极窄屏也能排出格子");
         check(gridRight(tiny[0], (int) tiny[1], 3f) <= 200f * 3f + 0.01f, "极窄屏也不越界");
 

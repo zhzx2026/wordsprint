@@ -36,6 +36,8 @@ public class Prefs {
     public static final String K_PROFILES = "p_profiles", K_ACTIVE = "p_active";
     /** 手势提示（首次进刷词页显示一行提示） */
     public static final String K_GES_HINT = "g_ges_hint";
+    /** 热力图展示跨度：0 = 3 个月 · 1 = 6 个月 · 2 = 1 年（默认 3 个月） */
+    public static final String K_HEAT_SPAN = "g_heat_span";
     /** 手势映射（六个数字：上,下,左,右,点,长；见 Ges.java）—— 用户自己定，跟着档案走 */
     public static final String K_GES = "g_ges";
 

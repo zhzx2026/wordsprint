@@ -253,6 +253,14 @@
             android:textColor="?attr/wpText2"
             android:textSize="11.5sp"/>
 
+        <!-- 展示跨度：3 个月 / 6 个月 / 1 年（用户 2026-09-15：可以只显示这 3 个月的 / 用户可以选择啊） -->
+        <LinearLayout
+            android:id="@+id/heatSpanRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="9dp"
+            android:orientation="horizontal"/>
+
                 <!-- 热力图：尺寸按可用宽度自适应（HeatView 自己算格子与周数），
              不再套横向滚动 —— 以前固定 53 周≈907dp，手机上右边一截会顶出屏幕 -->
         <com.aidemo.wordsprint.HeatView
