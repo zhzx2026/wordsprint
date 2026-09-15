@@ -379,7 +379,7 @@ public class Update {
                             final String speed = t0 > 600
                                     ? String.format(" · %.1f MB/s", fgot / 1048576.0 / (t0 / 1000.0)) : "";
                             final String text = a.getString(R.string.update_progress, curPct) + "   " + kb + speed;
-                            pct = fpct;                        // 全局进度（进度弹窗每 300ms 读它）
+                            pct = curPct;                      // 全局进度（进度弹窗每 300ms 读它）
                             line = text;
                         }
                     }
