@@ -12,6 +12,8 @@ import android.widget.TextView;
 
 public class SettingsActivity extends Activity {
 
+    private android.widget.TextView state;      // 更新状态行（Watch 回调里要用）
+
     private Prefs pr;
 
     @Override protected void attachBaseContext(Context base) { super.attachBaseContext(Night.wrap(base)); }
@@ -130,15 +132,12 @@ public class SettingsActivity extends Activity {
         ((TextView) findViewById(R.id.tvGoalDesc)).setText(
                 getString(R.string.goal_pick_desc) + "（" + getString(R.string.goal_title) + " " + cur + " 词）");
 
-        // 档案 / 战绩 / 词本 / 查词 / 收藏
+        // 档案 / 战绩 / 查词 / 收藏
         findViewById(R.id.rowProfile).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { startActivity(new Intent(SettingsActivity.this, ProfileActivity.class)); }
         });
         findViewById(R.id.rowShare).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { startActivity(new Intent(SettingsActivity.this, ShareActivity.class)); }
-        });
-        findViewById(R.id.rowPlan).setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { startActivity(new Intent(SettingsActivity.this, PlanActivity.class)); }
         });
         findViewById(R.id.rowSearch).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { startActivity(new Intent(SettingsActivity.this, SearchActivity.class)); }
@@ -168,7 +167,7 @@ public class SettingsActivity extends Activity {
         Ui.fillRowEqual(srcRow, srcNames, pr.updateChannel(), new Ui.ChipTap() {
             @Override public void onTap(int idx, TextView chip) { pr.setUpdateChannel(idx); }
         });
-        final android.widget.TextView state = (android.widget.TextView) findViewById(R.id.tvUpdateState);
+        state = (android.widget.TextView) findViewById(R.id.tvUpdateState);
         state.setText(getString(R.string.update_cur_ver, Update.myName(this), Update.myCode(this)));
         bind(R.id.swUpdate, Prefs.K_UP_AUTO, true);
         findViewById(R.id.btnUpdateCheck).setOnClickListener(new View.OnClickListener() {
@@ -204,15 +203,43 @@ public class SettingsActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
+        // 装包时进度一直挂在这一页；同时每 60 秒静默查一次更新（「不够灵敏」的补救）
+        Update.startWatch(this, new Update.Watch() {
+            @Override public void onTick(int pct, String line) {
+                applyUpdateProgress(pct, line);
+            }
+            @Override public void onFound(Update.Info info) {
+                if (state != null) state.setText(getString(R.string.update_found_v, info.name, Update.myName(SettingsActivity.this)));
+                Update.showFound(SettingsActivity.this, info);
+            }
+        });
         try {
             ((TextView) findViewById(R.id.tvNameNow)).setText(
                     Prefs.activeName().isEmpty() ? getString(R.string.profile_title) : Prefs.activeName());
             ((TextView) findViewById(R.id.tvProfileNow)).setText(
                     Prefs.profiles().list.size() + " 个档案 · " + getString(R.string.profile_hint));
-            ((TextView) findViewById(R.id.tvPlanNow)).setText(
-                    getString(R.string.plan_in, PlanStore.get(this).size()));
             ((TextView) findViewById(R.id.tvFavNow)).setText(
                     Favorites.count() == 0 ? getString(R.string.fav_empty) : getString(R.string.fav_count, Favorites.count()));
+        } catch (Throwable ignored) {}
+    }
+
+    @Override protected void onPause() {
+        super.onPause();
+        Update.stopWatch();
+    }
+
+    /** 把全局下载进度画到设置页这条进度条上（不在下载就整块收起来） */
+    private void applyUpdateProgress(int pct, String line) {
+        try {
+            View box = findViewById(R.id.updateProgressBox);
+            if (box == null) return;
+            boolean show = Update.isBusy();
+            box.setVisibility(show ? View.VISIBLE : View.GONE);
+            if (!show) return;
+            android.widget.ProgressBar pb = (android.widget.ProgressBar) findViewById(R.id.pbUpdate);
+            if (pb != null && pct >= 0) pb.setProgress(pct);
+            android.widget.TextView tv = (android.widget.TextView) findViewById(R.id.tvUpdateProgress);
+            if (tv != null && line != null && line.length() > 0) tv.setText(line);
         } catch (Throwable ignored) {}
     }
 

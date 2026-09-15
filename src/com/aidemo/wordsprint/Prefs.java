@@ -158,7 +158,6 @@ public class Prefs {
         pr.p.edit().putString(K_ACTIVE, id).apply();
         DiaryStore.forget();
         Favorites.forget();
-        PlanStore.forget();
     }
 
     public static boolean renameProfile(Context c, String id, String name) {
@@ -182,7 +181,6 @@ public class Prefs {
             e.putString(K_ACTIVE, activeId);
             DiaryStore.forget();
             Favorites.forget();
-            PlanStore.forget();
         }
         e.putString(K_PROFILES, profiles().encode()).apply();
         return true;

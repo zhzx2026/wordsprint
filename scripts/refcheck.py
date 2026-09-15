@@ -118,6 +118,10 @@ def resources():
     for f in os.listdir(os.path.join(RES, 'layout')):
         if f.endswith('.xml'):
             names |= set(re.findall(r'@\+id/(\w+)', read(os.path.join(RES, 'layout', f))))
+    # 手拼视图用的 id：res/values/ids.xml 里的 <item name="x" type="id"/>
+    idsf = os.path.join(RES, 'values/ids.xml')
+    if os.path.exists(idsf):
+        names |= set(re.findall(r'<item name="(\w+)"\s+type="id"', read(idsf)))
     styles = set()
     for f in ('values/styles.xml', 'values/attrs.xml', 'values/skins.xml'):
         p = os.path.join(RES, f)
@@ -265,6 +269,11 @@ def main():
             lp = os.path.join(RES, 'layout', lay + '.xml')
             if os.path.exists(lp):
                 ok_ids |= set(re.findall(r'@\+?id/(\w+)', read(lp)))
+        # 代码里手拼行视图时用的 id 不来自布局，而是 res/values/ids.xml 里声明的
+        # （<item name="x" type="id"/>），这里一并算进去
+        vids = os.path.join(RES, 'values', 'ids.xml')
+        if os.path.exists(vids):
+            ok_ids |= set(re.findall(r'<item name="(\w+)"\s+type="id"', read(vids)))
         for m in re.finditer(r'findViewById\(R\.id\.(\w+)\)', raw):
             if m.group(1) not in ok_ids:
                 problems.append('%s.java:%d  findViewById(R.id.%s)：不在本文件用到的布局里（%s）'
@@ -273,8 +282,8 @@ def main():
 
     # 「主机侧单测的源码不能碰 Android/Prefs」（CI 里这 13 个文件被 cp 到 test/src 单编，
     #  一旦它们 import/引用 Prefs 或 Context，javac 直接 cannot find symbol → CI 红）
-    PURE = ('Engine', 'QREnc', 'QRUtil', 'Transfer', 'ProgressCode', 'Pack', 'PlanCode',
-            'Plan', 'Diary', 'Scale', 'WrongBook', 'ShareGeom', 'Ges')
+    PURE = ('Engine', 'QREnc', 'QRUtil', 'Transfer', 'ProgressCode', 'Pack', 'ZipB64',
+            'Diary', 'Scale', 'WrongBook', 'ShareGeom', 'Ges', 'Heat', 'BookEdit')
     for name in PURE:
         body = texts.get(name)
         if not body:
@@ -337,6 +346,27 @@ def main():
                 problems.append('ShareCard.pageBase 指向了以 text/plain 发 .html 的 CDN（打开只看到源码）：' + url)
             elif 'github.io' not in url:
                 problems.append('ShareCard.pageBase 不是 GitHub Pages 地址：' + url)
+
+    # 「给 final 局部变量再赋值」：javac 会直接报 cannot assign a value to final variable，
+    # 而且这种写法背后往往还有更深的问题 —— 本轮 Update.java 里 `final int pct` 把同名的
+    # static 字段 pct 遮住了，赋值赋到了局部变量上，进度永远不更新。
+    # 只在同一个方法体内比较（本仓库统一 4 空格缩进，方法体以 4 空格缩进的 `}` 结束）。
+    for name, body in sorted(texts.items()):
+        lines = _strip_java_comments(body)
+        for i, line in enumerate(lines):
+            m = re.match(r'\s*final\s+[\w<>\[\].]+\s+(\w+)\s*=', line)
+            if not m:
+                continue
+            var = m.group(1)
+            for k in range(i + 1, len(lines)):
+                later = lines[k]
+                if later == '    }' or later.startswith('    }'):       # 方法体结束
+                    break
+                if re.search(r'(?<![\w.])' + var + r'\s*=(?!=)', later) and 'final' not in later:
+                    problems.append('%s.java:%d  final 局部变量 %s 在同一个方法里又被赋值了'
+                                    '（javac: cannot assign a value to final variable；'
+                                    '也可能本来想写同名的字段/属性）' % (name, k + 1, var))
+                    break
 
     # 「手势又写死了」：刷词页必须走 Ges 映射分发（用户 2026-09-14 明确要求「手势由用户自己定」）
     st = texts.get('StudyActivity', '')

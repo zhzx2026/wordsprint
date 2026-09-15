@@ -94,4 +94,18 @@
             android:progress="0"
             android:progressDrawable="@drawable/progress_line"/>
     </LinearLayout>
+
+    <!-- ⋯：仅预览词表 / 批量改进度（用户 2026-09-15：不想一个词一个词点） -->
+    <TextView
+        android:id="@+id/btnMore"
+        android:layout_width="34dp"
+        android:layout_height="44dp"
+        android:layout_marginStart="4dp"
+        android:background="@drawable/bg_circle_chip"
+        android:gravity="center"
+        android:text="⋯"
+        android:textColor="?attr/wpText2"
+        android:textSize="17sp"
+        android:textStyle="bold"
+        android:contentDescription="@string/book_more"/>
 </LinearLayout>

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.aidemo.wordsprint"
-    android:versionCode="29"
-    android:versionName="2.8">
+    android:versionCode="30"
+    android:versionName="2.9">
 
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.INTERNET"/>
@@ -42,8 +42,10 @@
             android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation"
             android:windowSoftInputMode="stateVisible|adjustResize" />
         <activity android:name=".FavoritesActivity" android:exported="false" />
+        <!-- 词表预览 + 批量改进度（用户：「词本加一个仅预览，还可以直接批量编辑」） -->
+        <activity android:name=".BookPreviewActivity" android:exported="false"
+            android:configChanges="orientation|screenSize" />
         <activity android:name=".ShareActivity" android:exported="false" />
-        <activity android:name=".PlanActivity" android:exported="false" />
         <activity android:name=".ExportActivity" android:exported="false" />
         <!-- keyboard/keyboardHidden 必须自己吃掉：否则弹窗/输入框一弹键盘 Activity 就被重建（v1.0.13 装机实测"点粘贴就退出"） -->
         <activity android:name=".ScanActivity" android:exported="false"

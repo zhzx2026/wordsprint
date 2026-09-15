@@ -61,7 +61,6 @@ public class ProfileActivity extends Activity {
                 if (p == null) return;
                 if (p.id.equals(Prefs.activeId())) { askRename(p); return; }   // 点自己 = 改名
                 Prefs.switchProfile(ProfileActivity.this, p.id);
-                PlanStore.forget();
                 toast(getString(R.string.profile_switch_to, p.name));
                 adapter.notifyDataSetChanged();
                 finish();                       // 回首页/设置页重读数据
@@ -161,7 +160,6 @@ public class ProfileActivity extends Activity {
                 getString(R.string.profile_delete), new Runnable() {
                     @Override public void run() {
                         Prefs.deleteProfile(ProfileActivity.this, p.id);
-                        PlanStore.forget();
                         toast(getString(R.string.profile_deleted));
                         adapter.notifyDataSetChanged();
                     }

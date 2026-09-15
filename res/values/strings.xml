@@ -193,7 +193,6 @@
     <string name="quick_search">查词</string>
     <string name="quick_fav">收藏</string>
     <string name="quick_share">分享战绩</string>
-    <string name="quick_plan">我的词本</string>
     <string name="quick_profile">档案</string>
 
     <string name="profile_title">谁在刷词</string>
@@ -245,27 +244,6 @@
     <string name="share_foot">刷单词 · 扫码看我的学习战绩</string>
     <string name="share_no_app">分享图片失败，已保存到相册</string>
 
-    <string name="plan_title">我的词本</string>
-    <string name="plan_desc">选中的词书会置顶显示、并写进「词本配置码」：同学扫码即可一键套用这套刷词方案</string>
-    <string name="plan_empty">还没选词书：下面点选几本，或扫码导入同学的配置</string>
-    <string name="plan_in">已在我的词本（%1$d 本）</string>
-    <string name="plan_add">加入我的词本</string>
-    <string name="plan_remove">移出我的词本</string>
-    <string name="plan_code">生成词本配置码</string>
-    <string name="plan_code_title">词本配置码</string>
-    <string name="plan_code_desc">含 %1$d 本词书的分组/顺序/回炉设置 + 每日目标 %2$d 词</string>
-    <string name="plan_import_title">检测到词本配置</string>
-    <string name="plan_import_desc">对方分享了 %1$d 本词书（每日目标 %2$d 词）。要替换你当前的词本，还是合并进来？（只改配置，不动学习进度）</string>
-    <string name="plan_import_replace">替换原有词本</string>
-    <string name="plan_import_merge">合并至现有词本</string>
-    <string name="plan_replaced">已替换为对方的词本配置（%1$d 本）</string>
-    <string name="plan_merged">已合并 %1$d 本新词书</string>
-    <string name="plan_merged_none">这些词书都在你的词本里了</string>
-    <string name="plan_chip">我的词本</string>
-    <string name="plan_pick_all">全选</string>
-    <string name="plan_pick_none">清空</string>
-    <string name="plan_scan">扫码导入词本</string>
-    <string name="plan_bad">这枚码不是词本配置码</string>
 
     <string name="ges_title">手势操作</string>
 
@@ -331,6 +309,7 @@
     <string name="ges_act_unknown">不认识（进错题本）</string>
     <string name="ges_act_lookup">查词详情</string>
 
+    <string name="up_banner">发现新版本 %1$s（当前 %2$s）· 点这里更新</string>
     <string name="undo_answer">上一个（撤销）</string>
     <string name="undo_done">已撤销，重新选一次</string>
     <string name="undo_none">还没有可撤销的操作</string>
@@ -355,7 +334,6 @@
     <string name="ges_subtitle">六个位置，各挑一个动作</string>
     <string name="ges_reset_desc">改回出厂那套（上滑收藏 · 下滑释义 · 左右判定）</string>
     <string name="export_progress">导出 / 导入进度码</string>
-    <string name="plan_import_desc2">扫码或粘贴「词本配置码」，导入时可选替换或合并</string>
     <string name="update_src_title">更新源</string>
     <string name="update_auto_desc">启动时轻量检查一次，有新版再提示</string>
     <string name="update_check_now">检查更新</string>
@@ -364,4 +342,31 @@
     <string name="profile_rename_title">改个名字</string>
     <string name="habit_word">刷词</string>
     <string name="shelf_title">词书库</string>
+
+    <!-- ===== v2.9：词表仅预览 + 批量改进度（用户：词本加一个仅预览，还可以直接批量编辑） ===== -->
+    <string name="pv_note">仅预览：这一页只给你看词表，不动学习进度（要改就按右上角「批量改进度」）</string>
+    <string name="pv_summary">已掌握 %1$d / %2$d 词 · %3$d%% · 下次从第 %4$d 词接着刷</string>
+    <string name="pv_search_hint">搜单词或释义</string>
+    <string name="pv_empty">没有匹配的词</string>
+    <string name="pv_batch">批量改进度</string>
+    <string name="pv_start">去刷这本</string>
+    <string name="pv_batch_title">批量改进度</string>
+    <string name="pv_batch_tip">输入词号范围（这本共 %1$d 词）。写法随意：100-300 / 1~50 / 第100到300 / 只写一个数 / 留空=整本。</string>
+    <string name="pv_range_hint">例如 100-300</string>
+    <string name="pv_range_ok">第 %1$d–%2$d 个词（共 %3$d 个）· 其中已掌握 %4$d 个</string>
+    <string name="pv_act_mark">标记已掌握</string>
+    <string name="pv_act_unmark">取消已掌握</string>
+    <string name="pv_apply">就改这些</string>
+    <string name="pv_done">已改动 %1$d 个词（第 %2$d–%3$d）</string>
+    <string name="pv_none_mark">这些词本来就已经掌握了，没改动</string>
+    <string name="pv_none_unmark">这些词本来就没掌握，没改动</string>
+    <string name="pv_undo_tip">刚刚把第 %2$d–%3$d 个词（共 %1$d 个）改动了。要不要退回改之前？</string>
+    <string name="pv_undo">撤销这次改动</string>
+    <string name="pv_keep">就这样</string>
+    <string name="pv_undone">已经退回改之前的样子</string>
+    <string name="book_missing">没找到这个词本</string>
+    <string name="book_more">更多操作</string>
+    <string name="book_preview">仅预览词表</string>
+    <string name="book_batch">批量改进度</string>
+    <string name="book_setup">刷词设置</string>
 </resources>

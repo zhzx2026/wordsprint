@@ -91,17 +91,17 @@ public class HeatView extends View {
 
     // ---------------- 绘制（屏幕与分享图共用） ----------------
 
-    /** 四档色阶：空 → 品牌色由浅到深（深色模式下空档用 surface 的浅色混合） */
+    /**
+     * 四档色阶：空 → 品牌色由浅到深。
+     *
+     * ⚠️ 空档色**不能**拿 wpBg 去混 wpLine：暖纸风的 line(#E8E3D8) 只比 bg(#F6F3EC) 深一丁点，
+     * 混完画在白卡片上几乎看不见 —— 这正是用户两次反馈「首页热力图看不到格子」的原因。
+     * 现在空档以卡片色 surface 为底、混 22% 的正文灰 wpText2：wpText2 在任何一套配色/深浅模式下
+     * 都保证与背景有足够对比度，格子必然看得见（主机侧 HeatRampTest 会算对比度兜住这条）。
+     */
     public static int[] ramp(Context c, Prefs p) {
-        int brand = Skin.c(c, R.attr.wpBrand);
-        int bg = Skin.c(c, R.attr.wpBg);
-        return new int[]{
-                Skin.mix(bg, Skin.c(c, R.attr.wpLine), 0.75f),
-                Skin.mix(bg, brand, 0.30f),
-                Skin.mix(bg, brand, 0.55f),
-                Skin.mix(bg, brand, 0.80f),
-                brand,
-        };
+        return Heat.rampFrom(Skin.c(c, R.attr.wpBg), Skin.c(c, R.attr.wpSurface),
+                Skin.c(c, R.attr.wpBrand), Skin.c(c, R.attr.wpText2));
     }
 
     /**
@@ -145,10 +145,10 @@ public class HeatView extends View {
                 Diary.Day d = dy.peek(day);
                 if (d != null) level = Diary.level(d.total());
                 r.set(x, y, x + cell, y + cell);
-                cellPaint.setColor(level == 0 ? emptyColor : ramp[level]);
+                cellPaint.setColor(level == 0 ? emptyColor : Heat.colorOf(ramp, level));
                 cv.drawRoundRect(r, cell * 0.26f, cell * 0.26f, cellPaint);
                 if (d != null && d.goalDone()) {           // 达标的当天：描一圈品牌色
-                    ringPaint.setColor(ramp[4]);
+                    ringPaint.setColor(Heat.colorOf(ramp, 4));
                     cv.drawRoundRect(r, cell * 0.26f, cell * 0.26f, ringPaint);
                 }
                 if (cellDaysOut != null) cellDaysOut.add(day);

@@ -308,14 +308,7 @@
                 </LinearLayout>
                 <View style="@style/SettingDivider"/>
 
-                <LinearLayout android:id="@+id/rowPlan" style="@style/SettingRow">
-                    <LinearLayout style="@style/SettingRowText">
-                        <TextView style="@style/SettingTitle" android:text="@string/plan_title"/>
-                        <TextView android:id="@+id/tvPlanNow" style="@style/SettingDesc" android:text="@string/plan_desc"/>
-                    </LinearLayout>
-                    <ImageView android:layout_width="18dp" android:layout_height="18dp" android:tint="?attr/wpText2" android:src="@drawable/ic_chevron" android:contentDescription="@null"/>
-                </LinearLayout>
-                <View style="@style/SettingDivider"/>
+                                <View style="@style/SettingDivider"/>
 
                 <LinearLayout android:id="@+id/rowFav" style="@style/SettingRow">
                     <LinearLayout style="@style/SettingRowText">
@@ -360,7 +353,7 @@
                 <LinearLayout android:id="@+id/rowScan" style="@style/SettingRow">
                     <LinearLayout style="@style/SettingRowText">
                         <TextView style="@style/SettingTitle" android:text="@string/scan_import"/>
-                        <TextView style="@style/SettingDesc" android:text="@string/plan_import_desc2"/>
+                        <TextView style="@style/SettingDesc" android:text="@string/transfer_desc"/>
                     </LinearLayout>
                     <ImageView android:layout_width="18dp" android:layout_height="18dp" android:tint="?attr/wpText2" android:src="@drawable/ic_chevron" android:contentDescription="@null"/>
                 </LinearLayout>
@@ -375,6 +368,35 @@
                         <TextView style="@style/SettingTitle" android:text="@string/update_src_title"/>
                         <TextView android:id="@+id/tvUpdateState" style="@style/SettingDesc" android:text="@string/update_checking"/>
                     </LinearLayout>
+                </LinearLayout>
+
+                <!-- 下载进度：装包时一直挂在这儿，用户在哪一页都看得见（用户反馈「更新进度条没有」） -->
+                <LinearLayout
+                    android:id="@+id/updateProgressBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:paddingBottom="12dp">
+
+                    <ProgressBar
+                        android:id="@+id/pbUpdate"
+                        style="?android:attr/progressBarStyleHorizontal"
+                        android:layout_width="match_parent"
+                        android:layout_height="8dp"
+                        android:max="100"
+                        android:progress="0"
+                        android:progressDrawable="@drawable/progress_update"/>
+
+                    <TextView
+                        android:id="@+id/tvUpdateProgress"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textColor="?attr/wpText2"
+                        android:textSize="11.5sp"/>
                 </LinearLayout>
                 <LinearLayout
                     android:id="@+id/srcChips"

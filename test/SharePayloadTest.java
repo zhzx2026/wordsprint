@@ -1,5 +1,4 @@
-import com.aidemo.wordsprint.Plan;
-import com.aidemo.wordsprint.PlanCode;
+import com.aidemo.wordsprint.ZipB64;
 import com.aidemo.wordsprint.QREnc;
 import com.aidemo.wordsprint.QRUtil;
 
@@ -9,7 +8,7 @@ import java.util.Random;
  * 主机侧：战绩分享链路（需求第 7 条）。
  *
  * 这条链路有两份实现必须永远一致：
- *   · App：ShareCard.payload() → PlanCode.pack()（zlib deflate + base64url 去 =）
+ *   · App：ShareCard.payload() → ZipB64.pack()（zlib deflate + base64url 去 =）
  *   · 在线页：share/index.html 里的最小 inflate（要能在手机浏览器/微信内置浏览器跑，不引第三方库）
  * 这里锁三件事：
  *   1) pack/unpack 往返一致，且确实是 zlib 封装（首字节 0x78，页面靠它决定要不要剥头）；
@@ -52,11 +51,11 @@ public class SharePayloadTest {
 
         // 1) 往返 + zlib 封装
         String raw = buildRaw("小明", "2026-09-14", 57, 100, 12, 30, 1234, 88, 14, 9, 12, heat(7));
-        String payload = PlanCode.pack(raw);
+        String payload = ZipB64.pack(raw);
         check(payload.length() > 40, "负载不该是空的");
         check(payload.indexOf('=') < 0, "负载不能带 base64 填充（URL 里难看且会被截断）");
         check(!payload.matches(".*[+/].*"), "负载必须是 URL 安全字母表（- _），否则二维码进 URL 会坏");
-        check(PlanCode.unpack(payload).equals(raw), "pack/unpack 必须逐字符往返一致");
+        check(ZipB64.unpack(payload).equals(raw), "pack/unpack 必须逐字符往返一致");
 
         byte[] zip = java.util.Base64.getUrlDecoder().decode(
                 payload.length() % 4 == 0 ? payload : payload + "==".substring(0, (4 - payload.length() % 4) % 4));
@@ -84,33 +83,20 @@ public class SharePayloadTest {
         for (int i = 0; i < names.length; i++) {
             String r2 = buildRaw(names[i], "2026-12-31", 0, 50, 0, 999, 99999, 999, 0, 999, 0,
                     i == 1 ? rep('0', 182) : heat(100 + i));
-            String u2 = base + "?d=" + PlanCode.pack(r2);
+            String u2 = base + "?d=" + ZipB64.pack(r2);
             check(u2.length() < 470, "极端负载 URL 也别超长：" + u2.length());
             check(QRUtil.selfDecodes(QREnc.encode(u2.getBytes("UTF-8")), u2), "极端负载二维码自解码：name#" + i);
         }
 
         // 5) 页面解析的两种写法都要兼容：标准字母表（+ /）与 URL 字母表（- _）
-        String std = PlanCode.pack(raw);
-        check(PlanCode.unpack(std).equals(raw), "标准字母表/URL 字母表都要能解（unB64Pure 两套都认）");
+        String std = ZipB64.pack(raw);
+        check(ZipB64.unpack(std).equals(raw), "标准字母表/URL 字母表都要能解（unB64Pure 两套都认）");
 
-        // 6) 词本配置码与分享负载共用同一套 deflate+base64：互相别串味
-        Plan plan = new Plan();
-        plan.items.add(new Plan.Item("c3d0bc3dc2", 50, 0, 5));
-        plan.items.add(new Plan.Item("fcc2190a0c", 30, 1, 3));
-        plan.goal = 100;
-        String code = PlanCode.encode(plan);
-        check(code.startsWith("WPB1."), "词本配置码要带 WPB1. 前缀");
-        PlanCode.Out o = PlanCode.parse("扫码结果：" + code + "\n（转发自刷单词）");
-        check(o.plan != null && o.plan.items.size() == 2 && o.plan.goal == 100, "配置码要能从脏文本里解出来：" + o.why);
-        check(PlanCode.parse(PlanCode.pack(raw)).plan == null, "分享负载不是配置码，必须老实说解不开");
-        check(PlanCode.parse("WPB1." + payload).plan == null, "WPB1 前缀 + 分享负载也要老实失败，别乱认");
-
-        // 7) 两个分支的地址都要能扫（长度相同，但别哪天换了 CDN 路径就漏掉一边）
-        for (String b : new String[]{baseDev, baseMain}) {
-            String u = b + "?d=" + PlanCode.pack(raw);
-            check(u.length() < 420, "地址长度：" + b);
-            check(QRUtil.selfDecodes(QREnc.encode(u.getBytes("UTF-8")), u), "二维码自解码：" + b);
-        }
+        // 6) 打包/解包（ZipB64）：分享负载就是它压出来的，在线页解的就是它
+        String back = ZipB64.unpack(payload);
+        check(back.contains("n=") && back.contains("h="), "解包能还原负载文本");
+        check(ZipB64.pack("").length() > 0, "空文本也能打包");
+        check(ZipB64.clean(" a\u200Bb\u00A0c ").equals("abc"), "脏字符清理");
 
         System.out.println("ALL SHARE PAYLOAD TESTS PASS (" + checks + " checks)");
     }

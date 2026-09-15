@@ -134,6 +134,17 @@ public class SetupActivity extends Activity {
             }
         });
 
+        // 仅预览词表 / 批量改进度（用户 2026-09-15 要求：不想一个词一个词点）
+        findViewById(R.id.btnPreview).setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                BookPreviewActivity.open(SetupActivity.this, book.id, false);
+            }
+        });
+        findViewById(R.id.btnBatch).setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                BookPreviewActivity.open(SetupActivity.this, book.id, true);
+            }
+        });
         findViewById(R.id.btnReset).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 android.widget.TextView body = new android.widget.TextView(SetupActivity.this);

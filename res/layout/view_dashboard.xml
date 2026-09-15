@@ -163,6 +163,45 @@
         </LinearLayout>
     </LinearLayout>
 
+    <!-- 有新版就冒出来的一行（用户：检查更新不够灵敏 —— 首页盯着，有新包立刻能看见） -->
+    <LinearLayout
+        android:id="@+id/upBanner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:visibility="gone"
+        android:background="@drawable/bg_pill_brand"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:paddingTop="11dp"
+        android:paddingBottom="11dp">
+
+        <TextView
+            android:id="@+id/upBannerText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="#FFFFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold"/>
+
+        <TextView
+            android:id="@+id/upBannerGo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_pill_white20"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:text="@string/update_go"
+            android:textColor="#FFFFFFFF"
+            android:textSize="12.5sp"
+            android:textStyle="bold"/>
+    </LinearLayout>
+
     <!-- ============ ② 热力图 ============ -->
     <LinearLayout
         android:layout_width="match_parent"

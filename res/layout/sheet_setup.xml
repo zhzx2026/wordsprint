@@ -120,6 +120,41 @@
             </LinearLayout>
         </LinearLayout>
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/btnPreview"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:background="@drawable/bg_pill"
+                android:gravity="center"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:text="@string/book_preview"
+                android:textColor="?attr/wpBrand"
+                android:textSize="12.5sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:id="@+id/btnBatch"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_pill"
+                android:gravity="center"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:text="@string/book_batch"
+                android:textColor="?attr/wpBrand"
+                android:textSize="12.5sp"
+                android:textStyle="bold"/>
+        </LinearLayout>
+
         <TextView
             android:id="@+id/tvStats"
             android:layout_width="match_parent"

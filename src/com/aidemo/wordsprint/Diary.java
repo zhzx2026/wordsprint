@@ -44,7 +44,7 @@ public class Diary {
 
     /** 温习「算完成」的门槛（分钟）；自测门槛（张） */
     public static final int MIN_REV_MIN = 3, MIN_TEST = 10;
-    /** 默认值（纯 java 常量放这里，Plan / Prefs 都引用它，避免 Plan 依赖 android 的 Prefs） */
+    /** 默认值（纯 java 常量放这里，避免纯模型依赖 android 的 Prefs） */
     public static final int DEF_SIZE = 50, DEF_LAG = 5, DEF_GOAL = 50;
 
     public final LinkedHashMap<String, Day> days = new LinkedHashMap<String, Day>();

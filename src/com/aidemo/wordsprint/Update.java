@@ -37,6 +37,21 @@ public class Update {
 
     private static Info pending;   // 等待用户授予安装权限后继续
 
+    // ---------- 下载进度（对外只读，供设置页/首页/进度弹窗显示） ----------
+    // 以前进度只画在「下载中」那个弹窗里，弹窗要是被系统压到后面（或者授权页刚返回），
+    // 用户就完全看不到有没有在下载 —— 用户反馈「更新进度条没有」。现在进度也是全局状态，
+    // 哪个页面在台上哪个页面显示。
+    private static volatile boolean busy;
+    private static volatile int pct = -1;          // -1 = 还不确定百分比（服务端没给长度）
+    private static volatile String line = "";
+    private static volatile Info latest;           // 最近一次查到的新版本（首页横幅用）
+
+    public static boolean isBusy() { return busy; }
+    public static int progressPct() { return pct; }
+    public static String progressLine() { return line; }
+    public static Info newest() { return latest; }
+    public static void clearNewest() { latest = null; }
+
     public static int myCode(Context c) {
         try { return c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionCode; }
         catch (Exception e) { return 0; }
@@ -169,11 +184,26 @@ public class Update {
         android.widget.ProgressBar pb = new android.widget.ProgressBar(a, null,
                 android.R.attr.progressBarStyleHorizontal);
         pb.setMax(100);
+        pb.setProgress(0);
         try { pb.setProgressDrawable(a.getResources().getDrawable(R.drawable.progress_update)); } catch (Throwable ignored) {}
         final TextView st = new TextView(a);
         st.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
         st.setTextColor(Skin.c(a, R.attr.wpText2));
         st.setText(R.string.update_downloading);
+        // 弹窗不再「只在有进度事件时才动」：每 300ms 自己读一次全局进度。
+        // 服务端没给 Content-Length 时百分比也会按已下载量估算（pct 不会是 -1），所以条子一定会动。
+        final android.widget.ProgressBar fpb = pb;
+        final TextView fst = st;
+        final Runnable follow = new Runnable() {
+            @Override public void run() {
+                if (!busy) return;
+                int p = progressPct();
+                if (p >= 0) fpb.setProgress(p);
+                if (line != null && line.length() > 0) fst.setText(line);
+                fpb.postDelayed(this, 300);
+            }
+        };
+        pb.postDelayed(follow, 300);
         LinearLayout col = new LinearLayout(a);
         col.setOrientation(LinearLayout.VERTICAL);
         col.setBackgroundResource(R.drawable.bg_card_28);
@@ -216,9 +246,13 @@ public class Update {
         ref[0] = dlg;
 
         final int curCode = myCode(a);
+        busy = true;
+        pct = -1;
+        line = a.getString(R.string.update_downloading);
         new Thread(new Runnable() {
             @Override public void run() {
                 HttpURLConnection c = null;
+                long startedAt = System.currentTimeMillis();
                 try {
                     c = (HttpURLConnection) new URL(info.url).openConnection();
                     c.setConnectTimeout(8000);
@@ -236,22 +270,33 @@ public class Update {
                         if (cancel[0]) break;
                         out.write(buf, 0, n);
                         got += n;
-                        final int pct = total > 0 ? (int) (got * 100 / total)
+                        // 注意：局部变量别叫 pct —— pct 是全局进度字段（同名会把自己的赋值改成写局部）
+                        final int curPct = total > 0 ? (int) (got * 100 / total)
                                 : (int) Math.min(99, got / 51200);
-                        if (pct != lastPct) {
-                            lastPct = pct;
+                        if (curPct != lastPct) {
+                            lastPct = curPct;
                             final String kb = String.format("%.1f MB / %.1f MB",
                                     got / 1048576.0, Math.max(0, total) / 1048576.0);
+                            final int fpct = curPct;
+                            final long fgot = got;
+                            final long t0 = System.currentTimeMillis() - startedAt;
+                            final String speed = t0 > 600
+                                    ? String.format(" · %.1f MB/s", fgot / 1048576.0 / (t0 / 1000.0)) : "";
+                            final String text = a.getString(R.string.update_progress, curPct) + "   " + kb + speed;
+                            pct = fpct;                        // 全局进度（设置页/首页也读它）
+                            line = text;
                             a.runOnUiThread(new Runnable() {
                                 @Override public void run() {
-                                    pb.setProgress(pct);
-                                    st.setText(a.getString(R.string.update_progress, pct) + "   " + kb);
+                                    pb.setProgress(fpct);
+                                    st.setText(text);
                                 }
                             });
                         }
                     }
                     out.flush(); out.close(); in.close();
+                    busy = false;
                     if (cancel[0]) {
+                        pct = -1; line = "";
                         try { if (f.exists()) f.delete(); } catch (Throwable ignored) {}
                         return;
                     }
@@ -262,6 +307,8 @@ public class Update {
                         }
                     });
                 } catch (final Exception e) {
+                    busy = false; pct = -1;
+                    line = "";
                     try { if (f.exists()) f.delete(); } catch (Exception ignored) {}
                     final String em = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
                     a.runOnUiThread(new Runnable() {
@@ -291,21 +338,75 @@ public class Update {
         }
     }
 
-    /** MainActivity 启动时的自动检查（每天最多一次，同版本不重复提醒） */
-    public static void autoCheck(final Activity a) {
+    // ---------- 前台轮询：进度显示 + 更灵敏的检查 ----------
+
+    /** 页面实现它就能拿到「下载进度」和「查到新版本」的回调 */
+    public interface Watch {
+        /** pct < 0 = 大小未知；line = 一行说明 */
+        void onTick(int pct, String line);
+        /** 静默检查查到新版本（同一版本只回调一次） */
+        void onFound(Info info);
+    }
+
+    private static android.os.Handler h;
+    private static Runnable loop;
+    private static java.lang.ref.WeakReference<Activity> ref;
+    private static Watch wcb;
+    private static int tick;
+    private static int lastFoundCode = -1;
+
+    /**
+     * 页面 onResume 调它、onPause 调 {@link #stopWatch()}。
+     * 每 400ms 回一次进度（有下载在跑时才有内容），每 60 秒静默查一次更新 ——
+     * 「不够灵敏」就是这么来的：前台一直在问，不用退回桌面再进来。
+     */
+    public static void startWatch(Activity a, Watch w) {
+        ref = new java.lang.ref.WeakReference<Activity>(a);
+        wcb = w;
+        tick = 0;
+        if (h == null) h = new android.os.Handler(android.os.Looper.getMainLooper());
+        if (loop != null) h.removeCallbacks(loop);
+        loop = new Runnable() {
+            @Override public void run() {
+                Activity act = ref == null ? null : ref.get();
+                if (act == null || act.isFinishing()) { stopWatch(); return; }
+                if (wcb != null) wcb.onTick(pct, line);
+                if (tick++ % 150 == 0 && !busy) silentCheck(act);     // 150 × 400ms = 60 秒
+                h.postDelayed(this, 400);
+            }
+        };
+        h.post(loop);
+        silentCheck(a);        // 一进页面就查一次（节流 60 秒由 silentCheck 自己管）
+    }
+
+    public static void stopWatch() {
+        if (h != null && loop != null) h.removeCallbacks(loop);
+        loop = null;
+        ref = null;
+        wcb = null;
+    }
+
+    /** 静默检查一次（节流 60 秒）：查到新版只回报，弹不弹窗由页面决定 */
+    private static void silentCheck(Activity a) {
         final Prefs p = Prefs.of(a);
         if (!p.on(Prefs.K_UP_AUTO, true)) return;
         long now = System.currentTimeMillis();
-        // 测试期一天出好几个包，20 小时一次的节流等于「永远不提醒」→ 改成半小时一次
-        if (now - p.l(Prefs.K_UP_LAST, 0) < 30L * 60 * 1000) return;
+        if (now - p.l(Prefs.K_UP_LAST, 0) < 60L * 1000) return;
         p.set(Prefs.K_UP_LAST, now);
         checkAsync(a, new Cb() {
             @Override public void onResult(Info info, String err) {
-                if (info == null) return;   // 自动检查静默
-                if (!info.force && p.i(Prefs.K_UP_SEEN, 0) == info.code) return;
+                if (info == null) { if (err == null) latest = null; return; }
+                latest = info;
+                if (info.code == lastFoundCode) return;        // 同一个版本不反复打扰
+                if (!info.force && p.i(Prefs.K_UP_SEEN, 0) == info.code) {
+                    if (wcb != null) wcb.onFound(info);        // 提醒过了：首页横幅仍然亮着
+                    return;
+                }
                 p.set(Prefs.K_UP_SEEN, info.code);
-                showFound(a, info);
+                lastFoundCode = info.code;
+                if (wcb != null) wcb.onFound(info);
             }
         });
     }
+
 }

@@ -21,10 +21,10 @@ import java.util.List;
 
 public class MainActivity extends Activity {
 
-    private int filter = -1;                 // -1 全部，其余为 Db.STAGE_*，PLAN = 我的词本
-    private static final int FILTER_PLAN = -100;
+    private int filter = -1;                 // -1 全部，其余为 Db.STAGE_*
     private BookAdapter adapter;
     private HeatView heat;
+    private boolean wasBusy;                 // 上一次回调时「是否正在下载更新」
     private final Runnable watcher = new Runnable() {
         @Override public void run() { refreshDashboard(); }
     };
@@ -54,10 +54,9 @@ public class MainActivity extends Activity {
         LinearLayout chips = (LinearLayout) findViewById(R.id.filterChips);
         final String[] names = {getString(R.string.stage_all), Db.stageName(Db.STAGE_PRIMARY),
                 Db.stageName(Db.STAGE_JUNIOR), Db.stageName(Db.STAGE_SENIOR),
-                Db.stageName(Db.STAGE_COLLEGE), Db.stageName(Db.STAGE_EXAM),
-                getString(R.string.plan_chip)};
+                Db.stageName(Db.STAGE_COLLEGE), Db.stageName(Db.STAGE_EXAM)};
         final int[] stages = {-1, Db.STAGE_PRIMARY, Db.STAGE_JUNIOR, Db.STAGE_SENIOR,
-                Db.STAGE_COLLEGE, Db.STAGE_EXAM, FILTER_PLAN};
+                Db.STAGE_COLLEGE, Db.STAGE_EXAM};
         for (int i = 0; i < names.length; i++) {
             final int idx = i;
             TextView chip = Ui.chip(this, names[i], i == 0);
@@ -96,6 +95,20 @@ public class MainActivity extends Activity {
                 toast(getString(R.string.heat_day_info, day, d.learned, d.rev, d.test, d.goal));
             }
         });
+        final View upBanner = dash.findViewById(R.id.upBanner);
+        upBanner.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                Update.Info info = Update.newest();
+                if (info != null) Update.showFound(MainActivity.this, info);
+            }
+        });
+        dash.findViewById(R.id.upBannerGo).setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                Update.Info info = Update.newest();
+                if (info != null) Update.showFound(MainActivity.this, info);
+            }
+        });
+
         dash.findViewById(R.id.goalCard).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { pickGoal(); }
         });
@@ -139,6 +152,17 @@ public class MainActivity extends Activity {
         ((TextView) findViewById(R.id.habitTestSub)).setText(
                 getString(R.string.habit_test) + " " + t.test + "张");
 
+        // 有新版就一直挂着这条横幅（点一下就更新）；没有就收起来
+        View banner = findViewById(R.id.upBanner);
+        if (banner != null) {
+            Update.Info info = Update.newest();
+            boolean show = info != null && !Update.isBusy();
+            banner.setVisibility(show ? View.VISIBLE : View.GONE);
+            if (show) {
+                ((TextView) findViewById(R.id.upBannerText)).setText(
+                        getString(R.string.up_banner, info.name, Update.myName(this)));
+            }
+        }
         heat.setData(dy, Diary.today());
         int[] ramp = HeatView.ramp(this, Prefs.of(this));
         int[] ids = {R.id.heatL1, R.id.heatL2, R.id.heatL3, R.id.heatL4};
@@ -252,6 +276,18 @@ public class MainActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
+        // 更灵敏的更新检查：前台每 60 秒静默查一次，查到就把横幅亮出来
+        Update.startWatch(this, new Update.Watch() {
+            @Override public void onTick(int pct, String line) {
+                // 每 400ms 回调一次：只有「下载状态的开关」变了才重画仪表盘（别每帧重建 drawable）
+                boolean now = Update.isBusy();
+                if (now != wasBusy) { wasBusy = now; refreshDashboard(); }
+            }
+            @Override public void onFound(Update.Info info) {
+                refreshDashboard();
+                if (!MainActivity.this.isFinishing()) Update.showFound(MainActivity.this, info);
+            }
+        });
         Db.ensureLoaded(this);
         if (Prefs.needProfile()) {                       // 首次使用：先起个名字
             startActivity(new Intent(this, ProfileActivity.class));
@@ -269,15 +305,35 @@ public class MainActivity extends Activity {
         DiaryStore.watch(watcher);
         refreshDashboard();
         adapter.refresh();
-        findViewById(android.R.id.content).postDelayed(new Runnable() {
-            @Override public void run() { Update.autoCheck(MainActivity.this); }
-        }, 700);
+        // 进首页立刻查一次（之后由 startWatch 每 60 秒继续盯着）——这里不再单独 autoCheck，
+        // 否则会和 startWatch 的即时检查撞成两次请求
     }
 
     @Override protected void onPause() {
         super.onPause();
+        Update.stopWatch();              // 退到后台就别轮询了（费电）
         DiaryStore.unwatch(watcher);
         DiaryStore.save();
+    }
+
+    /** 词书行右侧「⋯」的菜单 */
+    private void bookMenu(final Db.Book bk) {
+        final String[] items = {getString(R.string.book_preview), getString(R.string.book_batch),
+                getString(R.string.book_setup)};
+        new android.app.AlertDialog.Builder(this)
+                .setTitle(bk.display())
+                .setItems(items, new android.content.DialogInterface.OnClickListener() {
+                    @Override public void onClick(android.content.DialogInterface d, int which) {
+                        if (which == 0) BookPreviewActivity.open(MainActivity.this, bk.id, false);
+                        else if (which == 1) BookPreviewActivity.open(MainActivity.this, bk.id, true);
+                        else {
+                            Intent it = new Intent(MainActivity.this, SetupActivity.class);
+                            it.putExtra("book", bk.id);
+                            startActivity(it);
+                        }
+                    }
+                })
+                .show();
     }
 
     /* ---------- 行模型：SECTION 或 BOOK ---------- */
@@ -289,21 +345,9 @@ public class MainActivity extends Activity {
     private List<Row> buildRows() {
         List<Row> rows = new ArrayList<Row>();
         List<Db.Book> visible = new ArrayList<Db.Book>();
-        Plan plan = PlanStore.get(this);
         for (Db.Book bk : Db.I.books()) {
-            if (filter == FILTER_PLAN) {
-                if (!plan.has(bk.id)) continue;
-            } else if (filter >= 0 && bk.stage != filter) continue;
+            if (filter >= 0 && bk.stage != filter) continue;
             visible.add(bk);
-        }
-        if (filter == FILTER_PLAN) {                     // 我的词本：按配置顺序排，置顶
-            List<Db.Book> ordered = new ArrayList<Db.Book>();
-            for (Plan.Item it : plan.items) {
-                Db.Book bk = Db.I.byId(it.bookId);
-                if (bk != null && visible.contains(bk) && !ordered.contains(bk)) ordered.add(bk);
-            }
-            for (Db.Book bk : visible) if (!ordered.contains(bk)) ordered.add(bk);
-            visible = ordered;
         }
         String curStage = null;
         for (Db.Book bk : visible) {
@@ -370,8 +414,7 @@ public class MainActivity extends Activity {
             tag.setTextColor(col);
             tag.setBackgroundTintList(ColorStateList.valueOf(Ui.withAlpha(col, 0x1F)));
 
-            ((TextView) cv.findViewById(R.id.tvTitle)).setText(
-                    (PlanStore.get(MainActivity.this).has(bk.id) ? "★ " : "") + bk.display());
+            ((TextView) cv.findViewById(R.id.tvTitle)).setText(bk.display());
             TextView cnt = (TextView) cv.findViewById(R.id.tvCount);
             cnt.setText(done >= bk.n ? bk.n + " 词  ✓ 已学完" : bk.n + " 词");
             cnt.setTextColor(done >= bk.n ? Skin.c(cv.getContext(), R.attr.wpGreen)
@@ -383,6 +426,11 @@ public class MainActivity extends Activity {
             int acc = pct >= 100 ? Skin.c(cv.getContext(), R.attr.wpGreen) : Skin.c(cv.getContext(), R.attr.wpBrand);
             pctTv.setTextColor(acc);
             bar.setProgressTintList(ColorStateList.valueOf(acc));
+
+            // ⋯ 菜单：仅预览 / 批量改进度 / 刷词设置（「不想一个词一个词点」）
+            cv.findViewById(R.id.btnMore).setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) { bookMenu(bk); }
+            });
             return cv;
         }
     }

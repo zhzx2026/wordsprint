@@ -85,7 +85,7 @@ public final class ShareCard {
         String raw = "n=" + s.name + "\nd=" + s.date + "\nt=" + s.today + "\ng=" + s.goal
                 + "\ns=" + s.streak + "\nb=" + s.best + "\nm=" + s.total + "\nk=" + s.doneDays
                 + "\nr=" + s.revMin + "\nf=" + s.favs + "\nx=" + s.testDone + "\nh=" + heat;
-        return PlanCode.pack(raw);      // zlib deflate + base64url，与 share/index.html 的解析端同源
+        return ZipB64.pack(raw);        // zlib deflate + base64url，与 share/index.html 的解析端同源
     }
 
     // ---------------- 画 ----------------

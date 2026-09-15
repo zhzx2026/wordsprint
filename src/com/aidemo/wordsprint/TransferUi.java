@@ -42,20 +42,8 @@ public class TransferUi {
     public static void importText(final Activity a, final String raw, final Done onDone, final boolean cancelable) {
         if (a == null) return;
         final String text = raw == null ? "" : raw;
-        // 先看是不是「词本配置码」（WPB1）：两者语义不同（那个要问替换/合并），不能混在一起解析
-        if (PlanCode.clean(text).toUpperCase(java.util.Locale.US).contains("WPB1")) {
-            new Thread(new Runnable() {
-                @Override public void run() {
-                    final PlanCode.Out out = PlanCode.parse(text);
-                    a.runOnUiThread(new Runnable() {
-                        @Override public void run() { PlanUi.show(a, out, new PlanUi.Done() {
-                            @Override public void done(boolean ok) { call(onDone, ok); }
-                        }); }
-                    });
-                }
-            }, "wp-plancode").start();
-            return;
-        }
+        // 注：「词本配置码（WPB1）」那条路已随「我的词本」一起删除（用户 2026-09-15），
+        // 现在扫码/粘贴只认学习进度码一种。
         new Thread(new Runnable() {
             @Override public void run() {
                 final ProgressCode.Out[] holder = new ProgressCode.Out[1];
