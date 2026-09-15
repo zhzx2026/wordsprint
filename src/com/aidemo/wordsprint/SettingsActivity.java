@@ -168,17 +168,33 @@ public class SettingsActivity extends Activity {
             @Override public void onTap(int idx, TextView chip) { pr.setUpdateChannel(idx); }
         });
         state = (android.widget.TextView) findViewById(R.id.tvUpdateState);
-        state.setText(getString(R.string.update_cur_ver, Update.myName(this), Update.myCode(this)));
+        state.setText(getString(R.string.update_cur_ver_ch, Update.myName(this), Update.myCode(this),
+                Update.channelName(this, pr.updateChannel())));
         bind(R.id.swUpdate, Prefs.K_UP_AUTO, true);
         findViewById(R.id.btnUpdateCheck).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
-                state.setText(R.string.update_checking);
-                Update.checkAsync(SettingsActivity.this, new Update.Cb() {
-                    @Override public void onResult(Update.Info info, String err) {
-                        if (err != null) { state.setText(getString(R.string.update_fail_short, err)); return; }
-                        if (info == null) { state.setText(R.string.update_latest_now); return; }
-                        state.setText(getString(R.string.update_found_v, info.name, Update.myName(SettingsActivity.this)));
-                        Update.showFound(SettingsActivity.this, info);
+                final int ch = pr.updateChannel();
+                state.setText(getString(R.string.update_checking_ch, Update.channelName(SettingsActivity.this, ch)));
+                Update.checkResAsync(SettingsActivity.this, new Update.Cb2() {
+                    @Override public void onRes(Update.Res r) {
+                        if (r.err != null) {
+                            state.setText(getString(R.string.update_fail_short, r.err));
+                            return;
+                        }
+                        if (!r.newer) {                 // 「已是最新」必须写清依据，免得看着像没检查
+                            state.setText(getString(R.string.update_latest_detail,
+                                    Update.channelName(SettingsActivity.this, r.channel),
+                                    r.server == null ? "?" : r.server.name,
+                                    r.server == null ? 0 : r.server.code,
+                                    Update.myName(SettingsActivity.this), Update.myCode(SettingsActivity.this)));
+                            return;
+                        }
+                        state.setText(r.viaDev
+                                ? getString(R.string.update_found_dev, r.server.name,
+                                            Update.myName(SettingsActivity.this))
+                                : getString(R.string.update_found_v, r.server.name,
+                                            Update.myName(SettingsActivity.this)));
+                        Update.showFound(SettingsActivity.this, r.server);
                     }
                 });
             }

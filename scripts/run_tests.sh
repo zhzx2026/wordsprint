@@ -17,6 +17,7 @@ mkdir -p "$D"
 # 被测源码就是发版用的那一份（不是 test/ 下的旧副本）
 cp "$S"/Engine.java "$S"/QREnc.java "$S"/QRUtil.java "$S"/Transfer.java "$S"/ProgressCode.java "$S"/Pack.java \
    "$S"/ZipB64.java "$S"/Diary.java "$S"/Scale.java "$S"/Heat.java "$S"/BookEdit.java \
+   "$S"/Vers.java \
    "$S"/WrongBook.java "$S"/ShareGeom.java "$S"/Ges.java "$D"/
 rm -rf test/out && mkdir -p test/out
 
@@ -24,7 +25,7 @@ echo "== javac（同一份源码）"
 javac -encoding UTF-8 -nowarn -d test/out -cp libs/zxing-core.jar \
   "$D"/*.java test/T.java test/EngineTest.java test/QRHostTest.java test/CodeHostTest.java test/PackTest.java \
   test/SharePayloadTest.java test/ScaleTest.java test/GesTest.java test/WrongBookTest.java test/ShareGeomTest.java \
-  test/HeatRampTest.java test/BookEditTest.java
+  test/HeatRampTest.java test/BookEditTest.java test/VersTest.java
 
 CP=test/out:libs/zxing-core.jar
 echo "== EngineTest（刷词引擎 + 回炉区间断言）"
@@ -46,6 +47,8 @@ if command -v node >/dev/null 2>&1; then
 java -cp "$CP" WrongBookTest
 echo "== ShareGeomTest（战绩图版面：网格不压标签、二维码不出画布）"
 java -cp "$CP" ShareGeomTest
+echo "== VersTest（版本号/更新通道：装 dev 包就该盯 dev 通道）"
+java -cp "$CP" VersTest
   echo "== HeatRampTest（热力图在每套配色下都要看得见格子）"
 java -cp "$CP" HeatRampTest
 echo "== BookEditTest（词表批量编辑：范围解析 + 批量改掌握）"

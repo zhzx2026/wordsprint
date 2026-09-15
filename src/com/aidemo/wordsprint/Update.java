@@ -35,6 +35,26 @@ public class Update {
 
     public interface Cb { void onResult(Info info, String err); }
 
+    /**
+     * 检查结果（不管有没有新版本都给）——用户反馈「显示已经是最新版本，但明明有新包」，
+     * 根因就是界面只说结论、不说依据。现在把「查了哪个通道、服务器上是什么版本、本机是什么版本」
+     * 全带回来，设置页直接写出来，一眼就能看出是不是查错了通道。
+     */
+    public static class Res {
+        public Info server;          // 服务器上的版本（查到了才非空；可能比本机旧）
+        public boolean newer;        // 服务器版本是不是比本机新
+        public int channel;          // 0 = stable（正式版）· 1 = dev（dev 分支）
+        public String url = "";      // 实际请求的地址
+        public String err;           // 失败原因（null = 请求成功）
+        public boolean viaDev;       // 结果取自 dev 通道（正式版通道比它旧时会发生）
+    }
+
+    public interface Cb2 { void onRes(Res r); }
+
+    public static String channelName(Context c, int ch) {
+        return ch == 1 ? c.getString(R.string.update_src_dev) : c.getString(R.string.update_src_stable);
+    }
+
     private static Info pending;   // 等待用户授予安装权限后继续
 
     // ---------- 下载进度（对外只读，供设置页/首页/进度弹窗显示） ----------
@@ -61,61 +81,104 @@ public class Update {
         catch (Exception e) { return "?"; }
     }
 
-    /** 返回非 null = 有更新；url 为空视为未配置（err 提示） */
+    /** 返回非 null = 有更新（老接口，保留给「只关心有没有更新」的地方） */
     public static Info check(Context c) throws Exception {
-        int ch = Prefs.of(c).updateChannel();
-        String raw = ch == 1
-                ? c.getString(R.string.update_dev_src).trim()
-                : c.getString(R.string.update_default_src).trim();
-        if (raw.contains("YOUR_GITHUB"))
-            throw new Exception("GitHub 源未配置：先跑 scripts/github_setup.sh 你的用户名/仓库");
-        if (raw.isEmpty()) throw new Exception("未设置更新源地址");
-        String u = raw.toLowerCase().endsWith(".json") ? raw
-                : raw + (raw.endsWith("/") ? "" : "/") + "update.json";
-        HttpURLConnection conn = (HttpURLConnection) new URL(u).openConnection();
-        conn.setConnectTimeout(6000);
-        conn.setReadTimeout(8000);
-        conn.setInstanceFollowRedirects(true);
-        try {
-            int sc = conn.getResponseCode();
-            if (sc / 100 != 2) throw new Exception("HTTP " + sc);
-            InputStream in = conn.getInputStream();
-            StringBuilder sb = new StringBuilder();
-            byte[] buf = new byte[4096];
-            int n, tot = 0;
-            while ((n = in.read(buf)) > 0 && tot < 256 * 1024) {
-                sb.append(new String(buf, 0, n, "UTF-8"));
-                tot += n;
-            }
-            in.close();
-            JSONObject j = new JSONObject(sb.toString());
-            Info i = new Info();
-            i.code = j.optInt("versionCode", 0);
-            i.name = j.optString("versionName", String.valueOf(i.code));
-            String rel = j.optString("url");
-            if (rel.startsWith("http")) i.url = rel;
-            else {
-                int q = u.lastIndexOf('/');
-                i.url = u.substring(0, q + 1) + rel;
-            }
-            i.notes = j.optString("notes", "");
-            i.force = j.optBoolean("force", false);
-            return i.code > myCode(c) ? i : null;
-        } finally { conn.disconnect(); }
+        Res r = checkRes(c);
+        if (r.err != null) throw new Exception(r.err);
+        return r.newer ? r.server : null;
     }
 
-    public static void checkAsync(final Activity a, final Cb cb) {
+    /**
+     * 完整检查：请求 update.json，把服务器版本与本机版本比一比。
+     * 不抛异常 —— 失败原因放在 {@link Res#err}，界面可以照实显示（HTTP 码 / 连不上 / 没配置）。
+     *
+     * 装的是开发版包（版本号 X.Y）时，会**顺带看一眼 dev 通道**：正式版通道只在转正时才前进，
+     * 平时永远停在旧版本上，只看它就会出现「明明有新包却显示已是最新版本」
+     * （用户 2026-09-15 装机实测遇到的正是这个）。dev 上的包更新就用它，并在界面标明来源。
+     */
+    public static Res checkRes(Context c) {
+        Res r = fetch(c, Prefs.of(c).updateChannel());
+        if (r.channel == 0 && Vers.isDevName(myName(c))) {
+            Res d = fetch(c, 1);
+            int base = r.server == null ? myCode(c) : Math.max(r.server.code, myCode(c));
+            if (d.server != null && d.server.code > base) {
+                r.server = d.server;
+                r.newer = d.server.code > myCode(c);
+                r.viaDev = true;
+                r.url = d.url;
+                r.err = null;
+            }
+        }
+        return r;
+    }
+
+    /** 只查一个通道 */
+    private static Res fetch(Context c, int channel) {
+        Res r = new Res();
+        r.channel = channel;
+        try {
+            String raw = channel == 1
+                    ? c.getString(R.string.update_dev_src).trim()
+                    : c.getString(R.string.update_default_src).trim();
+            if (raw.contains("YOUR_GITHUB")) { r.err = "GitHub 源未配置"; return r; }
+            if (raw.isEmpty()) { r.err = "未设置更新源地址"; return r; }
+            String u = raw.toLowerCase().endsWith(".json") ? raw
+                    : raw + (raw.endsWith("/") ? "" : "/") + "update.json";
+            r.url = u;
+            HttpURLConnection conn = (HttpURLConnection) new URL(u).openConnection();
+            conn.setConnectTimeout(8000);
+            conn.setReadTimeout(10000);
+            conn.setInstanceFollowRedirects(true);
+            try {
+                int sc = conn.getResponseCode();
+                if (sc / 100 != 2) { r.err = "HTTP " + sc; return r; }
+                InputStream in = conn.getInputStream();
+                StringBuilder sb = new StringBuilder();
+                byte[] buf = new byte[4096];
+                int n, tot = 0;
+                while ((n = in.read(buf)) > 0 && tot < 256 * 1024) {
+                    sb.append(new String(buf, 0, n, "UTF-8"));
+                    tot += n;
+                }
+                in.close();
+                JSONObject j = new JSONObject(sb.toString());
+                Info i = new Info();
+                i.code = j.optInt("versionCode", 0);
+                i.name = j.optString("versionName", String.valueOf(i.code));
+                String rel = j.optString("url");
+                if (rel.startsWith("http")) i.url = rel;
+                else {
+                    int q = u.lastIndexOf('/');
+                    i.url = u.substring(0, q + 1) + rel;
+                }
+                i.notes = j.optString("notes", "");
+                i.force = j.optBoolean("force", false);
+                r.server = i;
+                r.newer = i.code > myCode(c);
+                return r;
+            } finally { conn.disconnect(); }
+        } catch (Throwable t) {
+            r.err = t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage();
+            return r;
+        }
+    }
+
+    /** 异步版：回调里连「查了哪个通道、服务器什么版本」一起给 */
+    public static void checkResAsync(final Activity a, final Cb2 cb) {
         new Thread(new Runnable() {
             @Override public void run() {
-                Info info = null; String err = null;
-                try { info = check(a); }
-                catch (Exception e) { err = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage(); }
-                final Info fi = info; final String fe = err;
+                final Res r = checkRes(a);
                 a.runOnUiThread(new Runnable() {
-                    @Override public void run() { cb.onResult(fi, fe); }
+                    @Override public void run() { cb.onRes(r); }
                 });
             }
         }).start();
+    }
+
+    public static void checkAsync(final Activity a, final Cb cb) {
+        checkResAsync(a, new Cb2() {
+            @Override public void onRes(Res r) { cb.onResult(r.newer ? r.server : null, r.err); }
+        });
     }
 
     /** 发现新版本 → 卡片弹窗（更新说明 + 立即更新/稍后） */
@@ -393,9 +456,10 @@ public class Update {
         long now = System.currentTimeMillis();
         if (now - p.l(Prefs.K_UP_LAST, 0) < 60L * 1000) return;
         p.set(Prefs.K_UP_LAST, now);
-        checkAsync(a, new Cb() {
-            @Override public void onResult(Info info, String err) {
-                if (info == null) { if (err == null) latest = null; return; }
+        checkResAsync(a, new Cb2() {
+            @Override public void onRes(Res r) {
+                Info info = r.newer ? r.server : null;
+                if (info == null) { if (r.err == null) latest = null; return; }
                 latest = info;
                 if (info.code == lastFoundCode) return;        // 同一个版本不反复打扰
                 if (!info.force && p.i(Prefs.K_UP_SEEN, 0) == info.code) {

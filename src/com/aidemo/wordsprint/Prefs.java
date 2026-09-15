@@ -47,8 +47,21 @@ public class Prefs {
      */
     public int updateChannel() {
         if (p.contains(K_UP_CH)) return p.getInt(K_UP_CH, 0) == 1 ? 1 : 0;
-        String old = p.getString(ns(K_UP_URL), "");
-        return old != null && old.contains("/dev") ? 1 : 0;
+        String old = p.getString(ns(K_UP_URL), "");                 // 老版本手填过地址的
+        if (old != null && old.contains("/dev")) return 1;
+        // 没显式选过通道：装的是 dev 包就盯 dev 通道。
+        // （否则刚装完 dev 包的人点「检查更新」，查到的是 Release 上的 2.0 —— 永远「已经是最新版本」）
+        return Vers.channel(installedName(), null);
+    }
+
+    /** 本机安装包的显示版本号（判断「装的是 dev 包还是正式版」用；拿不到就按稳定版处理） */
+    private static String installedName() {
+        try {
+            Context c = App.get();
+            return c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionName;
+        } catch (Throwable t) {
+            return null;
+        }
     }
 
     public void setUpdateChannel(int ch) { p.edit().putInt(K_UP_CH, ch == 1 ? 1 : 0).apply(); }
