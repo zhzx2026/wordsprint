@@ -94,9 +94,10 @@ public class BookEditTest {
 
         // 8) 计数（界面要显示「这段里已有 N 个已掌握」）
         BitSet ms2 = new BitSet(n);
-        ms2.set(4); ms2.set(5); ms2.set(100);
-        eq(BookEdit.countIn(ms2, BookEdit.parseRange("1-10", n)), 2, "1-10 里已有 2 个");
+        ms2.set(4); ms2.set(5); ms2.set(99);        // 位图是 0 基：下标 99 = 第 100 个词
+        eq(BookEdit.countIn(ms2, BookEdit.parseRange("1-10", n)), 2, "1-10 里已有 2 个（第 5、6 个）");
         eq(BookEdit.countIn(ms2, BookEdit.parseRange("100", n)), 1, "第 100 个已掌握");
+        eq(BookEdit.countIn(ms2, BookEdit.parseRange("99", n)), 0, "第 99 个没有（别把 100 当成下标 100）");
 
         System.out.println("ALL BOOK EDIT TESTS PASS (" + checks + " checks)");
     }
