@@ -253,26 +253,13 @@
             android:textColor="?attr/wpText2"
             android:textSize="11.5sp"/>
 
-        <HorizontalScrollView
-            android:id="@+id/heatScroll"
+                <!-- 热力图：尺寸按可用宽度自适应（HeatView 自己算格子与周数），
+             不再套横向滚动 —— 以前固定 53 周≈907dp，手机上右边一截会顶出屏幕 -->
+        <com.aidemo.wordsprint.HeatView
+            android:id="@+id/heat"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:scrollbars="none"
-            android:clipToPadding="false">
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="vertical">
-
-                <com.aidemo.wordsprint.HeatView
-                    android:id="@+id/heat"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"/>
-            </LinearLayout>
-        </HorizontalScrollView>
-
+            android:layout_marginTop="12dp"/>
         <!-- 图例 + 最高连续 -->
         <LinearLayout
             android:layout_width="match_parent"

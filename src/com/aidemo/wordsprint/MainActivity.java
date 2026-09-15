@@ -178,13 +178,7 @@ public class MainActivity extends Activity {
         ((TextView) findViewById(R.id.heatBest)).setText(
                 getString(R.string.streak_best) + " " + getString(R.string.days_unit, best) + " · "
                         + getString(R.string.streak_done_days) + " " + dy.doneDays());
-        findViewById(R.id.heatScroll).post(new Runnable() {
-            @Override public void run() {
-                View sc = findViewById(R.id.heatScroll);
-                if (sc instanceof android.widget.HorizontalScrollView)
-                    ((android.widget.HorizontalScrollView) sc).fullScroll(View.FOCUS_RIGHT);
-            }
-        });
+        // 热力图现在按屏幕宽度自适应，不再需要「滚到最右边」
     }
 
     private void mark(int id, boolean done) {

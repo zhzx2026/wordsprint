@@ -30,6 +30,46 @@ public final class Heat {
         };
     }
 
+    // ---------------- 自适应排布（屏幕宽 → 格子大小 / 周数） ----------------
+
+    /**
+     * 给定格子边长，算出「这个宽度里能放下几列」。
+     * 格子按 col 排布：第 col 列左边缘 = labelW + col * (cell + gap)。
+     * 最后一列的右边缘 = labelW + cols*(cell+gap) - gap，天然比可用宽度少一个 gap ——
+     * 也就是说右边永远留得下一条缝，不会有半格贴在屏幕边上。
+     */
+    public static int colsFor(float avail, float labelW, float gapRatio, float cell, int maxCols) {
+        float step = cell * (1f + gapRatio);
+        if (step <= 0f) return 1;
+        int n = (int) Math.floor((avail - labelW) / step);
+        if (n < 1) n = 1;
+        if (n > maxCols) n = maxCols;
+        return n;
+    }
+
+    /**
+     * 挑格子大小（单位与 avail/labelW 一致，都是 px）。
+     *
+     * 规则：
+     *   ① 能用「够大的格子」铺满一年（maxCols）就铺满一年；
+     *   ② 否则退而求其次：取「能放下至少 minCols 列」的最大格子（半年起步，字大一些）；
+     *   ③ 屏幕实在太窄（连最小格子都放不下半年）就用最小格子，列数尽力而为。
+     *
+     * tries 必须是从大到小排列的候选格子边长。
+     */
+    public static float chooseCell(float avail, float labelW, float gapRatio, float[] tries,
+                                   int minCols, int maxCols, float minCellForFull) {
+        if (tries == null || tries.length == 0) return 0f;
+        float fallback = tries[tries.length - 1];
+        boolean gotMin = false;
+        for (float cell : tries) {
+            int n = colsFor(avail, labelW, gapRatio, cell, maxCols);
+            if (n >= maxCols && cell >= minCellForFull) return cell;      // ① 整年，格子也够大
+            if (!gotMin && n >= minCols) { fallback = cell; gotMin = true; }   // ② 半年起步
+        }
+        return fallback;
+    }
+
     /** 按档位取色（0..4，越界自动收敛，别让脏数据把格子画成透明） */
     public static int colorOf(int[] ramp, int level) {
         if (ramp == null || ramp.length == 0) return 0xFF888888;
