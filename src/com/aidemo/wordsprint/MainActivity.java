@@ -316,26 +316,6 @@ public class MainActivity extends Activity {
         DiaryStore.save();
     }
 
-    /** 词书行右侧「⋯」的菜单 */
-    private void bookMenu(final Db.Book bk) {
-        final String[] items = {getString(R.string.book_preview), getString(R.string.book_batch),
-                getString(R.string.book_setup)};
-        new android.app.AlertDialog.Builder(this)
-                .setTitle(bk.display())
-                .setItems(items, new android.content.DialogInterface.OnClickListener() {
-                    @Override public void onClick(android.content.DialogInterface d, int which) {
-                        if (which == 0) BookPreviewActivity.open(MainActivity.this, bk.id, false);
-                        else if (which == 1) BookPreviewActivity.open(MainActivity.this, bk.id, true);
-                        else {
-                            Intent it = new Intent(MainActivity.this, SetupActivity.class);
-                            it.putExtra("book", bk.id);
-                            startActivity(it);
-                        }
-                    }
-                })
-                .show();
-    }
-
     /* ---------- 行模型：SECTION 或 BOOK ---------- */
     private static class Row {
         String title;
@@ -427,9 +407,9 @@ public class MainActivity extends Activity {
             pctTv.setTextColor(acc);
             bar.setProgressTintList(ColorStateList.valueOf(acc));
 
-            // ⋯ 菜单：仅预览 / 批量改进度 / 刷词设置（「不想一个词一个词点」）
-            cv.findViewById(R.id.btnMore).setOnClickListener(new View.OnClickListener() {
-                @Override public void onClick(View v) { bookMenu(bk); }
+            // 行内「预览」：点一下直接看整本词表（批量改进度在预览页里）
+            cv.findViewById(R.id.btnPreview).setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) { BookPreviewActivity.open(MainActivity.this, bk.id, false); }
             });
             return cv;
         }

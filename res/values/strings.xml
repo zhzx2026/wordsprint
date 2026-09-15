@@ -365,8 +365,7 @@
     <string name="pv_keep">就这样</string>
     <string name="pv_undone">已经退回改之前的样子</string>
     <string name="book_missing">没找到这个词本</string>
-    <string name="book_more">更多操作</string>
     <string name="book_preview">仅预览词表</string>
+    <string name="book_preview_short">预览</string>
     <string name="book_batch">批量改进度</string>
-    <string name="book_setup">刷词设置</string>
 </resources>
