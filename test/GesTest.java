@@ -67,8 +67,12 @@ public class GesTest {
         check(one[Ges.RIGHT] == Ges.DEF[Ges.RIGHT], "其它位置不动");
         check(Ges.DEF[Ges.UP] == Ges.LOOKUP, "原数组不被改动（不可变）");
 
-        // 7) describe()：设置页/日志里能一眼看出映射
-        check(Ges.describe(Ges.DEF).contains("1") && Ges.describe(Ges.DEF).contains("5"), "describe 输出包含动作号");
+        // 7) describe()：设置页/日志里能一眼看出映射（六个位置都要在，且带着当前动作号）
+        String desc = Ges.describe(Ges.DEF);
+        check(desc.split(" ").length == Ges.SLOTS, "describe 有六个位置");
+        for (int i = 0; i < Ges.SLOTS; i++) {
+            check(desc.contains(String.valueOf(Ges.DEF[i])), "describe 带上动作号 " + Ges.DEF[i]);
+        }
 
         // 收藏功能已删除：老数据里那个 1（FAV_RETIRED）必须判成不合法，退回默认动作
         check(Ges.decode("1,1,1,1,1,1").length == Ges.SLOTS, "整串都是退休的收藏编号也要能解出六个位置");
