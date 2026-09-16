@@ -190,7 +190,7 @@
     <string name="heat_span_actual">最近 %1$d 个月</string>
     <string name="heat_today">今天</string>
     <string name="heat_none">这天没学</string>
-    <string name="heat_day_info">%1$s · 新词 %2$d · 温习 %3$d · 自测 %4$d（目标 %5$d）</string>
+    <string name="heat_day_info">%1$s · 新词 %2$d · 温习 %3$d（目标 %4$d）</string>
     <string name="heat_back_today">回到今天</string>
     <string name="streak_cur">连续打卡</string>
     <string name="streak_best">最高连续</string>

@@ -92,7 +92,7 @@ public class MainActivity extends Activity {
         heat.setOnPick(new HeatView.OnPick() {
             @Override public void onPick(String day, Diary.Day d) {
                 if (d == null) { toast(getString(R.string.heat_none) + " · " + day); return; }
-                toast(getString(R.string.heat_day_info, day, d.learned, d.rev, d.test, d.goal));
+                toast(getString(R.string.heat_day_info, day, d.learned, d.rev, d.goal));
             }
         });
         final View upBanner = dash.findViewById(R.id.upBanner);

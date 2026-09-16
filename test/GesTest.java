@@ -47,8 +47,9 @@ public class GesTest {
         // 老版本存过「跳过(7)」：这个动作已下线（用户 2026-09-14 要求「不要跳过」），要自动退回默认
         check(Ges.decode("7,7,7,7,7,7")[Ges.UP] == Ges.DEF[Ges.UP], "已下线的「跳过」退回默认");
         check(Ges.decode("7,7,7,7,7,7")[Ges.LONG] == Ges.DEF[Ges.LONG], "老数据整体退回默认");
-        // 动作表：从 8 个（含朗读/跳过）精简到 6 个
-        check(Ges.ACTIONS.length == 6, "动作选项精简到 6 个");
+        // 动作表：8 个（含朗读/跳过）→ 6 个 → 现在 5 个（收藏也删了）
+        check(Ges.ACTIONS.length == 5, "动作选项精简到 5 个（收藏已删）");
+        for (int a : Ges.ACTIONS) check(a != Ges.FAV_RETIRED, "清单里不能有退休的收藏动作");
         boolean hasOld = false;
         for (int a : Ges.ACTIONS) if (a == 6 || a == 7) hasOld = true;
         check(!hasOld, "动作表里不该再有朗读/跳过（它们的编号 6/7 已废弃）");
