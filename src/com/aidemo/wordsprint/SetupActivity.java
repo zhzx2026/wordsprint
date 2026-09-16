@@ -123,8 +123,13 @@ public class SetupActivity extends Activity {
 
         findViewById(R.id.btnReview).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
-                int cnt = prefs.wrongs(book.id, book.n).cardinality();
-                if (cnt == 0) { Toast.makeText(SetupActivity.this, R.string.no_wrongs, Toast.LENGTH_SHORT).show(); return; }
+                WrongBook wbNow = prefs.wrongBook(book.id);
+                if (wbNow.dueCount() == 0) {
+                    Toast.makeText(SetupActivity.this,
+                            wbNow.isEmpty() ? R.string.no_wrongs : R.string.no_wrongs_due,
+                            Toast.LENGTH_SHORT).show();
+                    return;
+                }
                 prefs.saveSetup(book.id, size, order, lag);
                 Intent it = new Intent(SetupActivity.this, StudyActivity.class);
                 it.putExtra("book", book.id);
@@ -132,6 +137,11 @@ public class SetupActivity extends Activity {
                 startActivity(it);
                 finish();
             }
+        });
+
+        // 错题本：从词本进来 = 总错题本 + 本词本筛选（用户 2026-09-16）
+        findViewById(R.id.btnWrong).setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { WrongActivity.open(SetupActivity.this, book.id); }
         });
 
         // 仅预览词表 / 批量改进度（用户 2026-09-15 要求：不想一个词一个词点）

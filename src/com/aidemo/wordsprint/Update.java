@@ -234,10 +234,18 @@ public class Update {
         download(a, info);
     }
 
-    /** 从系统设置授权页返回后调用：若有挂起的更新则继续 */
+    /**
+     * 从系统设置授权页返回后调用：若有挂起的更新则继续。
+     *
+     * 以前只在首页 onResume 里调，从设置页点的更新一旦要授权，回来就**什么都不会发生**
+     * （表现和「进度条坏了」一模一样）。现在三个入口都调它；权限没给也不再静默 —— 说一句为什么。
+     */
     public static void resumePending(Activity a) {
         Info p = pending;
-        if (p != null && canInstall(a)) { pending = null; download(a, p); }
+        if (p == null) return;
+        if (canInstall(a)) { pending = null; download(a, p); return; }
+        pending = null;
+        try { Toast.makeText(a, R.string.update_need_perm, Toast.LENGTH_LONG).show(); } catch (Throwable ignored) {}
     }
 
     private static boolean canInstall(Context c) {
@@ -261,6 +269,36 @@ public class Update {
     }
 
     /**
+     * 进度条 drawable：**在代码里搭**，不走 XML。
+     *
+     * 用户 2026-09-16 报「更新进度条又坏了」，症状很具体：弹窗出来了、百分数在跳，就是**看不到条**。
+     * 根因就在旧实现 —— res/drawable/progress_update.xml 里写的是 ?attr/wpChipBg / ?attr/wpBrand /
+     * ?attr/wpBrand2，而它是用 Resources.getDrawable() 取的：那条路径不带 Activity 的主题，
+     * 主题属性解析不出来（轨道与进度都成了透明），于是「有数字、没条」。
+     * 现在颜色直接取 Skin 解析好的实色，再也不会出现「解析不到 = 隐形」这种事。
+     * 轨道色沿用热力图空档那套算法（surface 混 22% 正文色）：任何配色/深浅模式下都看得见。
+     */
+    private static android.graphics.drawable.Drawable barDrawable(Context c) {
+        float d = c.getResources().getDisplayMetrics().density;
+        float r = 5f * d;
+        int track = Heat.mix(Skin.c(c, R.attr.wpSurface), Skin.c(c, R.attr.wpText2), 0.22f);
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+        bg.setColor(track);
+        bg.setCornerRadius(r);
+        android.graphics.drawable.GradientDrawable fg = new android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{Skin.c(c, R.attr.wpBrand), Skin.c(c, R.attr.wpBrand2)});
+        fg.setCornerRadius(r);
+        android.graphics.drawable.ClipDrawable clip = new android.graphics.drawable.ClipDrawable(
+                fg, android.view.Gravity.START, android.graphics.drawable.ClipDrawable.HORIZONTAL);
+        android.graphics.drawable.LayerDrawable ld = new android.graphics.drawable.LayerDrawable(
+                new android.graphics.drawable.Drawable[]{bg, clip});
+        ld.setId(0, android.R.id.background);
+        ld.setId(1, android.R.id.progress);
+        return ld;
+    }
+
+    /**
      * 建/重挂进度弹窗。下载中如果用户把弹窗关掉或切了页面，再点一次「立即更新」会走到这里，
      * 而不是开始第二次下载（{@link #showProgress}）。
      */
@@ -272,7 +310,15 @@ public class Update {
                 android.R.attr.progressBarStyleHorizontal);
         pb.setMax(100);
         pb.setProgress(0);
-        try { pb.setProgressDrawable(a.getResources().getDrawable(R.drawable.progress_update)); } catch (Throwable ignored) {}
+        pb.setIndeterminate(false);
+        pb.setMinimumHeight((int) (10 * d));
+        // 样式全部在代码里给（见 barDrawable）；顺手清掉主题 tint —— 否则 ROM 的 accent 色会盖掉品牌渐变
+        try {
+            pb.setProgressDrawable(barDrawable(a));
+            pb.setProgressTintList(null);
+            pb.setProgressBackgroundTintList(null);
+            pb.setIndeterminateTintList(null);
+        } catch (Throwable ignored) {}
         final TextView st = new TextView(a);
         st.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
         st.setTextColor(Skin.c(a, R.attr.wpText2));
@@ -283,13 +329,14 @@ public class Update {
         final TextView fst = st;
         final Runnable follow = new Runnable() {
             @Override public void run() {
-                if (!busy) return;
                 int p = progressPct();
                 if (p >= 0) fpb.setProgress(p);
                 if (line != null && line.length() > 0) fst.setText(line);
+                if (!busy) return;
                 fpb.postDelayed(this, 300);
             }
         };
+        follow.run();                 // 立刻就显示当前状态，别让用户先盯 300ms 的空条
         pb.postDelayed(follow, 300);
         LinearLayout col = new LinearLayout(a);
         col.setOrientation(LinearLayout.VERTICAL);
@@ -308,7 +355,7 @@ public class Update {
         slp.topMargin = (int) (10 * d);
         col.addView(st, slp);
         LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, (int) (8 * d));
+                ViewGroup.LayoutParams.MATCH_PARENT, (int) (10 * d));
         plp.topMargin = (int) (10 * d);
         col.addView(pb, plp);
         TextView cancelBtn = new TextView(a);
@@ -346,71 +393,122 @@ public class Update {
         progressDlg = null;
     }
 
-    /** 真正的下载循环（进度写进全局状态，弹窗每 300ms 自己读） */
+    /**
+     * 下载 + 安装的调度：失败会**自动重试一次**。
+     *
+     * 用户 2026-09-16 要求「彻底修好」。除了进度条本身（见 {@link #barDrawable}），
+     * 这里把「下载明明没完成却去装」这条最容易炸的路堵上：
+     *   · 服务端给了 Content-Length → 字节数必须一分不差；
+     *   · 再看能不能按 zip 打开、里面有没有 AndroidManifest.xml（被截断的包过不了）；
+     * 两次都不行才报错，并且把更新卡片重新亮出来（对着同一版可以直接点「立即更新」重试）。
+     */
     private static void runDownload(final Activity a, final Info info, final File f, final boolean[] cancel) {
+        String err = null;
+        for (int attempt = 0; attempt < 2 && !cancel[0]; attempt++) {
+            try {
+                if (attempt > 0) {                       // 重试前把进度条拉回起点，别让它停在上一轮的位置
+                    pct = 0;
+                    line = a.getString(R.string.update_downloading);
+                }
+                fetch(a, info, f, cancel);
+                if (cancel[0]) { finishQuietly(f); return; }
+                busy = false;
+                cancelHook = null;
+                a.runOnUiThread(new Runnable() {
+                    @Override public void run() {
+                        dismissProgress();
+                        install(a, f, info);
+                    }
+                });
+                return;
+            } catch (Exception e) {
+                if (cancel[0]) { finishQuietly(f); return; }
+                err = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+            }
+        }
+        finishQuietly(f);
+        final String em = err;
+        a.runOnUiThread(new Runnable() {
+            @Override public void run() {
+                dismissProgress();
+                if (cancel[0] || a.isFinishing()) return;
+                Toast.makeText(a, a.getString(R.string.update_fail, em), Toast.LENGTH_LONG).show();
+                showFound(a, info);          // 网络抖一下不该就此卡死：卡片再亮一次，等于给个「重试」按钮
+            }
+        });
+    }
+
+    /** 收尾：复位下载状态、删掉半截文件（取消/失败共用） */
+    private static void finishQuietly(File f) {
+        busy = false;
+        cancelHook = null;
+        pct = -1;
+        line = "";
+        try { if (f != null && f.exists()) f.delete(); } catch (Throwable ignored) {}
+    }
+
+    /** 下完一次（成功返回；失败抛异常，交给 {@link #runDownload} 决定重不重试） */
+    private static void fetch(final Activity a, final Info info, final File f, final boolean[] cancel) throws Exception {
         HttpURLConnection c = null;
         long startedAt = System.currentTimeMillis();
-                try {
-                    c = (HttpURLConnection) new URL(info.url).openConnection();
-                    c.setConnectTimeout(8000);
-                    c.setReadTimeout(15000);
-                    int sc = c.getResponseCode();
-                    if (sc / 100 != 2) throw new Exception("HTTP " + sc);
-                    long total = c.getContentLengthLong();
-                    InputStream in = c.getInputStream();
-                    FileOutputStream out = new FileOutputStream(f);
-                    byte[] buf = new byte[16384];
-                    long got = 0;
-                    int n;
-                    int lastPct = -1;
-                    while ((n = in.read(buf)) > 0) {
-                        if (cancel[0]) break;
-                        out.write(buf, 0, n);
-                        got += n;
-                        // 注意：局部变量别叫 pct —— pct 是全局进度字段（同名会把自己的赋值改成写局部）
-                        final int curPct = total > 0 ? (int) (got * 100 / total)
-                                : (int) Math.min(99, got / 51200);
-                        if (curPct != lastPct) {
-                            lastPct = curPct;
-                            final String kb = String.format("%.1f MB / %.1f MB",
-                                    got / 1048576.0, Math.max(0, total) / 1048576.0);
-                            final long fgot = got;
-                            final long t0 = System.currentTimeMillis() - startedAt;
-                            final String speed = t0 > 600
-                                    ? String.format(" · %.1f MB/s", fgot / 1048576.0 / (t0 / 1000.0)) : "";
-                            final String text = a.getString(R.string.update_progress, curPct) + "   " + kb + speed;
-                            pct = curPct;                      // 全局进度（进度弹窗每 300ms 读它）
-                            line = text;
-                        }
-                    }
-                    out.flush(); out.close(); in.close();
-                    busy = false;
-                    cancelHook = null;
-                    if (cancel[0]) {
-                        pct = -1; line = "";
-                        try { if (f.exists()) f.delete(); } catch (Throwable ignored) {}
-                        return;
-                    }
-                    a.runOnUiThread(new Runnable() {
-                        @Override public void run() {
-                            dismissProgress();
-                            install(a, f, info);
-                        }
-                    });
-                } catch (final Exception e) {
-                    busy = false; pct = -1; cancelHook = null;
-                    line = "";
-                    try { if (f.exists()) f.delete(); } catch (Exception ignored) {}
-                    final String em = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
-                    a.runOnUiThread(new Runnable() {
-                        @Override public void run() {
-                            dismissProgress();
-                            if (cancel[0] || a.isFinishing()) return;
-                            Toast.makeText(a, a.getString(R.string.update_fail, em), Toast.LENGTH_LONG).show();
-                        }
-                    });
+        try {
+            c = (HttpURLConnection) new URL(info.url).openConnection();
+            c.setConnectTimeout(8000);
+            c.setReadTimeout(15000);
+            c.setInstanceFollowRedirects(true);
+            int sc = c.getResponseCode();
+            if (sc / 100 != 2) throw new Exception("HTTP " + sc);
+            long total = c.getContentLengthLong();
+            InputStream in = c.getInputStream();
+            FileOutputStream out = new FileOutputStream(f);
+            byte[] buf = new byte[16384];
+            long got = 0;
+            int n;
+            int lastPct = -1;
+            while ((n = in.read(buf)) > 0) {
+                if (cancel[0]) break;
+                out.write(buf, 0, n);
+                got += n;
+                // 注意：局部变量别叫 pct —— pct 是全局进度字段（同名会把自己的赋值改成写局部）
+                final int curPct = total > 0 ? (int) (got * 100 / total)
+                        : (int) Math.min(99, got / 51200);
+                if (curPct != lastPct) {
+                    lastPct = curPct;
+                    final String kb = String.format("%.1f MB / %.1f MB",
+                            got / 1048576.0, Math.max(0, total) / 1048576.0);
+                    final long fgot = got;
+                    final long t0 = System.currentTimeMillis() - startedAt;
+                    final String speed = t0 > 600
+                            ? String.format(" · %.1f MB/s", fgot / 1048576.0 / (t0 / 1000.0)) : "";
+                    final String text = a.getString(R.string.update_progress, curPct) + "   " + kb + speed;
+                    pct = curPct;                      // 全局进度（进度弹窗每 300ms 读它）
+                    line = text;
+                }
+            }
+            out.flush();
+            out.close();
+            in.close();
+            if (cancel[0]) return;
+            if (total > 0 && got != total) throw new Exception("下载不完整（" + got + "/" + total + " 字节）");
+            if (!looksLikeApk(f)) throw new Exception("文件不完整，缺少安装清单");
         } finally {
             if (c != null) try { c.disconnect(); } catch (Exception ignored) {}
+        }
+    }
+
+    /**
+     * 是不是一个完好的安装包：ZipFile 会读中央目录，被截断的包在这一步就露馅
+     * （只看头两个字节 "PK" 不够 —— 半包照样以 PK 开头）。
+     */
+    private static boolean looksLikeApk(File f) {
+        java.util.zip.ZipFile z = null;
+        try {
+            z = new java.util.zip.ZipFile(f);
+            return z.getEntry("AndroidManifest.xml") != null;
+        } catch (Exception e) {
+            return false;
+        } finally {
+            try { if (z != null) z.close(); } catch (Exception ignored) {}
         }
     }
 
@@ -460,6 +558,11 @@ public class Update {
                 Activity act = ref == null ? null : ref.get();
                 if (act == null || act.isFinishing()) { stopWatch(); return; }
                 if (wcb != null) wcb.onTick(pct, line);
+                // 下载在跑、弹窗却不在眼前（用户换了页面 / 弹窗被系统收走）→ 自动重新挂出来。
+                // 这也是「进度条坏了」的一类表现：不是没下载，而是根本没人显示它。
+                if (busy && !act.isFinishing() && (progressDlg == null || !progressDlg.isShowing())) {
+                    showProgress(act);
+                }
                 if (tick++ % 150 == 0 && !busy) silentCheck(act);     // 150 × 400ms = 60 秒
                 h.postDelayed(this, 400);
             }

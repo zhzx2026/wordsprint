@@ -62,6 +62,8 @@ public class SettingsActivity extends Activity {
                 Update.showFound(SettingsActivity.this, info);
             }
         });
+        // 从「允许安装未知应用」的授权页返回时接着下载（以前只有首页会接着走）
+        Update.resumePending(this);
         try {
             ((TextView) findViewById(R.id.tvNameNow)).setText(
                     Prefs.activeName().isEmpty() ? getString(R.string.profile_title) : Prefs.activeName());

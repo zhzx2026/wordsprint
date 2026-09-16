@@ -69,7 +69,7 @@ public class StudyActivity extends Activity {
         reviewMode = mode == MODE_WRONG;
         final boolean redo = getIntent().getBooleanExtra("redo", false);
         wb = prefs.wrongBook(book.id);
-        wrongs = wb.ids();
+        wrongs = wb.dueIds();
 
         card = findViewById(R.id.card);
         actions = findViewById(R.id.actions);
@@ -190,13 +190,14 @@ public class StudyActivity extends Activity {
         result.setVisibility(View.GONE);
         confetti.setVisibility(View.GONE);
         if (mode == MODE_WRONG) {
-            wrongs = wb.ids();                         // 每次进复习都按最新在册词来
+            wrongs = wb.dueIds();                      // 订正队列只看「还要订正」的（已掌握的不再抽到）
             List<Integer> ids = new ArrayList<Integer>();
             for (int i = wrongs.nextSetBit(0); i >= 0; i = wrongs.nextSetBit(i + 1)) ids.add(i);
             int[] arr = new int[ids.size()];
             for (int i = 0; i < arr.length; i++) arr[i] = ids.get(i);
             if (arr.length == 0) {
-                Toast.makeText(this, R.string.no_wrongs, Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, wb.isEmpty() ? R.string.no_wrongs : R.string.no_wrongs_due,
+                        Toast.LENGTH_SHORT).show();
                 finish();
                 return;
             }
@@ -309,9 +310,9 @@ public class StudyActivity extends Activity {
         engine.answer(ok);
         if (ok) {
             boolean inBook = wb.has(w);
-            boolean cleared = wb.correct(w);       // 答对一次就往「出本」推一步（要连对 3 次）
+            boolean cleared = wb.correct(w);       // 答对一次就往「已掌握」推一步（要连对 3 次；满了也不出本）
             prefs.saveWrongBook(book.id, wb);
-            wrongs = wb.ids();
+            wrongs = wb.dueIds();
             if (inBook && !cleared) toast(getString(R.string.wrong_still, wb.left(w)));
             else if (cleared) toast(getString(R.string.wrong_cleared));
             if (reviewMode) DiaryStore.reviewed(true);
@@ -320,7 +321,7 @@ public class StudyActivity extends Activity {
             boolean was = wb.has(w);
             int need = wb.miss(w);                 // 错一次就进本；在订正的再错，还差次数 +1
             prefs.saveWrongBook(book.id, wb);
-            wrongs = wb.ids();
+            wrongs = wb.dueIds();
             toast(was ? getString(R.string.wrong_add_more, need) : getString(R.string.wrong_added_book, need));
             sfx.miss();
         }
@@ -344,7 +345,7 @@ public class StudyActivity extends Activity {
         if (wbSnap != null) {                     // 错题本回到作答前
             wb = wbSnap;
             prefs.saveWrongBook(book.id, wb);
-            wrongs = wb.ids();
+            wrongs = wb.dueIds();
         }
         if (lastFresh) prefs.addToday(-1);        // 刚记成「首次掌握」的那一个词撤回来
         if (lastWasReview && lastOk) DiaryStore.undoReviewed();
@@ -370,7 +371,7 @@ public class StudyActivity extends Activity {
                 reviewMode ? R.string.review_done
                         : (finishedAll ? R.string.book_done : R.string.session_done));
         String sub = reviewMode
-                ? getString(R.string.wrong_review_done, wb.size(), wb.remaining())
+                ? getString(R.string.wrong_review_done, wb.dueCount(), wb.remaining())
                 : finishedAll
                 ? book.pub + "《" + book.display() + "》" + book.n + " 词全部拿下"
                 : book.display() + " · 本组全部记住，下一组继续";
@@ -396,9 +397,10 @@ public class StudyActivity extends Activity {
         LinearLayout box = (LinearLayout) findViewById(R.id.wrongBox);
         box.removeAllViews();
         List<Integer> still = new ArrayList<Integer>();
-        for (int i : wb.toArray()) still.add(i);           // 在册错词（含刚进来的；已出本的不会在这）
+        for (int i : wb.dueArray()) still.add(i);          // 还要订正的；已掌握的留档，不再列在这
+        int mastered = wb.masteredCount();
         View wrap = findViewById(R.id.wrongWrap);
-        if (still.isEmpty()) { wrap.setVisibility(View.GONE); return; }
+        if (still.isEmpty() && mastered == 0) { wrap.setVisibility(View.GONE); return; }
         wrap.setVisibility(View.VISIBLE);
         int lim = Math.min(still.size(), 14);
         for (int i = 0; i < lim; i++) {
@@ -423,6 +425,16 @@ public class StudyActivity extends Activity {
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
             lp.topMargin = (int) Ui.dp(this, 8);
             box.addView(more);
+        }
+        if (mastered > 0) {                                // 已掌握的留档：说清它们去哪儿了
+            TextView ok = new TextView(this);
+            ok.setText(getString(R.string.wrong_mastered_note, mastered));
+            ok.setTextSize(12f);
+            ok.setTextColor(Skin.c(this, R.attr.wpGreen));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            lp.topMargin = (int) Ui.dp(this, 8);
+            box.addView(ok, lp);
         }
     }
 

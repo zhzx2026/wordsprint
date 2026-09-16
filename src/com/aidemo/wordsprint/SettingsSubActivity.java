@@ -272,6 +272,7 @@ public class SettingsSubActivity extends Activity {
                     Update.showFound(SettingsSubActivity.this, info);
                 }
             });
+            Update.resumePending(this);      // 授权页返回后接着下载（设置页点更新也要能接上）
         }
         try {
             ((TextView) findViewById(R.id.tvProfileNow)).setText(

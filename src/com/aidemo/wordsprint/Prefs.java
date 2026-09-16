@@ -37,7 +37,6 @@ public class Prefs {
     /** 手势提示（首次进刷词页显示一行提示） */
     public static final String K_GES_HINT = "g_ges_hint";
     /** 热力图展示跨度：0 = 3 个月 · 1 = 6 个月 · 2 = 1 年（默认 3 个月） */
-    public static final String K_HEAT_SPAN = "g_heat_span";
     /** 手势映射（六个数字：上,下,左,右,点,长；见 Ges.java）—— 用户自己定，跟着档案走 */
     public static final String K_GES = "g_ges";
 
@@ -255,7 +254,8 @@ public class Prefs {
     public void saveMastered(String bid, java.util.BitSet bs) { putBits(bid, "p", bs); }
 
     /**
-     * 错题本：规则见 {@link WrongBook}（错一次就进；要连续答对 3 次才出；订正期间再错还要多对一次）。
+     * 错题本：规则见 {@link WrongBook}（错一次就进；连对 3 次算已掌握但**不出本**，要手动删；
+     * 订正期间再错，还要多对一次）。每本词书一份，错题本页面把它们合并成「一个总错题本 + 词本筛选」。
      * 老版本只存了「错词 BitSet」（槽位 w），这里读到就用 {@link WrongBook#fromLegacy} 迁移一次，
      * 迁移结果写进新槽位 wc —— 老用户升级后错题本不会丢。
      */

@@ -109,17 +109,6 @@ public class MainActivity extends Activity {
             }
         });
 
-        // 热力图看多久：3 个月 / 6 个月 / 1 年（选完记住，下次打开还是它）
-        Ui.fillRow((LinearLayout) dash.findViewById(R.id.heatSpanRow),
-                new String[]{getString(R.string.heat_span_3m), getString(R.string.heat_span_6m),
-                        getString(R.string.heat_span_1y)},
-                Prefs.of(this).i(Prefs.K_HEAT_SPAN, 0), new Ui.ChipTap() {
-                    @Override public void onTap(int idx, TextView chip) {
-                        Prefs.of(MainActivity.this).set(Prefs.K_HEAT_SPAN, idx);
-                        heat.setSpan(Heat.spanWeeks(idx));
-                    }
-                });
-
         dash.findViewById(R.id.goalCard).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { pickGoal(); }
         });
@@ -168,10 +157,9 @@ public class MainActivity extends Activity {
                         getString(R.string.up_banner, info.name, Update.myName(this)));
             }
         }
-        heat.setSpan(Heat.spanWeeks(Prefs.of(this).i(Prefs.K_HEAT_SPAN, 0)));
         heat.setData(dy, Diary.today());
         updateHeatSub();
-        // 真正的列数要等这一帧量完才知道（手机选「1 年」放不下会少画几周），量完再修正文案
+        // 真正的列数要等这一帧量完才知道（窄屏放不下 26 周会少画几周），量完再修正文案
         heat.post(new Runnable() {
             @Override public void run() { updateHeatSub(); }
         });
@@ -192,21 +180,13 @@ public class MainActivity extends Activity {
         // 热力图现在按屏幕宽度自适应，不再需要「滚到最右边」
     }
 
-    /** 热力图那句小字：说清「看的是多久」，实际没铺满所选跨度时按实际月数说 */
+    /** 热力图那句小字：只有半年这一档，窄屏没铺满时按实际月数说 */
     private void updateHeatSub() {
-        int spanIdx = Prefs.of(this).i(Prefs.K_HEAT_SPAN, 0);
-        // 跨度是跟着档案存的：切档案回来，这排「3 个月/6 个月/1 年」的高亮也要跟着换
-        Ui.select((LinearLayout) findViewById(R.id.heatSpanRow), spanIdx);
-        int want = Heat.spanWeeks(spanIdx);
+        int want = Heat.SPAN_6M;
         int got = heat == null ? want : heat.cols();
-        String label;
-        if (got >= want) {
-            label = spanIdx == 2 ? getString(R.string.heat_span_1y)
-                    : spanIdx == 1 ? getString(R.string.heat_span_6m)
-                    : getString(R.string.heat_span_3m);
-        } else {
-            label = getString(R.string.heat_span_actual, Math.max(1, (got + 2) / 4));   // 约几个月
-        }
+        String label = got >= want
+                ? getString(R.string.heat_span_6m)
+                : getString(R.string.heat_span_actual, Math.max(1, (got + 2) / 4));   // 约几个月
         ((TextView) findViewById(R.id.heatSub)).setText(
                 getString(R.string.heat_now, label) + " · " + getString(R.string.heat_sub));
     }

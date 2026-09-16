@@ -76,7 +76,7 @@
     <string name="review_mode">错词复习</string>
     <string name="review_with_count">错词复习 · %1$d</string>
     <string name="review_done">错词复习完成</string>
-    <string name="no_wrongs">错词本还是空的，继续保持</string>
+    <string name="no_wrongs">错题本是空的，继续保持</string>
     <string name="wrong_times">本组已错 %1$d 次</string>
     <string name="back_shelf">返回书架</string>
     <string name="sheet_stats">已学 %1$d · 剩余 %2$d · 错词 %3$d</string>
@@ -184,9 +184,7 @@
     <string name="heat_title">学习热力图</string>
     <string name="heat_sub">一格一天 · 越深刷得越多</string>
     <string name="heat_now">最近 %1$s</string>
-    <string name="heat_span_3m">3 个月</string>
     <string name="heat_span_6m">6 个月</string>
-    <string name="heat_span_1y">1 年</string>
     <string name="heat_span_actual">最近 %1$d 个月</string>
     <string name="heat_today">今天</string>
     <string name="heat_none">这天没学</string>
@@ -278,15 +276,30 @@
     <string name="wrong_added_book">已进错题本：订正要对 %1$d 次</string>
     <string name="wrong_add_more">又错一次：还得对 %1$d 次</string>
     <string name="wrong_still">订正中：还要对 %1$d 次</string>
-    <string name="wrong_cleared">订正完成，出错题本 ✓</string>
+    <string name="wrong_cleared">连对 3 次，已掌握 ✓（仍留在错题本，可手动删）</string>
     <string name="wrong_left_n">还要对 %1$d 次</string>
-    <string name="wrong_more_n">… 共 %1$d 个错词，点「错词复习」逐个击破</string>
-    <string name="wrong_review_done">错题本还剩 %1$d 个词 · 合计还要对 %2$d 次</string>
+    <string name="wrong_more_n">… 共 %1$d 个词还要订正，点「错词复习」逐个击破</string>
+    <string name="wrong_review_done">还要订正 %1$d 个词 · 合计还要对 %2$d 次</string>
     <string name="wrong_title">错题本</string>
     <string name="wrong_start">开始订正</string>
-    <string name="wrong_page_count">共 %1$d 个词在册 · 合计还要对 %2$d 次</string>
-    <string name="wrong_page_empty">错题本是空的 ✓\n刷词时答「不认识」的词会进这里，连对 3 次才出去。</string>
+    <string name="wrong_page_count">共 %1$d 个错词 · 还要订正 %2$d 个 · 已掌握 %3$d 个</string>
+    <string name="wrong_page_empty">错题本是空的 ✓\n刷词时答「不认识」的词会进这里；连对 3 次算已掌握，仍留在本里，可以手动删。</string>
     <string name="wrong_book_line">%1$s · %2$d 个</string>
+    <!-- 错题本三档：只有这三档，界面上用五角星 1/2/3 个代替文字（星越多越熟） -->
+    <string name="wrong_t_miss">未掌握</string>
+    <string name="wrong_t_near">快掌握</string>
+    <string name="wrong_t_ok">已掌握</string>
+    <string name="wrong_filter_all">全部</string>
+    <string name="wrong_del">从错题本移除</string>
+    <string name="wrong_del_confirm">「%1$s」将从错题本移除。已学进度不受影响，以后再答错还会进来。</string>
+    <string name="wrong_del_ok">移除</string>
+    <string name="wrong_del_done">已移除 ✓</string>
+    <string name="wrong_clear_mastered">清空已掌握（%1$d 个）</string>
+    <string name="wrong_clear_confirm">把这 %1$d 个已掌握的词从错题本里清掉？已学进度不受影响。</string>
+    <string name="wrong_clear_ok">清空</string>
+    <string name="wrong_clear_done">已清掉 %1$d 个已掌握的词 ✓</string>
+    <string name="wrong_mastered_note">已掌握 %1$d 个（连对满 3 次，留档；可在错题本里手动删）</string>
+    <string name="no_wrongs_due">这个范围里没有要订正的词了（已掌握的都留着）</string>
 
     <!-- ===== 手势操作（可自定义：设置页六个位置各挑一个动作） ===== -->
     <string name="ges_slot_up">上滑</string>

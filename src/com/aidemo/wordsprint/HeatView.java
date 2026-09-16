@@ -16,10 +16,12 @@ import java.util.List;
  *
  * 尺寸**按可用宽度自适应**（用户 2026-09-15：「热力图右边超过屏幕」——原来固定 53 周≈907dp，
  * 手机上靠横向滚动，右边那一截就顶出屏幕了）：
- *   · 宽度够 → 铺满一年（53 周）；
- *   · 一般手机 → 用「能放下至少半年（26 周）」的最大格子，格子更大更好看清；
+ *   · 展示跨度固定「最近 6 个月」（26 周，用户 2026-09-16：「只要 6 个月」）；
+ *   · 宽度够 → 用能放下的最大格子把 26 周铺满；
  *   · 再窄 → 用最小格子，列数尽力而为。
  * 现在整张网格一定落在卡片里，右边不会再切半格、也不需要横向滑动。
+ * 另外整块（星期标签 + 网格）在视图里**水平居中**（{@link Heat#centerPad}），
+ * 大屏上不会一大半留白甩在右边。
  *
  * 另一处细节：左边的星期标签（一/三/五/日）画在网格外沿，格子放大到 18dp 时
  * 「偏移 1.7 格 + 一个字」要 43dp，只留 24dp 就会整列被视图边界切掉 ——
@@ -34,10 +36,10 @@ public class HeatView extends View {
 
     public interface OnPick { void onPick(String day, Diary.Day d); }
 
-    /** 最多展示 53 周（一年） */
+    /** 列数上限（曾经的一年档：53 周）—— 现在只当自适应时的上限用，界面上没有这一档 */
     public static final int WEEKS = 53;
-    /** 展示跨度：默认「3 个月」（用户 2026-09-15：可以只显示这 3 个月的 / 用户可以选择） */
-    public static final int DEF_SPAN = Heat.SPAN_3M;
+    /** 展示跨度 = 6 个月（唯一档，用户 2026-09-16） */
+    public static final int DEF_SPAN = Heat.SPAN_6M;
     /** 候选格子边长（dp，从大到小）：跨度短时格子可以很大，所以上限给到 18dp */
     static final float[] CELL_TRIES_DP = {18f, 16f, 14f, 12f, 10.5f, 9f, 8f, 7f, 6f};
     /** 间隔与格子的比例（保持 3.6/13 的观感） */
@@ -53,7 +55,8 @@ public class HeatView extends View {
 
     private float cell = 12f, gap = 3.4f, labelW = 22f, labelH = 16f;
     private int cols = WEEKS;
-    private int span = DEF_SPAN;                 // 想展示多少周（3 个月 / 半年 / 一年）
+    private int span = DEF_SPAN;                 // 展示多少周（固定 26 = 半年）
+    private float xOff = 0f;                     // 整块居中后的左边距（px，onMeasure 里算）
     private float dn = 1f;                       // 屏幕密度（自适应算尺寸用）
     private final List<String> cellDays = new ArrayList<String>();
 
@@ -80,15 +83,7 @@ public class HeatView extends View {
     /** 当前实际展示的周数（自适应算出来的；有主机测试盯着它别越界） */
     public int cols() { return cols; }
 
-    /** 展示跨度（周）：3 个月 13 / 半年 26 / 一年 53 —— 设置里选，存在 Prefs */
-    public void setSpan(int weeks) {
-        int w = weeks <= Heat.SPAN_3M ? Heat.SPAN_3M : (weeks >= Heat.SPAN_1Y ? Heat.SPAN_1Y : weeks);
-        if (w == span) return;
-        span = w;
-        requestLayout();
-        invalidate();
-    }
-
+    /** 展示跨度（周）：固定半年 26 周（用户 2026-09-16 收掉 3 个月/1 年两档） */
     public int span() { return span; }
 
     /** 当前格子边长（px） */
@@ -113,19 +108,21 @@ public class HeatView extends View {
             labelW = fit[1];
             cols = (int) fit[2];
             gap = cell * GAP_RATIO;
+            xOff = Heat.centerPad(avail, labelW, cols, cell, gap);      // 整块居中
         } else {
             // 没有可用宽度（理论上不会发生：宽度由父容器给）：按跨度撑开
             cell = CELL_TRIES_DP[0] * dn;
             gap = cell * GAP_RATIO;
             cols = span;
             labelW = Heat.labelWidth(cell, LABEL_FONT_MIN_DP * dn, LABEL_FONT_MAX_DP * dn, LABEL_MIN_W_DP * dn);
+            xOff = 0f;
         }
         // 上面那行月份小字（9月/10月…）画在网格上方，格子大时也得给足高度，别被卡片顶边切
         labelH = Math.max(18f * dn, cell * 0.45f + Heat.labelFont(cell,
                 LABEL_FONT_MIN_DP * dn, LABEL_FONT_MAX_DP * dn) * 1.25f);
         int w = neededWidth(), h = neededHeight();
-        int measuredW = wm == MeasureSpec.EXACTLY ? ws
-                : (avail > 0f ? Math.min(w, (int) avail) : w);
+        // 宽度给多少用多少（居中要靠「视图有多宽」来算左右留白），给不出才退回网格自身宽度
+        int measuredW = wm == MeasureSpec.EXACTLY ? ws : (avail > 0f ? (int) avail : w);
         setMeasuredDimension(measuredW, hm == MeasureSpec.EXACTLY ? hs : h);
     }
 
@@ -140,15 +137,15 @@ public class HeatView extends View {
         tp.setTextSize(Heat.labelFont(cell, LABEL_FONT_MIN_DP * dn, LABEL_FONT_MAX_DP * dn));
         tp.setColor(Skin.c(getContext(), R.attr.wpText2));
         // 空格子用 ramp[0]（浅灰）——以前用 wpSurface，和卡片底色一样，整张网格「看不见格子」
-        paint(cv, diary, today, labelW, labelH, cell, gap, cols, ramp,
+        paint(cv, diary, today, getPaddingLeft() + xOff, getPaddingTop() + labelH, cell, gap, cols, ramp,
                 Skin.c(getContext(), R.attr.wpText2), ramp[0],
                 Skin.c(getContext(), R.attr.wpText2), tp, cellDays);
     }
 
     @Override public boolean onTouchEvent(MotionEvent e) {
         if (e.getAction() != MotionEvent.ACTION_UP || pick == null) return super.onTouchEvent(e);
-        int col = (int) ((e.getX() - labelW) / (cell + gap));
-        int row = (int) ((e.getY() - labelH) / (cell + gap));
+        int col = (int) ((e.getX() - getPaddingLeft() - xOff - labelW) / (cell + gap));
+        int row = (int) ((e.getY() - getPaddingTop() - labelH) / (cell + gap));
         if (col < 0 || row < 0 || col >= cols || row > 6) return true;
         int idx = col * 7 + row;
         if (idx < cellDays.size()) {

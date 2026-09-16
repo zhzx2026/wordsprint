@@ -226,8 +226,9 @@
                 android:focusable="false"/>
         </LinearLayout>
 
-        <!-- 工具行：三个等宽小按钮（用户 2026-09-15「里面的按钮排布也更新」：
-             只留真正常用的三个动作，等宽等高，主操作不再和它们挤在一行） -->
+        <!-- 工具行：四个等宽小按钮（预览词表 / 错题本 / 批量改进度 / 清除进度）。
+             2026-09-15 从一整排挤在一起的动作里挑了真正常用的几个，等宽等高；
+             2026-09-16 用户要求「每个词本打开时能看到总错题本加筛选」，补上「错题本」这一枚。 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -243,6 +244,20 @@
                 android:gravity="center"
                 android:maxLines="1"
                 android:text="@string/book_preview"
+                android:textColor="?attr/wpBrand"
+                android:textSize="12.5sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:id="@+id/btnWrong"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_pill"
+                android:gravity="center"
+                android:maxLines="1"
+                android:text="@string/wrong_title"
                 android:textColor="?attr/wpBrand"
                 android:textSize="12.5sp"
                 android:textStyle="bold"/>

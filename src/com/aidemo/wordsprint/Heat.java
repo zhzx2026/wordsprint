@@ -88,16 +88,35 @@ public final class Heat {
         return new float[]{cell, lw, colsFor(avail, lw, gapRatio, cell, span)};
     }
 
-    /** 可选的展示跨度（周）：3 个月 / 6 个月 / 1 年 —— 用户 2026-09-15「可以只显示这 3 个月的 / 用户可以选择啊」 */
-    public static final int SPAN_3M = 13, SPAN_6M = 26, SPAN_1Y = 53;
+    /**
+     * 展示跨度（周）：**只有 6 个月**。
+     * 用户 2026-09-16：「热力图只要 6 个月」—— 3 个月 / 1 年两档已删：一档就不需要选择器，
+     * 屏幕上那块地方还给网格本身（窄屏放不下 26 周时会自动缩小格子，见 {@link #layout}）。
+     */
+    public static final int SPAN_6M = 26;
 
-    /** 跨度选项的周数 */
-    public static int spanWeeks(int idx) {
-        switch (idx) {
-            case 1: return SPAN_6M;
-            case 2: return SPAN_1Y;
-            default: return SPAN_3M;
-        }
+    /** 唯一档即默认档（老代码里读档位的地方统一走它，别再写 0/1/2） */
+    public static final int DEF_SPAN = SPAN_6M;
+
+    // ---------------- 整体居中（用户 2026-09-16：「热力图要居中」） ----------------
+
+    /** 网格自身宽度：cols 列 + 列间 gap（最后一列右边不留缝） */
+    public static float gridWidth(int cols, float cell, float gap) {
+        if (cols <= 0 || cell <= 0f) return 0f;
+        float w = cols * cell + (cols - 1) * gap;
+        return w < 0f ? 0f : w;
+    }
+
+    /**
+     * 「星期标签 + 网格」这一整块摆在可用宽度正中间时的左边距（px）。
+     * 以前网格从视图左边缘起画（左侧只让出标签宽度），屏幕越宽右边空得越多；
+     * 6 个月档在平板/大屏上只占三分之二，不居中就明显偏左。
+     * 放不下时返回 0 —— 宁可贴左边，也不能把格子顶出屏幕。
+     */
+    public static float centerPad(float avail, float labelW, int cols, float cell, float gap) {
+        float used = labelW + gridWidth(cols, cell, gap);
+        float pad = (avail - used) / 2f;
+        return pad < 0f ? 0f : pad;
     }
 
     /** 按档位取色（0..4，越界自动收敛，别让脏数据把格子画成透明） */
