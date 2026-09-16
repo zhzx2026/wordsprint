@@ -79,5 +79,5 @@ bash scripts/staging_build.sh      # 出测试包（不变）
 - 迁移路径：`1.0.17（code 18）` →（`VERSION_NEW_MAJOR=2` bump）→ `工作版 2.1（code 19）` → 用户确认直发 → **stable v2.0（code 20）**。
 - **stable v2.0 已于 2026-09-13 发布**：tag `v2.0`、Release 资产 `wordsprint.apk + update.json`、`main` 已快进、
   `releases/latest` 已指向它 —— 即第 1 代（1.0.x）的转正版，内容为 1.0.x 世代积累（更新源两档 / 高中排序 / PEP 小学词书 / 遮罩可关）。
-- 当前位置：stable 2.0 已发布；**下一轮 `bump-dev` → dev 2.1（code 自 21 起）；用户下次确认转正 → v3.0**。
+- 当前位置：**stable v3.0 已发布**（2.x 直接转正，code 22；下一轮 `bump-dev` → dev 3.1，code 自 23 起；下次转正 → v4.0）。
 - 历史残留：`v1.0.17` 有 tag 无 Release；误用 tag `main` 建的旧 Release 已不是 latest（是否删除待用户示下）。
