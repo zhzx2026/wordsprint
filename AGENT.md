@@ -149,7 +149,7 @@ PUSH_TOKEN=<用户临时提供的 fine-grained PAT> bash scripts/promote.sh 1.0.
   下一轮 dev 从新 stable 同主版本的 `.1` 继续（2.0 之后是 2.1、2.2…）。
   本次 v2.0 = 第 1 代（1.0.x）的转正版（内容为 1.0.x 世代积累①~⑤）；旧 tag `v1.0.8/9/14/17` 不动。
   **stable v3.0 已发布（code 22，2026-09-13 用户要求「合并即转正 3.0」，经 PR #4 合并触发 auto_release）**；
-  当前位置：下一轮 `bump-dev` → dev 3.1（code 自 23 起）；下次用户确认转正 → **v4.0**。
+  当前位置：下一轮 `bump-dev` → dev 3.1（code 自 39 起）；下次用户确认转正 → **v4.0**。
   历史残留：`v1.0.17` 有 tag 无 Release；误用 tag `main` 建的旧 Release 已不是 latest（是否删除待用户示下）。
 - ⏳ **待用户实测：v1.0.16（code 17）** —— 分支 `arena/01a09b02-wordsprint`，已 **merge `origin/main`（PR #1）**，
   所以这个包 = 小学 8 册 768 词 + 详情遮罩可关 + **词书库高中排序修复**（先必修一/二/三，再选择性必修一~四，见坑 14）。
