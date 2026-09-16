@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  设置页（v2.4 重排）：
-    ① 信息层级只有三层：分组标题（SectionHead）/ 卡片 / 卡片内的一行（SettingRow）。
-    ② 一行只讲一件事：左边标题+说明，右边控件或当前值；点整行就进下一步。
-    ③ 分组之间留 22dp 呼吸，组内用分隔线；配色全部走 wp 主题属性，跟着皮肤与深浅色走。
-  本文件里的 id 与 SettingsActivity.java 一一对应，改名要两边一起改（scripts/refcheck.py 会查）。
+  设置首页（v2.15 重排：像微信那样一层层进去）。
+  这一页只负责「分组导航」，每行点进去才是子页面：
+    外观 / 学习 / 数据与档案 / 关于与更新（见 SettingsSubActivity + sub_*.xml）
+  这样做的好处是每页只有一件事，不用在一个长列表里翻来翻去。
+  改 id 记得两边一起改（SettingsActivity.java / SettingsSubActivity.java），scripts/refcheck.py 会查。
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -51,7 +51,7 @@
                 android:textStyle="bold"/>
         </LinearLayout>
 
-        <!-- 当前档案就放在顶栏里：一眼看到「现在是谁在刷」，点名字直接改名 -->
+        <!-- 当前档案：一眼看到「现在是谁在刷」，点名字直接改名 -->
         <LinearLayout
             android:id="@+id/rowName"
             android:layout_width="wrap_content"
@@ -93,7 +93,7 @@
         android:clipToPadding="false"
         android:paddingStart="14dp"
         android:paddingEnd="14dp"
-        android:paddingTop="6dp"
+        android:paddingTop="14dp"
         android:paddingBottom="26dp">
 
         <LinearLayout
@@ -101,309 +101,41 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- ================= 外观 ================= -->
-            <TextView style="@style/SectionHead" android:text="@string/theme_title"/>
-
             <LinearLayout style="@style/CardBox">
 
-                <!-- 深浅色 -->
-                <LinearLayout style="@style/SettingRow">
+                <LinearLayout android:id="@+id/navAppearance" style="@style/SettingRow">
                     <LinearLayout style="@style/SettingRowText">
-                        <TextView style="@style/SettingTitle" android:text="@string/set_theme_title"/>
-                        <TextView style="@style/SettingDesc" android:text="@string/set_theme_desc"/>
-                    </LinearLayout>
-                </LinearLayout>
-                <LinearLayout
-                    android:id="@+id/nightChips"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:paddingBottom="12dp"/>
-
-                <View style="@style/SettingDivider"/>
-
-                <!-- 配色方案 -->
-                <LinearLayout style="@style/SettingRow">
-                    <LinearLayout style="@style/SettingRowText">
-                        <TextView style="@style/SettingTitle" android:text="@string/set_skin_title"/>
-                        <TextView style="@style/SettingDesc" android:text="@string/set_skin_desc"/>
-                    </LinearLayout>
-                </LinearLayout>
-                <LinearLayout
-                    android:id="@+id/skinChips"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"/>
-                <LinearLayout
-                    android:id="@+id/skinPreview"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:layout_marginBottom="12dp"
-                    android:orientation="horizontal"/>
-
-                <View style="@style/SettingDivider"/>
-
-                <!-- 字体 -->
-                <LinearLayout style="@style/SettingRow">
-                    <LinearLayout style="@style/SettingRowText">
-                        <TextView style="@style/SettingTitle" android:text="@string/set_font_title"/>
-                        <TextView style="@style/SettingDesc" android:text="@string/set_font_desc"/>
-                    </LinearLayout>
-                </LinearLayout>
-                <LinearLayout
-                    android:id="@+id/fontChips"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"/>
-                <TextView
-                    android:id="@+id/tvFontSample"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:layout_marginBottom="12dp"
-                    android:gravity="center"
-                    android:text="letter a · apple · 苹果"
-                    android:textColor="?attr/wpText"
-                    android:textSize="18sp"/>
-
-                <View style="@style/SettingDivider"/>
-
-                <!-- 字号 -->
-                <LinearLayout style="@style/SettingRow">
-                    <LinearLayout style="@style/SettingRowText">
-                        <TextView style="@style/SettingTitle" android:text="@string/set_scale_title"/>
-                        <TextView android:id="@+id/tvScaleDesc" style="@style/SettingDesc" android:text="@string/set_scale_desc"/>
-                    </LinearLayout>
-                </LinearLayout>
-                <LinearLayout
-                    android:id="@+id/scaleChips"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:paddingBottom="14dp"/>
-            </LinearLayout>
-
-            <!-- ================= 学习 ================= -->
-            <TextView style="@style/SectionHead" android:text="@string/set_study_title"/>
-
-            <LinearLayout style="@style/CardBox">
-
-                <LinearLayout style="@style/SettingRow">
-                    <LinearLayout style="@style/SettingRowText">
-                        <TextView style="@style/SettingTitle" android:text="@string/set_speak"/>
-                        <TextView style="@style/SettingDesc" android:text="@string/set_speak_desc"/>
-                    </LinearLayout>
-                    <Switch android:id="@+id/swSpeak" style="@style/SettingSwitch" android:clickable="false" android:focusable="false"/>
-                </LinearLayout>
-                <View style="@style/SettingDivider"/>
-
-                <LinearLayout style="@style/SettingRow">
-                    <LinearLayout style="@style/SettingRowText">
-                        <TextView style="@style/SettingTitle" android:text="@string/set_phonetic"/>
-                        <TextView style="@style/SettingDesc" android:text="@string/set_phonetic_desc"/>
-                    </LinearLayout>
-                    <Switch android:id="@+id/swPhonetic" style="@style/SettingSwitch" android:clickable="false" android:focusable="false"/>
-                </LinearLayout>
-                <View style="@style/SettingDivider"/>
-
-                <LinearLayout style="@style/SettingRow">
-                    <LinearLayout style="@style/SettingRowText">
-                        <TextView style="@style/SettingTitle" android:text="@string/set_sound"/>
-                        <TextView style="@style/SettingDesc" android:text="@string/set_sound_desc"/>
-                    </LinearLayout>
-                    <Switch android:id="@+id/swSound" style="@style/SettingSwitch" android:clickable="false" android:focusable="false"/>
-                </LinearLayout>
-                <View style="@style/SettingDivider"/>
-
-                <LinearLayout style="@style/SettingRow">
-                    <LinearLayout style="@style/SettingRowText">
-                        <TextView style="@style/SettingTitle" android:text="@string/set_anim"/>
-                        <TextView style="@style/SettingDesc" android:text="@string/set_anim_desc"/>
-                    </LinearLayout>
-                    <Switch android:id="@+id/swAnim" style="@style/SettingSwitch" android:clickable="false" android:focusable="false"/>
-                </LinearLayout>
-                <View style="@style/SettingDivider"/>
-
-                <!-- 每组词数 -->
-                <LinearLayout style="@style/SettingRow">
-                    <LinearLayout style="@style/SettingRowText">
-                        <TextView style="@style/SettingTitle" android:text="@string/default_size"/>
-                        <TextView style="@style/SettingDesc" android:text="@string/default_size_desc"/>
-                    </LinearLayout>
-                </LinearLayout>
-                <LinearLayout
-                    android:id="@+id/sizeChips"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:paddingBottom="12dp"/>
-                <View style="@style/SettingDivider"/>
-
-                <!-- 每日目标 -->
-                <LinearLayout style="@style/SettingRow">
-                    <LinearLayout style="@style/SettingRowText">
-                        <TextView style="@style/SettingTitle" android:text="@string/set_goal_title"/>
-                        <TextView android:id="@+id/tvGoalDesc" style="@style/SettingDesc" android:text="@string/goal_pick_desc"/>
-                    </LinearLayout>
-                </LinearLayout>
-                <LinearLayout
-                    android:id="@+id/goalChips"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:paddingBottom="14dp"/>
-            </LinearLayout>
-
-            <!-- ================= 手势操作（用户自己定） ================= -->
-            <TextView style="@style/SectionHead" android:text="@string/ges_title"/>
-
-            <LinearLayout style="@style/CardBox">
-                <LinearLayout style="@style/SettingRow">
-                    <LinearLayout style="@style/SettingRowText">
-                        <TextView style="@style/SettingTitle" android:text="@string/ges_subtitle"/>
-                        <TextView style="@style/SettingDesc" android:text="@string/ges_note"/>
-                    </LinearLayout>
-                </LinearLayout>
-
-                <LinearLayout
-                    android:id="@+id/gesBox"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:paddingBottom="4dp"/>
-
-                <View style="@style/SettingDivider"/>
-
-                <LinearLayout style="@style/SettingRow">
-                    <LinearLayout style="@style/SettingRowText">
-                        <TextView style="@style/SettingTitle" android:text="@string/ges_reset"/>
-                        <TextView style="@style/SettingDesc" android:text="@string/ges_reset_desc"/>
-                    </LinearLayout>
-                    <TextView
-                        android:id="@+id/gesReset"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:background="@drawable/bg_pill_brand"
-                        android:paddingStart="14dp"
-                        android:paddingEnd="14dp"
-                        android:paddingTop="7dp"
-                        android:paddingBottom="7dp"
-                        android:text="@string/ges_reset"
-                        android:textColor="?attr/wpBrand"
-                        android:textSize="13sp"/>
-                </LinearLayout>
-            </LinearLayout>
-
-            <!-- ================= 我的 ================= -->
-            <TextView style="@style/SectionHead" android:text="@string/set_mine_title"/>
-
-            <LinearLayout style="@style/CardBox">
-                <LinearLayout android:id="@+id/rowProfile" style="@style/SettingRow">
-                    <LinearLayout style="@style/SettingRowText">
-                        <TextView style="@style/SettingTitle" android:text="@string/set_profile_title"/>
-                        <TextView android:id="@+id/tvProfileNow" style="@style/SettingDesc" android:text="@string/set_profile_desc"/>
+                        <TextView style="@style/SettingTitle" android:text="@string/nav_appearance" android:textStyle="bold"/>
+                        <TextView style="@style/SettingDesc" android:text="@string/nav_appearance_desc"/>
                     </LinearLayout>
                     <ImageView android:layout_width="18dp" android:layout_height="18dp" android:tint="?attr/wpText2" android:src="@drawable/ic_chevron" android:contentDescription="@null"/>
                 </LinearLayout>
                 <View style="@style/SettingDivider"/>
 
-                                <View style="@style/SettingDivider"/>
-
-                <LinearLayout android:id="@+id/rowFav" style="@style/SettingRow">
+                <LinearLayout android:id="@+id/navStudy" style="@style/SettingRow">
                     <LinearLayout style="@style/SettingRowText">
-                        <TextView style="@style/SettingTitle" android:text="@string/quick_fav"/>
-                        <TextView android:id="@+id/tvFavNow" style="@style/SettingDesc" android:text="@string/fav_empty"/>
+                        <TextView style="@style/SettingTitle" android:text="@string/nav_study" android:textStyle="bold"/>
+                        <TextView style="@style/SettingDesc" android:text="@string/nav_study_desc"/>
                     </LinearLayout>
                     <ImageView android:layout_width="18dp" android:layout_height="18dp" android:tint="?attr/wpText2" android:src="@drawable/ic_chevron" android:contentDescription="@null"/>
                 </LinearLayout>
                 <View style="@style/SettingDivider"/>
 
-                <LinearLayout android:id="@+id/rowShare" style="@style/SettingRow">
+                <LinearLayout android:id="@+id/navData" style="@style/SettingRow">
                     <LinearLayout style="@style/SettingRowText">
-                        <TextView style="@style/SettingTitle" android:text="@string/set_share_title"/>
-                        <TextView style="@style/SettingDesc" android:text="@string/set_share_desc"/>
+                        <TextView style="@style/SettingTitle" android:text="@string/nav_data" android:textStyle="bold"/>
+                        <TextView style="@style/SettingDesc" android:text="@string/nav_data_desc"/>
                     </LinearLayout>
                     <ImageView android:layout_width="18dp" android:layout_height="18dp" android:tint="?attr/wpText2" android:src="@drawable/ic_chevron" android:contentDescription="@null"/>
                 </LinearLayout>
                 <View style="@style/SettingDivider"/>
 
-                <LinearLayout android:id="@+id/rowSearch" style="@style/SettingRow">
+                <LinearLayout android:id="@+id/navAbout" style="@style/SettingRow">
                     <LinearLayout style="@style/SettingRowText">
-                        <TextView style="@style/SettingTitle" android:text="@string/quick_search"/>
-                        <TextView style="@style/SettingDesc" android:text="@string/search_tip"/>
+                        <TextView style="@style/SettingTitle" android:text="@string/nav_about" android:textStyle="bold"/>
+                        <TextView android:id="@+id/tvAboutNow" style="@style/SettingDesc" android:text="@string/update_desc"/>
                     </LinearLayout>
                     <ImageView android:layout_width="18dp" android:layout_height="18dp" android:tint="?attr/wpText2" android:src="@drawable/ic_chevron" android:contentDescription="@null"/>
-                </LinearLayout>
-            </LinearLayout>
-
-            <!-- ================= 数据与更新 ================= -->
-            <TextView style="@style/SectionHead" android:text="@string/set_data_title"/>
-
-            <LinearLayout style="@style/CardBox">
-                <LinearLayout android:id="@+id/rowExport" style="@style/SettingRow">
-                    <LinearLayout style="@style/SettingRowText">
-                        <TextView style="@style/SettingTitle" android:text="@string/export_progress"/>
-                        <TextView style="@style/SettingDesc" android:text="@string/transfer_desc"/>
-                    </LinearLayout>
-                    <ImageView android:layout_width="18dp" android:layout_height="18dp" android:tint="?attr/wpText2" android:src="@drawable/ic_chevron" android:contentDescription="@null"/>
-                </LinearLayout>
-                <View style="@style/SettingDivider"/>
-
-                <LinearLayout android:id="@+id/rowScan" style="@style/SettingRow">
-                    <LinearLayout style="@style/SettingRowText">
-                        <TextView style="@style/SettingTitle" android:text="@string/scan_import"/>
-                        <TextView style="@style/SettingDesc" android:text="@string/transfer_desc"/>
-                    </LinearLayout>
-                    <ImageView android:layout_width="18dp" android:layout_height="18dp" android:tint="?attr/wpText2" android:src="@drawable/ic_chevron" android:contentDescription="@null"/>
-                </LinearLayout>
-            </LinearLayout>
-
-            <!-- 更新 -->
-            <TextView style="@style/SectionHead" android:text="@string/update_title"/>
-
-            <LinearLayout style="@style/CardBox">
-                <LinearLayout style="@style/SettingRow">
-                    <LinearLayout style="@style/SettingRowText">
-                        <TextView style="@style/SettingTitle" android:text="@string/update_src_title"/>
-                        <TextView android:id="@+id/tvUpdateState" style="@style/SettingDesc" android:text="@string/update_checking"/>
-                    </LinearLayout>
-                </LinearLayout>
-
-                <LinearLayout
-                    android:id="@+id/srcChips"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:paddingBottom="12dp"/>
-                <View style="@style/SettingDivider"/>
-
-                <LinearLayout style="@style/SettingRow">
-                    <LinearLayout style="@style/SettingRowText">
-                        <TextView style="@style/SettingTitle" android:text="@string/update_auto"/>
-                        <TextView style="@style/SettingDesc" android:text="@string/update_auto_desc"/>
-                    </LinearLayout>
-                    <Switch android:id="@+id/swUpdate" style="@style/SettingSwitch" android:clickable="false" android:focusable="false"/>
-                </LinearLayout>
-                <View style="@style/SettingDivider"/>
-
-                <LinearLayout style="@style/SettingRow">
-                    <LinearLayout style="@style/SettingRowText">
-                        <TextView style="@style/SettingTitle" android:text="@string/update_check_now"/>
-                        <TextView android:id="@+id/tvAbout" style="@style/SettingDesc" android:text="@string/update_desc"/>
-                    </LinearLayout>
-                    <TextView
-                        android:id="@+id/btnUpdateCheck"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:background="@drawable/bg_btn_gradient"
-                        android:paddingStart="18dp"
-                        android:paddingEnd="18dp"
-                        android:paddingTop="9dp"
-                        android:paddingBottom="9dp"
-                        android:text="@string/update_check_now"
-                        android:textColor="#FFFFFFFF"
-                        android:textSize="13.5sp"/>
                 </LinearLayout>
             </LinearLayout>
 

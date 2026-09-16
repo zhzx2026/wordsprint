@@ -27,7 +27,6 @@ public final class GesUi {
 
     static int actionLabel(int action) {
         switch (action) {
-            case Ges.FAV: return R.string.ges_act_fav;
             case Ges.REVEAL: return R.string.ges_act_reveal;
             case Ges.KNOW: return R.string.ges_act_know;
             case Ges.UNKNOWN: return R.string.ges_act_unknown;
@@ -39,7 +38,6 @@ public final class GesUi {
     /** 短标签：刷词页那行提示用（长标签带括号说明，塞进小胶囊里太长） */
     static int actionShort(int action) {
         switch (action) {
-            case Ges.FAV: return R.string.ges_short_fav;
             case Ges.REVEAL: return R.string.ges_short_reveal;
             case Ges.KNOW: return R.string.ges_short_know;
             case Ges.UNKNOWN: return R.string.ges_short_unknown;

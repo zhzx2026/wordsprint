@@ -144,15 +144,10 @@ public final class Words {
             col.addView(src, lp);
         }
 
-        final Hit h0 = hits.isEmpty() ? null : hits.get(0);
-        final boolean[] fav = {h0 != null && Favorites.has(h0.book.id, h0.idx)};
+        // 收藏按钮已按用户要求删除：详情里只留一个「知道了」
         Ui.cardDialogEx(a, a.getString(R.string.word_detail_title), Ui.scrollable(col, 300),
-                a.getString(fav[0] ? R.string.fav_remove : R.string.fav_add), new Runnable() {
-                    @Override public void run() {
-                        if (h0 == null) return;
-                        boolean now = Favorites.toggle(h0.book.id, h0.idx);
-                        Toast.makeText(a, now ? R.string.fav_added : R.string.fav_removed, Toast.LENGTH_SHORT).show();
-                    }
+                a.getString(R.string.word_detail_ok), new Runnable() {
+                    @Override public void run() { }
                 },
                 a.getString(R.string.cancel), null, true);
 
@@ -163,7 +158,7 @@ public final class Words {
     }
 
     /** 供列表行用：常见的「单词 + 音标 + 释义」小卡片 */
-    public static View row(Activity a, Hit h, boolean withFav, View.OnClickListener tap) {
+    public static View row(Activity a, Hit h, View.OnClickListener tap) {
         LinearLayout box = new LinearLayout(a);
         box.setOrientation(LinearLayout.HORIZONTAL);
         box.setBackgroundResource(R.drawable.bg_card_20);
@@ -193,16 +188,6 @@ public final class Words {
         lp.topMargin = (int) Ui.dp(a, 3);
         col.addView(m, lp);
 
-        if (withFav) {
-            // 矢量爱心（以前是文字 ♥：字形粗细跟着系统字体走，用户反馈「画得太丑」）
-            boolean has = Favorites.has(h.book.id, h.idx);
-            android.widget.ImageView heart = new android.widget.ImageView(a);
-            heart.setImageResource(has ? R.drawable.ic_heart_fill : R.drawable.ic_heart);
-            heart.setColorFilter(Skin.c(a, has ? R.attr.wpRed : R.attr.wpText2));
-            int hp = (int) Ui.dp(a, 8);
-            heart.setPadding(hp, hp, hp, hp);
-            box.addView(heart);
-        }
         if (tap != null) box.setOnClickListener(tap);
         return box;
     }

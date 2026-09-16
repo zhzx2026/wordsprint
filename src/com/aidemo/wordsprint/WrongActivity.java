@@ -3,7 +3,6 @@ package com.aidemo.wordsprint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
-import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.LinearLayout;
@@ -13,17 +12,22 @@ import android.widget.TextView;
 import java.util.List;
 
 /**
- * 收藏夹：爱心收藏过的词（按词书分组列出），可直接开始「收藏复习」。
- * 复习记入当天的温习时长/张数（首页「温习」那个勾）。
+ * 错题本：把「答错进来的词」按词书列出来，点词看详情，右上角直接开始订正。
+ *
+ * 来历：用户 2026-09-16 要求「删除自测和收藏功能」，首页空出来的位置改放「错题本」。
+ * 之前错题本只有「温习错词」这一个动作入口（藏在首页温习格 + 词本详情里），
+ * 没有一个地方能看见里面到底有哪几个词，所以这里补上这一页。
+ *
+ * 规则不变（见 {@link WrongBook}）：错一次就进本；要连续答对 3 次才出本；订正期间再错，还要多对一次。
  */
-public class FavoritesActivity extends Activity {
+public class WrongActivity extends Activity {
 
     private LinearLayout box;
     private TextView head;
 
     @Override protected void attachBaseContext(Context base) { super.attachBaseContext(Night.wrap(base)); }
 
-    @Override protected void onCreate(Bundle b) {
+    @Override protected void onCreate(android.os.Bundle b) {
         super.onCreate(b);
         Skin.apply(this);
         Ui.applyWindow(this);
@@ -32,8 +36,8 @@ public class FavoritesActivity extends Activity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(Skin.c(this, R.attr.wpBg));
-        root.addView(Ui.screenHeader(this, getString(R.string.fav_title), true,
-                getString(R.string.fp_start), new Runnable() {
+        root.addView(Ui.screenHeader(this, getString(R.string.wrong_title), true,
+                getString(R.string.wrong_start), new Runnable() {
                     @Override public void run() { startReviewDialog(); }
                 }));
 
@@ -59,26 +63,41 @@ public class FavoritesActivity extends Activity {
 
     @Override protected void onResume() { super.onResume(); if (box != null) render(); }
 
+    /** 当前档案里所有还有错词的词书 */
+    private static List<Db.Book> booksWithWrongs(Prefs p) {
+        List<Db.Book> out = new java.util.ArrayList<Db.Book>();
+        if (!Db.ready()) return out;
+        for (Db.Book bk : Db.I.books()) if (!p.wrongBook(bk.id).isEmpty()) out.add(bk);
+        return out;
+    }
+
     private void render() {
         box.removeAllViews();
-        int total = Favorites.count();
-        head.setText(getString(R.string.fav_count, total));
+        if (!Db.ready()) { head.setText(""); return; }      // 词库还在异步加载时先空着
+        Prefs p = Prefs.of(this);
+        int total = 0, need = 0;
+        for (Db.Book bk : Db.I.books()) {
+            WrongBook wb = p.wrongBook(bk.id);
+            total += wb.size();
+            need += wb.remaining();
+        }
+        head.setText(getString(R.string.wrong_page_count, total, need));
         if (total == 0) {
             TextView tv = new TextView(this);
-            tv.setText(R.string.fav_empty);
+            tv.setText(R.string.wrong_page_empty);
             tv.setTextSize(13.5f);
             tv.setGravity(Gravity.CENTER);
             tv.setTextColor(Skin.c(this, R.attr.wpText2));
+            tv.setLineSpacing(Ui.dp(this, 5), 1f);
             tv.setPadding(0, (int) Ui.dp(this, 30), 0, 0);
             box.addView(tv);
             return;
         }
         int shown = 0;
-        for (final Db.Book bk : Favorites.books()) {
-            List<Integer> ids = Favorites.ids(bk.id);
-            if (ids.isEmpty()) continue;
+        for (final Db.Book bk : booksWithWrongs(p)) {
+            final WrongBook wb = p.wrongBook(bk.id);
             TextView sec = new TextView(this);
-            sec.setText(bk.display() + " · " + ids.size());
+            sec.setText(getString(R.string.wrong_book_line, bk.display(), wb.size()));
             sec.setTextSize(12f);
             sec.setTextColor(Skin.c(this, R.attr.wpText2));
             LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(
@@ -86,32 +105,44 @@ public class FavoritesActivity extends Activity {
             slp.topMargin = (int) Ui.dp(this, shown == 0 ? 0 : 14);
             slp.bottomMargin = (int) Ui.dp(this, 6);
             box.addView(sec, slp);
-            for (final int idx : ids) {
+            int[] arr = wb.toArray();
+            for (final int idx : arr) {
                 final Words.Hit h = new Words.Hit(bk, idx);
-                View row = Words.row(this, h, true, new View.OnClickListener() {
-                    @Override public void onClick(View v) { Words.detail(FavoritesActivity.this, h.word(), h); }
+                LinearLayout rowBox = new LinearLayout(this);
+                rowBox.setOrientation(LinearLayout.HORIZONTAL);
+                rowBox.setGravity(Gravity.CENTER_VERTICAL);
+                View row = Words.row(this, h, new View.OnClickListener() {
+                    @Override public void onClick(View v) { Words.detail(WrongActivity.this, h.word(), h); }
                 });
+                rowBox.addView(row, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+                TextView left = new TextView(this);
+                left.setText(getString(R.string.wrong_left_n, wb.left(idx)));
+                left.setTextSize(11.5f);
+                left.setTextColor(Skin.c(this, R.attr.wpRed));
+                left.setPadding((int) Ui.dp(this, 8), 0, 0, 0);
+                rowBox.addView(left);
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
                 lp.topMargin = (int) Ui.dp(this, 8);
-                box.addView(row, lp);
+                box.addView(rowBox, lp);
                 shown++;
             }
         }
         Fonts.scaleTree(box, this);
     }
 
-    /** 收藏复习：先选一本（跨词书的队列会让调度语义变复杂，按书复习更清晰） */
+    /** 开始订正：只有一本就直接进，多本先让用户挑一本（跨词书的队列语义不清） */
     private void startReviewDialog() {
-        final List<Db.Book> books = Favorites.books();
-        if (books.isEmpty()) { toast(getString(R.string.fav_review_empty)); return; }
+        if (!Db.ready()) { Db.ensureLoaded(this); toast(getString(R.string.loading_data)); return; }
+        final List<Db.Book> books = booksWithWrongs(Prefs.of(this));
+        if (books.isEmpty()) { toast(getString(R.string.no_wrongs)); return; }
         if (books.size() == 1) { open(books.get(0)); return; }
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         final android.app.AlertDialog[] ref = new android.app.AlertDialog[1];
         for (final Db.Book bk : books) {
             TextView row = new TextView(this);
-            row.setText(bk.display() + "  ·  " + Favorites.ids(bk.id).size());
+            row.setText(getString(R.string.wrong_book_line, bk.display(), Prefs.of(this).wrongBook(bk.id).size()));
             row.setTextSize(14f);
             row.setTextColor(Skin.c(this, R.attr.wpText));
             row.setBackgroundResource(R.drawable.bg_card_field);
@@ -135,7 +166,7 @@ public class FavoritesActivity extends Activity {
     private void open(Db.Book bk) {
         Intent it = new Intent(this, StudyActivity.class);
         it.putExtra("book", bk.id);
-        it.putExtra("mode", StudyActivity.MODE_FAV);
+        it.putExtra("mode", StudyActivity.MODE_WRONG);
         startActivity(it);
         finish();
     }

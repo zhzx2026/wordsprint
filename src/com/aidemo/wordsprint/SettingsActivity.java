@@ -3,18 +3,19 @@ package com.aidemo.wordsprint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.LinearLayout;
-import android.widget.Switch;
 import android.widget.TextView;
 
+/**
+ * 设置首页（用户 2026-09-16：「设置可以设置子页面 像微信一样」）。
+ *
+ * 这一页只干两件事：
+ *   ① 四行分组导航（外观 / 学习 / 数据与档案 / 关于与更新）→ 点进 SettingsSubActivity；
+ *   ② 顶栏那个「当前档案」胶囊：点一下直接改名（顺手把「用户名必须可改、入口明显」做到了）。
+ * 具体开关都搬进对应子页面了 —— 一个页面只讲一类事，不用在一个长列表里翻。
+ */
 public class SettingsActivity extends Activity {
-
-    private android.widget.TextView state;      // 更新状态行（Watch 回调里要用）
-
-    private Prefs pr;
 
     @Override protected void attachBaseContext(Context base) { super.attachBaseContext(Night.wrap(base)); }
 
@@ -23,218 +24,47 @@ public class SettingsActivity extends Activity {
         Skin.apply(this);
         Ui.applyWindow(this);
         setContentView(R.layout.activity_settings);
-        pr = Prefs.of(this);
-        bind(R.id.swSpeak, Prefs.K_SPEAK, true);
-        bind(R.id.swPhonetic, Prefs.K_PHON, true);
-        bind(R.id.swSound, Prefs.K_SOUND, true);
-        bind(R.id.swAnim, Prefs.K_ANIM, true);
+        Db.ensureLoaded(this);
+
         findViewById(R.id.btnBack).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { finish(); }
         });
-        findViewById(R.id.rowExport).setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { startActivity(new Intent(SettingsActivity.this, ExportActivity.class)); }
-        });
-        findViewById(R.id.rowScan).setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { startActivity(new Intent(SettingsActivity.this, ScanActivity.class)); }
-        });
-        // 顶栏里的用户名：点一下就改名（原来只能长按档案条目，藏太深）
         findViewById(R.id.rowName).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { askRename(); }
         });
+        nav(R.id.navAppearance, SettingsSubActivity.PAGE_APPEARANCE);
+        nav(R.id.navStudy, SettingsSubActivity.PAGE_STUDY);
+        nav(R.id.navData, SettingsSubActivity.PAGE_DATA);
+        nav(R.id.navAbout, SettingsSubActivity.PAGE_ABOUT);
+
         try {                                   // 页脚带版本号：装机实测时一眼确认装的是哪一版
-            android.widget.TextView foot = (android.widget.TextView) findViewById(R.id.tvVersionFooter);
-            if (foot != null) foot.setText(getString(R.string.app_name) + Ui.versionTag(this));
+            TextView foot = (TextView) findViewById(R.id.tvVersionFooter);
+            if (foot != null) foot.setText(getString(R.string.about_line, Db.I.books().size(), Db.I.totalWords()));
+            TextView about = (TextView) findViewById(R.id.tvAboutNow);
+            if (about != null) about.setText(getString(R.string.app_name) + Ui.versionTag(this));
         } catch (Throwable ignored) {}
-        Db.ensureLoaded(this);
-        ((TextView) findViewById(R.id.tvAbout)).setText(
-                getString(R.string.about_line, Db.I.books().size(), Db.I.totalWords()));
-
-        // 主题：0 跟随系统 · 1 浅色 · 2 深色
-        final LinearLayout nightRow = (LinearLayout) findViewById(R.id.nightChips);
-        String[] names = {getString(R.string.theme_system), getString(R.string.theme_light), getString(R.string.theme_dark)};
-        Ui.fillRow(nightRow, names, pr.night(), new Ui.ChipTap() {
-            @Override public void onTap(int idx, TextView chip) {
-                if (pr.night() != idx) {
-                    pr.setNight(idx);
-                    recreate();
-                }
-            }
-        });
-
-        // 配色方案（多套皮肤）
-        final LinearLayout skinRow = (LinearLayout) findViewById(R.id.skinChips);
-        String[] skinNames = new String[Skin.count()];
-        for (int i = 0; i < Skin.count(); i++) skinNames[i] = Skin.palette(i).name;
-        Ui.fillRow(skinRow, skinNames, pr.skin(), new Ui.ChipTap() {
-            @Override public void onTap(int idx, TextView chip) {
-                if (pr.skin() == idx) return;
-                pr.setSkin(idx);
-                recreate();
-            }
-        });
-        LinearLayout preview = (LinearLayout) findViewById(R.id.skinPreview);
-        preview.removeAllViews();
-        for (int i = 0; i < Skin.count(); i++) {
-            Skin.Palette pal = Skin.palette(i);
-            View v = new View(this);
-            GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                    new int[]{pal.brand2, pal.brand});
-            g.setCornerRadius(Ui.dp(this, 4));
-            v.setBackground(g);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, (int) Ui.dp(this, 10), 1);
-            lp.rightMargin = (int) Ui.dp(this, 6);
-            preview.addView(v, lp);
-            v.setAlpha(pr.skin() == i ? 1f : 0.35f);
-        }
-
-        // 字体（内置 = 单层 a）
-        final LinearLayout fontRow = (LinearLayout) findViewById(R.id.fontChips);
-        final String[] fonts = {getString(R.string.set_font_poppins), getString(R.string.set_font_quicksand),
-                getString(R.string.set_font_system)};
-        Ui.fillRowEqual(fontRow, fonts, pr.font(), new Ui.ChipTap() {
-            @Override public void onTap(int idx, TextView chip) {
-                pr.setFont(idx);
-                recreate();
-            }
-        });
-        TextView sample = (TextView) findViewById(R.id.tvFontSample);
-        sample.setTypeface(Fonts.typeface(this, false));
-
-        // 字号（大屏自适应）
-        final LinearLayout scaleRow = (LinearLayout) findViewById(R.id.scaleChips);
-        String[] scales = {getString(R.string.set_scale_normal), getString(R.string.set_scale_auto),
-                getString(R.string.set_scale_big)};
-        Ui.fillRow(scaleRow, scales, pr.scaleMode(), new Ui.ChipTap() {
-            @Override public void onTap(int idx, TextView chip) {
-                pr.setScaleMode(idx);
-                recreate();
-            }
-        });
-        ((TextView) findViewById(R.id.tvScaleDesc)).setText(getString(R.string.set_scale_desc,
-                String.format(java.util.Locale.US, "%.2f", Fonts.scale(this))));
-
-        // 每日目标
-        final LinearLayout goalRow = (LinearLayout) findViewById(R.id.goalChips);
-        final int[] goals = {50, 100, 150, 200};
-        String[] goalLabels = new String[goals.length];
-        int cur = DiaryStore.goalDefault(), sel = -1;
-        for (int i = 0; i < goals.length; i++) {
-            goalLabels[i] = goals[i] + " 词";
-            if (goals[i] == cur) sel = i;
-        }
-        Ui.fillRow(goalRow, goalLabels, sel, new Ui.ChipTap() {
-            @Override public void onTap(int idx, TextView chip) {
-                DiaryStore.setGoalDefault(goals[idx]);
-                ((TextView) findViewById(R.id.tvGoalDesc)).setText(
-                        getString(R.string.goal_ok_default, goals[idx]));
-            }
-        });
-        ((TextView) findViewById(R.id.tvGoalDesc)).setText(
-                getString(R.string.goal_pick_desc) + "（" + getString(R.string.goal_title) + " " + cur + " 词）");
-
-        // 档案 / 战绩 / 查词 / 收藏
-        findViewById(R.id.rowProfile).setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { startActivity(new Intent(SettingsActivity.this, ProfileActivity.class)); }
-        });
-        findViewById(R.id.rowShare).setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { startActivity(new Intent(SettingsActivity.this, ShareActivity.class)); }
-        });
-        findViewById(R.id.rowSearch).setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { startActivity(new Intent(SettingsActivity.this, SearchActivity.class)); }
-        });
-        findViewById(R.id.rowFav).setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { startActivity(new Intent(SettingsActivity.this, FavoritesActivity.class)); }
-        });
-
-        // 手势：六个位置各挑一个动作（用户自己定，见 Ges/GesUi）
-        final LinearLayout gesBox = (LinearLayout) findViewById(R.id.gesBox);
-        GesUi.render(this, gesBox, new Runnable() {
-            @Override public void run() { toast(getString(R.string.ges_saved)); }
-        });
-        findViewById(R.id.gesReset).setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                pr.ges(Ges.DEF.clone());
-                GesUi.render(SettingsActivity.this, gesBox, new Runnable() {
-                    @Override public void run() { toast(getString(R.string.ges_saved)); }
-                });
-                toast(getString(R.string.ges_reset_done));
-            }
-        });
-
-        // —— 应用内更新：stable / dev ——
-        final LinearLayout srcRow = (LinearLayout) findViewById(R.id.srcChips);
-        String[] srcNames = {getString(R.string.update_src_stable), getString(R.string.update_src_dev)};
-        Ui.fillRowEqual(srcRow, srcNames, pr.updateChannel(), new Ui.ChipTap() {
-            @Override public void onTap(int idx, TextView chip) { pr.setUpdateChannel(idx); }
-        });
-        state = (android.widget.TextView) findViewById(R.id.tvUpdateState);
-        state.setText(getString(R.string.update_cur_ver_ch, Update.myName(this), Update.myCode(this),
-                Update.channelName(this, pr.updateChannel())));
-        bind(R.id.swUpdate, Prefs.K_UP_AUTO, true);
-        findViewById(R.id.btnUpdateCheck).setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                final int ch = pr.updateChannel();
-                state.setText(getString(R.string.update_checking_ch, Update.channelName(SettingsActivity.this, ch)));
-                Update.checkResAsync(SettingsActivity.this, new Update.Cb2() {
-                    @Override public void onRes(Update.Res r) {
-                        if (r.err != null) {
-                            state.setText(getString(R.string.update_fail_short, r.err));
-                            return;
-                        }
-                        if (!r.newer) {                 // 「已是最新」必须写清依据，免得看着像没检查
-                            state.setText(getString(R.string.update_latest_detail,
-                                    Update.channelName(SettingsActivity.this, r.channel),
-                                    r.server == null ? "?" : r.server.name,
-                                    r.server == null ? 0 : r.server.code,
-                                    Update.myName(SettingsActivity.this), Update.myCode(SettingsActivity.this)));
-                            return;
-                        }
-                        state.setText(r.viaDev
-                                ? getString(R.string.update_found_dev, r.server.name,
-                                            Update.myName(SettingsActivity.this))
-                                : getString(R.string.update_found_v, r.server.name,
-                                            Update.myName(SettingsActivity.this)));
-                        Update.showFound(SettingsActivity.this, r.server);
-                    }
-                });
-            }
-        });
-
-        // 默认每组词数
-        final LinearLayout sizeRow = (LinearLayout) findViewById(R.id.sizeChips);
-        final int[] sizes = {20, 30, 50, 80, 100};
-        String[] labels = new String[sizes.length];
-        int curSize = pr.i(Prefs.K_SIZE_DEF, Prefs.DEF_SIZE), selSize = 1;
-        for (int i = 0; i < sizes.length; i++) {
-            labels[i] = String.valueOf(sizes[i]);
-            if (sizes[i] == curSize) selSize = i;
-        }
-        Ui.fillRow(sizeRow, labels, selSize, new Ui.ChipTap() {
-            @Override public void onTap(int idx, TextView chip) {
-                pr.set(Prefs.K_SIZE_DEF, sizes[idx]);
-            }
-        });
         Ui.finishSetup(this);
+    }
+
+    private void nav(int id, final int page) {
+        findViewById(id).setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { SettingsSubActivity.open(SettingsActivity.this, page); }
+        });
     }
 
     @Override protected void onResume() {
         super.onResume();
-        // 每 60 秒静默查一次更新（「不够灵敏」的补救）。
-        // 下载进度不在这儿显示 —— 用户要的是「进度就放在下载弹窗里」。
+        // 每 60 秒静默查一次更新（「进入首页要检查更新啊」的同一套逻辑）。
+        // 下载进度不在这儿显示 —— 进度只放在下载弹窗里。
         Update.startWatch(this, new Update.Watch() {
             @Override public void onTick(int pct, String line) { }
             @Override public void onFound(Update.Info info) {
-                if (state != null) state.setText(getString(R.string.update_found_v, info.name, Update.myName(SettingsActivity.this)));
                 Update.showFound(SettingsActivity.this, info);
             }
         });
         try {
             ((TextView) findViewById(R.id.tvNameNow)).setText(
                     Prefs.activeName().isEmpty() ? getString(R.string.profile_title) : Prefs.activeName());
-            ((TextView) findViewById(R.id.tvProfileNow)).setText(
-                    Prefs.profiles().list.size() + " 个档案 · " + getString(R.string.profile_hint));
-            ((TextView) findViewById(R.id.tvFavNow)).setText(
-                    Favorites.count() == 0 ? getString(R.string.fav_empty) : getString(R.string.fav_count, Favorites.count()));
         } catch (Throwable ignored) {}
     }
 
@@ -271,13 +101,5 @@ public class SettingsActivity extends Activity {
 
     private void toast(String s) {
         try { android.widget.Toast.makeText(this, s, android.widget.Toast.LENGTH_SHORT).show(); } catch (Throwable ignored) {}
-    }
-
-    private void bind(int id, final String key, final boolean def) {
-        final Switch sw = (Switch) findViewById(id);
-        sw.setChecked(pr.on(key, def));
-        sw.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { pr.set(key, sw.isChecked()); }
-        });
     }
 }

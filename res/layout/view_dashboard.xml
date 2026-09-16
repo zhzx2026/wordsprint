@@ -136,30 +136,7 @@
                     android:textSize="11.5sp"/>
             </LinearLayout>
 
-            <LinearLayout
-                android:id="@+id/habitTest"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:gravity="center">
-                <TextView
-                    android:id="@+id/habitTestMark"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="○"
-                    android:textColor="?attr/wpText2"
-                    android:textSize="15sp"
-                    android:textStyle="bold"/>
-                <TextView
-                    android:id="@+id/habitTestSub"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="3dp"
-                    android:text="@string/habit_test"
-                    android:textColor="?attr/wpText2"
-                    android:textSize="11.5sp"/>
-            </LinearLayout>
+            
         </LinearLayout>
     </LinearLayout>
 
@@ -328,10 +305,10 @@
             android:text="@string/quick_search"/>
 
         <TextView
-            android:id="@+id/quickFav"
+            android:id="@+id/quickWrong"
             style="@style/QuickAction"
             android:layout_marginStart="8dp"
-            android:text="@string/quick_fav"/>
+            android:text="@string/quick_wrong"/>
 
         <TextView
             android:id="@+id/quickShare"

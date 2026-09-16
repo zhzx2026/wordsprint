@@ -30,8 +30,9 @@ public final class ShareCard {
 
     public static class Stats {
         public String name = "", date = Diary.today(), headline = "";
-        public int today, goal = 50, streak, best, total, doneDays, favs;
-        public int revMin, testDone;
+        public int today, goal = 50, streak, best, total, doneDays;
+        /** 温习分钟数（自测、收藏两栏已按用户要求在 2026-09-16 删除） */
+        public int revMin;
         public Diary diary;
         public String url = "";
     }
@@ -47,11 +48,9 @@ public final class ShareCard {
         s.today = d.learned;
         s.goal = d.goal;
         s.revMin = d.revSec / 60;
-        s.testDone = d.test;
         s.streak = dy.streak(t);
         s.best = dy.bestStreak();
         s.doneDays = dy.doneDays();
-        s.favs = Favorites.count();
         s.total = Prefs.of(a).totalMastered();
         s.headline = a.getString(R.string.share_headline);
         s.url = url(a, s);
@@ -84,7 +83,7 @@ public final class ShareCard {
         for (Diary.Day d : win) heat.append(d == null ? '0' : (char) ('0' + Diary.level(d.total())));
         String raw = "n=" + s.name + "\nd=" + s.date + "\nt=" + s.today + "\ng=" + s.goal
                 + "\ns=" + s.streak + "\nb=" + s.best + "\nm=" + s.total + "\nk=" + s.doneDays
-                + "\nr=" + s.revMin + "\nf=" + s.favs + "\nx=" + s.testDone + "\nh=" + heat;
+                + "\nr=" + s.revMin + "\nh=" + heat;
         return ZipB64.pack(raw);        // zlib deflate + base64url，与 share/index.html 的解析端同源
     }
 
@@ -227,11 +226,11 @@ public final class ShareCard {
             c.drawRoundRect(new RectF(track.left, track.top, track.left + track.width() * pct, track.bottom), 9, 9, bp);
         }
 
-        // 三个习惯勾选
-        String[] habits = {a.getString(R.string.goal_title), a.getString(R.string.habit_rev), a.getString(R.string.habit_test)};
-        boolean[] hdone = {done, s.revMin >= Diary.MIN_REV_MIN, s.testDone >= Diary.MIN_TEST};
-        float hw = (textR - textL - 6) / 3f;
-        for (int i = 0; i < 3; i++) {
+        // 两个习惯勾选（原来三个：自测那一栏已按用户要求删除）
+        String[] habits = {a.getString(R.string.goal_title), a.getString(R.string.habit_rev)};
+        boolean[] hdone = {done, s.revMin >= Diary.MIN_REV_MIN};
+        float hw = (textR - textL - 6) / 2f;
+        for (int i = 0; i < habits.length; i++) {
             float x = textL + i * (hw + 3);
             RectF hb = new RectF(x, y + 180, x + hw, y + 226);
             Paint hp = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -289,7 +288,8 @@ public final class ShareCard {
         tp.setTextSize(24);
         tp.setColor(text2);
         c.drawText(s.date, textL, qy + 100, tp);
-        c.drawText(a.getString(R.string.fav_title) + " " + s.favs + " · " + a.getString(R.string.streak_cur) + " " + s.streak + " 天",
+        c.drawText(a.getString(R.string.streak_cur) + " " + s.streak + " 天 · "
+                        + a.getString(R.string.streak_best) + " " + s.best + " 天",
                 textL, qy + 136, tp);
 
         // 二维码

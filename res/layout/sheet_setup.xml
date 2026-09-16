@@ -120,40 +120,7 @@
             </LinearLayout>
         </LinearLayout>
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-
-            <TextView
-                android:id="@+id/btnPreview"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:background="@drawable/bg_pill"
-                android:gravity="center"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
-                android:text="@string/book_preview"
-                android:textColor="?attr/wpBrand"
-                android:textSize="12.5sp"
-                android:textStyle="bold"/>
-
-            <TextView
-                android:id="@+id/btnBatch"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:layout_marginStart="8dp"
-                android:background="@drawable/bg_pill"
-                android:gravity="center"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
-                android:text="@string/book_batch"
-                android:textColor="?attr/wpBrand"
-                android:textSize="12.5sp"
-                android:textStyle="bold"/>
-        </LinearLayout>
+        
 
         <TextView
             android:id="@+id/tvStats"
@@ -259,18 +226,57 @@
                 android:focusable="false"/>
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/btnStart"
+        <!-- 工具行：三个等宽小按钮（用户 2026-09-15「里面的按钮排布也更新」：
+             只留真正常用的三个动作，等宽等高，主操作不再和它们挤在一行） -->
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="54dp"
-            android:layout_marginTop="6dp"
-            android:background="@drawable/bg_btn_gradient"
-            android:gravity="center"
-            android:text="@string/start_brush"
-            android:textColor="#FFFFFFFF"
-            android:textSize="16sp"
-            android:textStyle="bold"/>
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal">
 
+            <TextView
+                android:id="@+id/btnPreview"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_pill"
+                android:gravity="center"
+                android:maxLines="1"
+                android:text="@string/book_preview"
+                android:textColor="?attr/wpBrand"
+                android:textSize="12.5sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:id="@+id/btnBatch"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_pill"
+                android:gravity="center"
+                android:maxLines="1"
+                android:text="@string/book_batch"
+                android:textColor="?attr/wpBrand"
+                android:textSize="12.5sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:id="@+id/btnReset"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_pill"
+                android:gravity="center"
+                android:maxLines="1"
+                android:text="@string/book_clear_progress"
+                android:textColor="?attr/wpRed"
+                android:textSize="12.5sp"
+                android:textStyle="bold"/>
+        </LinearLayout>
+
+        <!-- 底部：订正 + 开始刷词（主按钮更宽更显眼，落在拇指最容易点到的右下角） -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -281,26 +287,29 @@
             <TextView
                 android:id="@+id/btnReview"
                 android:layout_width="0dp"
-                android:layout_height="42dp"
+                android:layout_height="52dp"
                 android:layout_weight="1"
                 android:background="@drawable/bg_btn_outline"
                 android:gravity="center"
+                android:maxLines="1"
                 android:text="@string/review_mode"
                 android:textColor="?attr/wpBrand"
-                android:textSize="13.5sp"
+                android:textSize="14sp"
                 android:textStyle="bold"/>
 
             <TextView
-                android:id="@+id/btnReset"
-                android:layout_width="wrap_content"
-                android:layout_height="42dp"
+                android:id="@+id/btnStart"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_weight="1.4"
                 android:layout_marginStart="10dp"
+                android:background="@drawable/bg_btn_gradient"
                 android:gravity="center"
-                android:paddingStart="10dp"
-                android:paddingEnd="4dp"
-                android:text="@string/reset_progress"
-                android:textColor="?attr/wpRed"
-                android:textSize="13.5sp"/>
+                android:maxLines="1"
+                android:text="@string/start_brush"
+                android:textColor="#FFFFFFFF"
+                android:textSize="15.5sp"
+                android:textStyle="bold"/>
         </LinearLayout>
     </LinearLayout>
 </FrameLayout>

@@ -20,8 +20,13 @@ import java.util.List;
 import java.util.Random;
 
 public class StudyActivity extends Activity {
-    /** 模式：0 正常刷词 · 1 错词复习 · 2 收藏复习 · 3 自测（看中文想英文） */
-    public static final int MODE_WORD = 0, MODE_WRONG = 1, MODE_FAV = 2, MODE_TEST = 3;
+    /**
+     * 模式：0 正常刷词 · 1 错词复习。
+     *
+     * 原来的 2 = 收藏复习、3 = 自测（看中文想英文）已在 2026-09-16 按用户要求整体删除
+     * （「删除自测和收藏功能」）——连带卡片上的爱心、首页的习惯格、设置里的入口一起删了。
+     */
+    public static final int MODE_WORD = 0, MODE_WRONG = 1;
 
     private Db.Book book;
     private Prefs prefs;
@@ -37,14 +42,13 @@ public class StudyActivity extends Activity {
 
     private View card, actions, result, colMain, meaningBox;
     private TextView tvWord, tvPhonetic, tvHint, tvMeaning, tvPos, tvGroupPill, tvWrongPill;
-    private ImageView btnFav, btnUndo;
+    private ImageView btnUndo;
     // 撤销用：作答前的错题本快照 / 这张是不是「首次记住」/ 这次答对了吗
     private WrongBook wbSnap;
-    private boolean lastFresh, lastOk, lastWasTest, lastWasReview;
+    private boolean lastFresh, lastOk, lastWasReview;
     private boolean hintShown;
     private android.widget.ProgressBar progress;
     private ConfettiView confetti;
-    private final List<Integer> groupWords = new ArrayList<Integer>();
 
     @Override protected void attachBaseContext(android.content.Context base) {
         super.attachBaseContext(Night.wrap(base));
@@ -62,7 +66,7 @@ public class StudyActivity extends Activity {
         book = Db.I.byId(bid);
         if (book == null) { finish(); return; }
         mode = getIntent().getIntExtra("mode", getIntent().getBooleanExtra("review", false) ? MODE_WRONG : MODE_WORD);
-        reviewMode = mode == MODE_WRONG || mode == MODE_FAV;
+        reviewMode = mode == MODE_WRONG;
         final boolean redo = getIntent().getBooleanExtra("redo", false);
         wb = prefs.wrongBook(book.id);
         wrongs = wb.ids();
@@ -79,7 +83,6 @@ public class StudyActivity extends Activity {
         tvPos = (TextView) findViewById(R.id.tvPos);
         tvGroupPill = (TextView) findViewById(R.id.tvGroupPill);
         tvWrongPill = (TextView) findViewById(R.id.tvWrongPill);
-        btnFav = (ImageView) findViewById(R.id.btnFav);
         btnUndo = (ImageView) findViewById(R.id.btnUndo);
         progress = (android.widget.ProgressBar) findViewById(R.id.groupProgress);
         confetti = (ConfettiView) findViewById(R.id.confetti);
@@ -89,12 +92,11 @@ public class StudyActivity extends Activity {
         tvPhonetic.setTypeface(Fonts.phoneTypeface(this));
 
         ((TextView) findViewById(R.id.tvBookName)).setText(
-                mode == MODE_WRONG ? getString(R.string.review_of, book.display())
-                        : mode == MODE_FAV ? getString(R.string.fav_review_of, book.display())
-                        : book.display());
-        if (mode == MODE_WRONG) tvGroupPill.setText(R.string.review_mode);
-        if (mode == MODE_TEST) tvGroupPill.setText(R.string.habit_test);
-        if (mode != MODE_WORD) tvHint.setText(mode == MODE_TEST ? "想起来的单词，翻面核对" : getString(R.string.tap_reveal));
+                mode == MODE_WRONG ? getString(R.string.review_of, book.display()) : book.display());
+        if (mode == MODE_WRONG) {
+            tvGroupPill.setText(R.string.review_mode);
+            tvHint.setText(getString(R.string.tap_reveal));
+        }
         if (mode == MODE_WORD && !hintShown) {
             tvGroupPill.setText(gesHint());                 // 每次进来只在第一张卡提示一句，且按用户自己的映射说
             hintShown = true;
@@ -111,9 +113,6 @@ public class StudyActivity extends Activity {
         });
         btnUndo.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { undoLast(); }
-        });
-        btnFav.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { toggleFav(); }
         });
         // 长按查词由手势里的 onLongPress 统一处理（把长按监听挂在 tvWord 上会吃掉手势事件）
 
@@ -147,16 +146,13 @@ public class StudyActivity extends Activity {
         findViewById(R.id.btnNext).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { nextGroup(); }
         });
-        findViewById(R.id.btnTest).setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { startSelfTest(); }
-        });
         findViewById(R.id.btnExit).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { save(); finish(); }
         });
 
         final java.util.BitSet mastered = prefs.mastered(book.id, book.n);
         engine = new Engine(book.n, buildOrder(), mastered,
-                reviewMode || mode == MODE_TEST ? 0 : prefs.next(book.id),
+                reviewMode ? 0 : prefs.next(book.id),
                 prefs.groupSize(book.id), prefs.lag(book.id), redo,
                 new Engine.Listener() {
                     @Override public void onShow(int wordIdx) { fill(wordIdx); }
@@ -172,7 +168,6 @@ public class StudyActivity extends Activity {
                         if (mode == MODE_WORD) prefs.addToday(1);      // 新生词才算「今日已刷」
                     }
                 });
-        groupWords.clear();
         startGroup();
         lastTick = SystemClock.elapsedRealtime();
         Ui.finishSetup(this);
@@ -194,19 +189,14 @@ public class StudyActivity extends Activity {
         startTs = SystemClock.elapsedRealtime();
         result.setVisibility(View.GONE);
         confetti.setVisibility(View.GONE);
-        if (mode == MODE_WRONG || mode == MODE_FAV) {
+        if (mode == MODE_WRONG) {
+            wrongs = wb.ids();                         // 每次进复习都按最新在册词来
             List<Integer> ids = new ArrayList<Integer>();
-            if (mode == MODE_WRONG) {
-                wrongs = wb.ids();                     // 每次进复习都按最新在册词来
-                for (int i = wrongs.nextSetBit(0); i >= 0; i = wrongs.nextSetBit(i + 1)) ids.add(i);
-            } else {
-                ids.addAll(Favorites.ids(book.id));
-            }
+            for (int i = wrongs.nextSetBit(0); i >= 0; i = wrongs.nextSetBit(i + 1)) ids.add(i);
             int[] arr = new int[ids.size()];
             for (int i = 0; i < arr.length; i++) arr[i] = ids.get(i);
             if (arr.length == 0) {
-                Toast.makeText(this, mode == MODE_WRONG ? R.string.no_wrongs : R.string.fav_review_empty,
-                        Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.no_wrongs, Toast.LENGTH_SHORT).show();
                 finish();
                 return;
             }
@@ -223,36 +213,27 @@ public class StudyActivity extends Activity {
         int pct = engine.groupTotal() == 0 ? 100 : engine.doneInGroup() * 100 / engine.groupTotal();
         progress.setProgress(pct);
         int w = engine.requeues();
-        tvWrongPill.setVisibility(w > 0 && mode != MODE_TEST ? View.VISIBLE : View.GONE);
+        tvWrongPill.setVisibility(w > 0 ? View.VISIBLE : View.GONE);
         tvWrongPill.setText(getString(R.string.wrong_times, w));
     }
 
     private void fill(int w) {
         if (w < 0) return;
-        if (!groupWords.contains(w)) groupWords.add(w);
-        final boolean test = mode == MODE_TEST;
         tvWord.setVisibility(View.VISIBLE);
         tvMeaning.setVisibility(View.VISIBLE);
-        if (test) {
-            // 自测 = 看中文想英文：中文就是题面（放大字），英文等翻面才给
-            String mean = book.mean(w);
-            tvWord.setText(mean);
-            tvWord.setTextSize(Fonts.wordSize(this, Math.min(18, Math.max(2, mean.length()))));
-        } else {
-            tvWord.setText(book.word(w));
-            tvWord.setTextSize(Fonts.wordSize(this, book.word(w).length()));
-        }
+        tvWord.setText(book.word(w));
+        tvWord.setTextSize(Fonts.wordSize(this, book.word(w).length()));
         tvMeaning.setText(book.mean(w));
         String ph = book.ph(w);
-        boolean showPh = !test && prefs.on(Prefs.K_PHON, true) && !ph.isEmpty();
+        boolean showPh = prefs.on(Prefs.K_PHON, true) && !ph.isEmpty();
         tvPhonetic.setText(ph.isEmpty() ? "" : "/" + ph + "/");
         tvPhonetic.setVisibility(showPh ? View.VISIBLE : View.GONE);
         meaningBox.animate().cancel();
         meaningBox.setAlpha(1f);
         meaningBox.setTranslationY(0f);
-        // 刷词：释义要翻面才给；自测：中文已经在词面上了，释义框先空着
+        // 释义要翻面才给（「看释义」是用户自己绑在某个手势上的动作之一）
         meaningBox.setVisibility(View.GONE);
-        tvHint.setText(test ? getString(R.string.test_tap_reveal) : getString(R.string.tap_reveal));
+        tvHint.setText(getString(R.string.tap_reveal));
         tvHint.setVisibility(View.VISIBLE);
         tvHint.setAlpha(1f);
         actions.animate().cancel();
@@ -261,8 +242,7 @@ public class StudyActivity extends Activity {
         colMain.setAlpha(0f);
         colMain.setTranslationY(Ui.dp(this, 16));
         colMain.animate().alpha(1f).translationY(0f).setDuration(200).start();
-        updateFav();
-        if (prefs.on(Prefs.K_SPEAK, true) && mode != MODE_TEST) sfx.speak(book.word(w));
+        if (prefs.on(Prefs.K_SPEAK, true)) sfx.speak(book.word(w));
     }
 
     /** 按当前映射拼一句提示（用户自己改过映射后，这句话要跟着变） */
@@ -274,25 +254,10 @@ public class StudyActivity extends Activity {
                 getString(GesUi.slotLabel(Ges.RIGHT)), getString(GesUi.actionShort(m[Ges.RIGHT])));
     }
 
-    private void updateFav() {
-        int w = engine.current();
-        boolean has = w >= 0 && Favorites.has(book.id, w);
-        btnFav.setImageResource(has ? R.drawable.ic_heart_fill : R.drawable.ic_heart);
-    }
-
-    private void toggleFav() {
-        int w = engine.current();
-        if (w < 0) return;
-        boolean now = Favorites.toggle(book.id, w);
-        updateFav();
-        Toast.makeText(this, now ? R.string.fav_added : R.string.fav_removed, Toast.LENGTH_SHORT).show();
-        if (now) sfx.ok();
-    }
-
     /**
      * 按用户的手势映射执行动作。
      * 「点按」有个特殊待遇：没翻面时先翻面（这是所有人的第一反应），翻面后再点才执行用户绑的动作
-     * —— 否则把「点按」绑成收藏的人会觉得「点一下怎么不看释义了」。
+     * —— 否则用户会觉得「点一下怎么不看释义了」。
      */
     private void fire(int slot, int[] map) {
         if (engine.current() < 0 || engine.busy()) return;
@@ -303,7 +268,6 @@ public class StudyActivity extends Activity {
             return;
         }
         switch (action) {
-            case Ges.FAV: toggleFav(); break;
             case Ges.REVEAL: if (!engine.flipped()) reveal(); else sfx.speak(book.word(engine.current())); break;
             case Ges.KNOW: if (!engine.flipped()) reveal(); answer(true); break;
             case Ges.UNKNOWN: if (!engine.flipped()) reveal(); answer(false); break;
@@ -317,18 +281,6 @@ public class StudyActivity extends Activity {
     /** 翻卡 = 布局重排 + 淡入（非 3D 翻转） */
     private void reveal() {
         engine.markFlipped();
-        if (mode == MODE_TEST) {
-            tvWord.setText(book.word(engine.current()));
-            tvWord.setTextSize(Fonts.wordSize(this, book.word(engine.current()).length()));
-            tvMeaning.setText(book.mean(engine.current()));       // 中文挪到释义行，方便对照
-            tvMeaning.setVisibility(View.VISIBLE);
-            String ph = book.ph(engine.current());
-            if (prefs.on(Prefs.K_PHON, true) && !ph.isEmpty()) {
-                tvPhonetic.setText("/" + ph + "/");
-                tvPhonetic.setVisibility(View.VISIBLE);
-            }
-            if (prefs.on(Prefs.K_SPEAK, true)) sfx.speak(book.word(engine.current()));
-        }
         tvHint.animate().cancel();
         tvHint.animate().alpha(0f).setDuration(110)
               .withEndAction(new Runnable() {
@@ -342,7 +294,7 @@ public class StudyActivity extends Activity {
         actions.setAlpha(0f);
         actions.setTranslationY(Ui.dp(this, 18));
         actions.animate().alpha(1f).translationY(0f).setStartDelay(70).setDuration(200).start();
-        if (mode != MODE_TEST && prefs.on(Prefs.K_SPEAK, true)) sfx.speak(book.word(engine.current()));
+        if (prefs.on(Prefs.K_SPEAK, true)) sfx.speak(book.word(engine.current()));
     }
 
     private void answer(final boolean ok) {
@@ -353,7 +305,6 @@ public class StudyActivity extends Activity {
         wbSnap = wb.copy();
         lastFresh = ok && !engine.masteredBitSet().get(w);
         lastOk = ok;
-        lastWasTest = mode == MODE_TEST;
         lastWasReview = reviewMode;
         engine.answer(ok);
         if (ok) {
@@ -364,14 +315,12 @@ public class StudyActivity extends Activity {
             if (inBook && !cleared) toast(getString(R.string.wrong_still, wb.left(w)));
             else if (cleared) toast(getString(R.string.wrong_cleared));
             if (reviewMode) DiaryStore.reviewed(true);
-            if (mode == MODE_TEST) DiaryStore.tested();
             sfx.ok();
         } else {
             boolean was = wb.has(w);
             int need = wb.miss(w);                 // 错一次就进本；在订正的再错，还差次数 +1
             prefs.saveWrongBook(book.id, wb);
             wrongs = wb.ids();
-            if (mode == MODE_TEST) DiaryStore.tested();
             toast(was ? getString(R.string.wrong_add_more, need) : getString(R.string.wrong_added_book, need));
             sfx.miss();
         }
@@ -398,8 +347,7 @@ public class StudyActivity extends Activity {
             wrongs = wb.ids();
         }
         if (lastFresh) prefs.addToday(-1);        // 刚记成「首次掌握」的那一个词撤回来
-        if (lastWasTest) DiaryStore.undoTested();
-        else if (lastWasReview && lastOk) DiaryStore.undoReviewed();
+        if (lastWasReview && lastOk) DiaryStore.undoReviewed();
         wbSnap = null;
         engine.undo();                            // 队列/回炉/掌握位/计数全部回退 + 重摆那张卡
         lastTick = SystemClock.elapsedRealtime();
@@ -407,24 +355,22 @@ public class StudyActivity extends Activity {
         toast(getString(R.string.undo_done));
     }
 
-    /** 计时：把「距上次作答」的时间按模式记账（刷词 / 温习 / 自测） */
+    /** 计时：把「距上次作答」的时间按模式记账（刷词 / 温习） */
     private void tick() {
         long now = SystemClock.elapsedRealtime();
         long ms = now - lastTick;
         lastTick = now;
         if (ms <= 0 || ms > 5 * 60 * 1000) return;      // 中途离开很久的间隔不计
-        DiaryStore.addTime(mode == MODE_TEST ? 2 : (reviewMode ? 1 : 0), ms);
+        DiaryStore.addTime(reviewMode ? 1 : 0, ms);
     }
 
     private void showResult(boolean bookDoneNow, boolean masteredAll) {
-        finishedAll = reviewMode || mode == MODE_TEST ? true : (bookDoneNow || masteredAll);
+        finishedAll = reviewMode ? true : (bookDoneNow || masteredAll);
         ((TextView) findViewById(R.id.resultTitle)).setText(
-                mode == MODE_TEST ? R.string.habit_test
-                        : reviewMode ? R.string.review_done
+                reviewMode ? R.string.review_done
                         : (finishedAll ? R.string.book_done : R.string.session_done));
         String sub = reviewMode
                 ? getString(R.string.wrong_review_done, wb.size(), wb.remaining())
-                : mode == MODE_TEST ? getString(R.string.test_done)
                 : finishedAll
                 ? book.pub + "《" + book.display() + "》" + book.n + " 词全部拿下"
                 : book.display() + " · 本组全部记住，下一组继续";
@@ -435,10 +381,8 @@ public class StudyActivity extends Activity {
         long sec = Math.max(1, (SystemClock.elapsedRealtime() - startTs) / 1000);
         ((TextView) findViewById(R.id.rsTime)).setText((sec / 60) + ":" + String.format("%02d", sec % 60));
         ((TextView) findViewById(R.id.btnNext)).setText(
-                reviewMode || mode == MODE_TEST ? getString(R.string.back_shelf)
+                reviewMode ? getString(R.string.back_shelf)
                 : finishedAll ? "再刷一轮" : getString(R.string.next_group));
-        findViewById(R.id.btnTest).setVisibility(
-                (mode == MODE_WORD || mode == MODE_TEST) && !groupWords.isEmpty() ? View.VISIBLE : View.GONE);
         buildWrongList();
         if (result.getVisibility() != View.VISIBLE) {
             result.setVisibility(View.VISIBLE);
@@ -454,7 +398,7 @@ public class StudyActivity extends Activity {
         List<Integer> still = new ArrayList<Integer>();
         for (int i : wb.toArray()) still.add(i);           // 在册错词（含刚进来的；已出本的不会在这）
         View wrap = findViewById(R.id.wrongWrap);
-        if (still.isEmpty() || mode == MODE_TEST) { wrap.setVisibility(View.GONE); return; }
+        if (still.isEmpty()) { wrap.setVisibility(View.GONE); return; }
         wrap.setVisibility(View.VISIBLE);
         int lim = Math.min(still.size(), 14);
         for (int i = 0; i < lim; i++) {
@@ -486,27 +430,8 @@ public class StudyActivity extends Activity {
         try { Toast.makeText(this, s, Toast.LENGTH_SHORT).show(); } catch (Throwable ignored) {}
     }
 
-    /** 自测：把本组刚刷过的词拿来做「看中文想英文」的反向自测（计入今日自测） */
-    private void startSelfTest() {
-        if (groupWords.isEmpty()) return;
-        List<Integer> ids = new ArrayList<Integer>(groupWords);
-        Collections.shuffle(ids, new Random());
-        if (ids.size() > 30) ids = ids.subList(0, 30);
-        int[] arr = new int[ids.size()];
-        for (int i = 0; i < arr.length; i++) arr[i] = ids.get(i);
-        mode = MODE_TEST;
-        tvGroupPill.setText(R.string.habit_test);
-        engine.startQueue(arr);
-        startTs = SystemClock.elapsedRealtime();
-        lastTick = startTs;
-        result.setVisibility(View.GONE);
-        confetti.setVisibility(View.GONE);
-        updateHud();
-        Toast.makeText(this, getString(R.string.habit_test) + " · " + arr.length + " 张", Toast.LENGTH_SHORT).show();
-    }
-
     private void nextGroup() {
-        if (reviewMode || mode == MODE_TEST) { finish(); return; }
+        if (reviewMode) { finish(); return; }
         if (finishedAll) { engine.pos = 0; mode = MODE_WORD; }
         startGroup();
     }

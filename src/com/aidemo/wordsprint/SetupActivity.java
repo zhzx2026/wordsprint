@@ -209,9 +209,10 @@ public class SetupActivity extends Activity {
         int wrong = p.wrongs(book.id, book.n).cardinality();
         int pct = book.n == 0 ? 0 : done * 100 / book.n;
         ring.setProgress(pct, Skin.c(this, R.attr.wpText), Skin.c(this, R.attr.wpText2));
-        tvStats.setText(getString(R.string.sheet_stats, done, book.n - done, wrong));
-        tvCta.setText(done == 0 ? getString(R.string.start_brush_group, size)
-                : getString(R.string.continue_brush_group, p.next(book.id) / Math.max(1, size) + 1));
+        // 主按钮现在是并排里的一个（宽度约六成），文案写短：组号挪到统计行
+        tvCta.setText(done == 0 ? getString(R.string.start_brush) : getString(R.string.continue_brush));
+        tvStats.setText(getString(R.string.sheet_stats_group, done, book.n - done, wrong,
+                p.next(book.id) / Math.max(1, size) + 1));
         ((TextView) findViewById(R.id.btnReview)).setText(wrong > 0
                 ? getString(R.string.review_with_count, wrong) : getString(R.string.review_mode));
         ((TextView) findViewById(R.id.btnReview)).setEnabled(true);

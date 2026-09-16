@@ -32,7 +32,7 @@ public class Diary {
         public int learned, goal = 50;
         public int rev, test;
         public int sec, revSec, testSec;
-        public boolean revDone, testDone;   // 温习/自测 是否已勾选（按天）
+        public boolean revDone, testDone;   // 温习 是否已勾选（按天）；testDone 只留给老数据解码（自测功能 2026-09-16 已删）
         public boolean custom;              // 目标是否被单独改过
 
         public int total() { return learned + rev + test; }
@@ -43,6 +43,7 @@ public class Diary {
     }
 
     /** 温习「算完成」的门槛（分钟）；自测门槛（张） */
+    /** MIN_TEST 只用于解析老版本存下来的日记串（自测功能已删，不再产生新数据） */
     public static final int MIN_REV_MIN = 3, MIN_TEST = 10;
     /** 默认值（纯 java 常量放这里，避免纯模型依赖 android 的 Prefs） */
     public static final int DEF_SIZE = 50, DEF_LAG = 5, DEF_GOAL = 50;

@@ -30,7 +30,7 @@ https://zhzx2026.github.io/wordsprint/share/index.html?d=<payload>
 
 | 环节 | App 侧 | 页面侧 |
 |---|---|---|
-| 组装 | `ShareCard.payload()`：键值行（`n=` 名字、`d=` 日期、`t=` 今日新词、`g=` 目标、`s=` 连续、`b=` 最高连续、`m=` 累计掌握、`k=` 达标天数、`r=` 温习分钟、`f=` 收藏数、`x=` 自测张数、`h=` 182 天等级串） | `WPI.payload()` 解析回同一批字段 |
+| 组装 | `ShareCard.payload()`：键值行（`n=` 名字、`d=` 日期、`t=` 今日新词、`g=` 目标、`s=` 连续、`b=` 最高连续、`m=` 累计掌握、`k=` 达标天数、`r=` 温习分钟、`h=` 182 天等级串（`f=`/`x=` 收藏与自测 2026-09-16 已从 App 删除，老链接里还带着这两个键，页面忽略）） | `WPI.payload()` 解析回同一批字段 |
 | 压缩 | `ZipB64.pack()`：`Deflater(9)` + `DeflaterOutputStream`（**zlib 封装**：2 字节头 + 尾部 adler32） | 手写 `inflateRaw()`；`zlibSafe()` 先按需剥掉 2 字节 zlib 头 |
 | 编码 | base64 用 URL 安全字母表（`-` `_`），去掉 `=` 填充 | 两套字母表都认，缺填充也认 |
 

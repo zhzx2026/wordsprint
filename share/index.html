@@ -284,8 +284,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = WPI;   /* 
 
   function render(p){
     var name = p.n || '我', date = p.d || '', total = num(p.m), today = num(p.t), goal = Math.max(1, num(p.g, 50));
-    var streak = num(p.s), best = num(p.b), days = num(p.k), rev = num(p.r), favs = num(p.f);
-    var tested = num(p.x), heat = p.h || '';
+    var streak = num(p.s), best = num(p.b), days = num(p.k), rev = num(p.r);
+    var heat = p.h || '';   /* 收藏(f)/自测(x) 两栏 2026-09-16 已从 App 里删除，老链接里还带着这两个键，忽略即可 */
     var done = today >= goal;
 
     $('fName').textContent = name;
@@ -303,7 +303,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = WPI;   /* 
     tick.textContent = done ? '✓ 达标' : '○ 还差 ' + (goal - today);
     if(done) tick.className = 'tick on'; else tick.className = 'tick';
     $('fHabits').innerHTML =
-      habit(done, '每日目标') + habit(rev >= 3, '温习 ' + rev + '′') + habit(tested >= 10, '自测 ' + tested + ' 张');
+      habit(done, '每日目标') + habit(rev >= 3, '温习 ' + rev + '′');
 
     /* 热力图：182 天，按真实星期几对齐（列 = 周，行 = 周一…周日），最后一列不满就留空 */
     var nDays = heat.length;
@@ -328,7 +328,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = WPI;   /* 
 
     $('fMeta').innerHTML =
       '连续打卡 <b>' + streak + ' 天</b> · 历史最高 <b>' + best + ' 天</b><br>' +
-      '达标天数 <b>' + days + ' 天</b> · 温习 <b>' + rev + ' 分钟</b> · 收藏 <b>' + favs + '</b> 个词';
+      '达标天数 <b>' + days + ' 天</b> · 温习 <b>' + rev + ' 分钟</b>';
   }
   function cell(big, small){ return '<div><b>' + big + '</b><span>' + small + '</span></div>'; }
   function habit(on, text){ return '<span class="' + (on ? 'on' : '') + '">' + (on ? '✓ ' : '○ ') + text + '</span>'; }

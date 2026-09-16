@@ -95,19 +95,4 @@
             android:progressDrawable="@drawable/progress_line"/>
     </LinearLayout>
 
-    <!-- 「预览」直接摆在行上（用户 2026-09-15：一眼能看到，别藏在菜单里）；
-         批量改进度在预览页里（右上角 + 底部），词书设置面板里也有 -->
-    <TextView
-        android:id="@+id/btnPreview"
-        android:layout_width="wrap_content"
-        android:layout_height="34dp"
-        android:layout_marginStart="8dp"
-        android:background="@drawable/bg_pill"
-        android:gravity="center"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
-        android:text="@string/book_preview_short"
-        android:textColor="?attr/wpBrand"
-        android:textSize="12sp"
-        android:textStyle="bold"/>
-</LinearLayout>
+    </LinearLayout>

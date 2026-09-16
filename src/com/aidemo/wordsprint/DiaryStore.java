@@ -134,28 +134,10 @@ public final class DiaryStore {
         fire();
     }
 
-    /** 撤销一次自测张数（点错了按「上一个」时用） */
-    public static synchronized void undoTested() {
-        Diary.Day d = today();
-        if (d.test > 0) d.test--;
-        if (d.test < Diary.MIN_TEST) d.testDone = false;
-        save();
-        fire();
-    }
-
     /** 撤销一次温习记录 */
     public static synchronized void undoReviewed() {
         Diary.Day d = today();
         if (d.rev > 0) d.rev--;
-        save();
-        fire();
-    }
-
-    /** 自测作答一张 */
-    public static synchronized void tested() {
-        Diary.Day d = today();
-        d.test++;
-        if (d.test >= Diary.MIN_TEST) d.testDone = true;
         save();
         fire();
     }
@@ -174,23 +156,22 @@ public final class DiaryStore {
         save();
     }
 
-    /** 今天的勾选：0 刷词目标 · 1 温习 · 2 自测 */
+    /** 今天的勾选：0 刷词目标 · 1 温习（自测已删，见 StudyActivity 顶部注释） */
     public static synchronized boolean done(int kind) {
         Diary.Day d = today();
         switch (kind) {
             case 0: return d.goalDone();
             case 1: return d.revDone;
-            case 2: return d.testDone;
             default: return false;
         }
     }
 
+    /** 今天打了几项（刷词目标 / 温习） */
     public static synchronized int doneCount() {
         Diary.Day d = today();
         int n = 0;
         if (d.goalDone()) n++;
         if (d.revDone) n++;
-        if (d.testDone) n++;
         return n;
     }
 

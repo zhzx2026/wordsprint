@@ -23,10 +23,11 @@ public class SharePayloadTest {
 
     /** 与 ShareCard.payload() 完全同构：键值行（n 名字 d 日期 … h 182 天等级串） */
     static String buildRaw(String name, String date, int today, int goal, int streak, int best,
-                           int total, int days, int revMin, int favs, int tested, String heat) {
+                           int total, int days, int revMin, String heat) {
+        // 与 ShareCard.payload() 同构：f（收藏）/ x（自测）两个键随功能删除
         return "n=" + name + "\nd=" + date + "\nt=" + today + "\ng=" + goal
                 + "\ns=" + streak + "\nb=" + best + "\nm=" + total + "\nk=" + days
-                + "\nr=" + revMin + "\nf=" + favs + "\nx=" + tested + "\nh=" + heat;
+                + "\nr=" + revMin + "\nh=" + heat;
     }
 
     static String heat(int seed) {
@@ -50,7 +51,7 @@ public class SharePayloadTest {
         check(base.indexOf("github.io") > 0, "战绩页地址应是 GitHub Pages：" + base);
 
         // 1) 往返 + zlib 封装
-        String raw = buildRaw("小明", "2026-09-14", 57, 100, 12, 30, 1234, 88, 14, 9, 12, heat(7));
+        String raw = buildRaw("小明", "2026-09-14", 57, 100, 12, 30, 1234, 88, 14, heat(7));
         String payload = ZipB64.pack(raw);
         check(payload.length() > 40, "负载不该是空的");
         check(payload.indexOf('=') < 0, "负载不能带 base64 填充（URL 里难看且会被截断）");
@@ -81,7 +82,7 @@ public class SharePayloadTest {
         // 4) 极端负载：超长名字 / 全 0 热力图 / 空名字，都不能把 URL 撑爆
         String[] names = {"", "我", "张三丰", "Alexandra-Wang", rep('李', 40)};
         for (int i = 0; i < names.length; i++) {
-            String r2 = buildRaw(names[i], "2026-12-31", 0, 50, 0, 999, 99999, 999, 0, 999, 0,
+            String r2 = buildRaw(names[i], "2026-12-31", 0, 50, 0, 999, 99999, 999, 0,
                     i == 1 ? rep('0', 182) : heat(100 + i));
             String u2 = base + "?d=" + ZipB64.pack(r2);
             check(u2.length() < 470, "极端负载 URL 也别超长：" + u2.length());

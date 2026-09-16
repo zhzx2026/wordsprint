@@ -16,7 +16,10 @@ public final class Ges {
 
     // ---- 可绑定的动作（顺序就是设置页里的顺序）----
     public static final int NONE = 0;        // 不绑定
-    public static final int FAV = 1;         // 收藏 / 取消收藏
+    /** 1 以前是「收藏 / 取消收藏」—— 收藏功能已按用户要求整体删除，
+     *  编号**故意保留不回填**：老版本存过的映射里那个 1 现在会被判成不合法 → 退回默认动作，
+     *  否则把 2/3/4/5 往前挪一位会把用户的映射悄悄改成语义完全不同的动作。 */
+    public static final int FAV_RETIRED = 1;
     public static final int REVEAL = 2;      // 看释义（翻面）
     public static final int KNOW = 3;        // 记住了
     public static final int UNKNOWN = 4;     // 不认识（进错题本）
@@ -27,14 +30,14 @@ public final class Ges {
      * 2026-09-14 用户反馈「快捷键不要这么多，不要跳过」→ 去掉了「跳过这个词」，
      * 也去掉「朗读」（朗读在卡片上本来就是翻面后再点一下，不必再占一个选项）。
      */
-    public static final int[] ACTIONS = {NONE, FAV, REVEAL, KNOW, UNKNOWN, LOOKUP};
+    public static final int[] ACTIONS = {NONE, REVEAL, KNOW, UNKNOWN, LOOKUP};
 
     // ---- 位置 ----
     public static final int UP = 0, DOWN = 1, LEFT = 2, RIGHT = 3, TAP = 4, LONG = 5;
     public static final int SLOTS = 6;
 
-    /** 默认映射：跟旧版手感一致（用户改了就按用户的来） */
-    public static final int[] DEF = {FAV, REVEAL, UNKNOWN, KNOW, REVEAL, LOOKUP};
+    /** 默认映射：上滑 = 查词（原来这格是收藏，收藏删了就给查词）；其余跟旧版手感一致 */
+    public static final int[] DEF = {LOOKUP, REVEAL, UNKNOWN, KNOW, REVEAL, LOOKUP};
 
     private Ges() {}
 

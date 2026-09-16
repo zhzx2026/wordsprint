@@ -105,7 +105,6 @@ public class Prefs {
         if (I == null) {
             I = new Prefs(c.getApplicationContext());
             DiaryStore.attach(c);
-            Favorites.attach(c);
             loadProfiles(I);
         }
         return I;
@@ -169,7 +168,6 @@ public class Prefs {
         activeId = id;
         pr.p.edit().putString(K_ACTIVE, id).apply();
         DiaryStore.forget();                    // ← 只丢缓存（不再写盘），下次读的是新档案
-        Favorites.forget();
     }
 
     /** 建档案并切过去（useLegacy=true 时占用遗留命名空间 → 老进度归它） */
@@ -214,7 +212,6 @@ public class Prefs {
         if (wasActive) {
             // 被删档案的内存缓存直接丢掉（不要 flush，那会把它的数据写回去）
             DiaryStore.forget();
-            Favorites.forget();
             activeId = profiles().list.get(0).id;
             e.putString(K_ACTIVE, activeId);
         }

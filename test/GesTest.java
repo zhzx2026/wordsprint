@@ -17,7 +17,7 @@ public class GesTest {
     public static void main(String[] args) {
         // 1) 默认映射：上收藏 / 下释义 / 左不认识 / 右记住了 / 点翻面 / 长按查词
         int[] def = Ges.decode(null);
-        check(def[Ges.UP] == Ges.FAV, "默认上滑 = 收藏");
+        check(def[Ges.UP] == Ges.LOOKUP, "默认上滑 = 查词（原来这格是收藏，收藏功能已删除）");
         check(def[Ges.DOWN] == Ges.REVEAL, "默认下滑 = 看释义");
         check(def[Ges.LEFT] == Ges.UNKNOWN, "默认左滑 = 不认识");
         check(def[Ges.RIGHT] == Ges.KNOW, "默认右滑 = 记住了");
@@ -26,7 +26,7 @@ public class GesTest {
         check(Ges.decode("").length == Ges.SLOTS, "空串也能得到完整映射");
 
         // 2) 往返：任意组合都要一字不差
-        int[] custom = {Ges.LOOKUP, Ges.UNKNOWN, Ges.FAV, Ges.NONE, Ges.REVEAL, Ges.LOOKUP};
+        int[] custom = {Ges.LOOKUP, Ges.UNKNOWN, Ges.NONE, Ges.NONE, Ges.REVEAL, Ges.LOOKUP};
         String enc = Ges.encode(custom);
         check(Ges.encode(Ges.decode(enc)).equals(enc), "编码→解码→编码 稳定");
         int[] back = Ges.decode(enc);
@@ -58,16 +58,26 @@ public class GesTest {
         check(!Ges.allowedFor(Ges.TAP, Ges.KNOW), "点按不能绑「记住了」");
         check(!Ges.allowedFor(Ges.LONG, Ges.UNKNOWN), "长按不能绑「不认识」");
         check(Ges.allowedFor(Ges.LEFT, Ges.UNKNOWN), "左滑可以绑「不认识」");
-        check(Ges.allowedFor(Ges.TAP, Ges.FAV) && Ges.allowedFor(Ges.LONG, Ges.LOOKUP), "点按/长按能绑收藏与查词");
+        check(Ges.allowedFor(Ges.TAP, Ges.LOOKUP) && Ges.allowedFor(Ges.LONG, Ges.REVEAL), "点按/长按能绑查词与翻面");
 
         // 6) with()：改一个位置不影响其它位置
         int[] one = Ges.with(Ges.DEF, Ges.UP, Ges.NONE);
         check(one[Ges.UP] == Ges.NONE, "改上滑为「不绑定」");
         check(one[Ges.RIGHT] == Ges.DEF[Ges.RIGHT], "其它位置不动");
-        check(Ges.DEF[Ges.UP] == Ges.FAV, "原数组不被改动（不可变）");
+        check(Ges.DEF[Ges.UP] == Ges.LOOKUP, "原数组不被改动（不可变）");
 
         // 7) describe()：设置页/日志里能一眼看出映射
         check(Ges.describe(Ges.DEF).contains("1") && Ges.describe(Ges.DEF).contains("5"), "describe 输出包含动作号");
+
+        // 收藏功能已删除：老数据里那个 1（FAV_RETIRED）必须判成不合法，退回默认动作
+        check(Ges.decode("1,1,1,1,1,1").length == Ges.SLOTS, "整串都是退休的收藏编号也要能解出六个位置");
+        check(Ges.decode("1").length == Ges.SLOTS, "只写一个退休编号也不炸");
+        for (int i = 0; i < Ges.SLOTS; i++) {
+            check(Ges.decode("1,1,1,1,1,1")[i] == Ges.DEF[i], "退休编号退回默认动作（位置 " + i + "）");
+        }
+        boolean hasFav = false;
+        for (int a : Ges.ACTIONS) if (a == Ges.FAV_RETIRED) hasFav = true;
+        check(!hasFav, "设置页的动作清单里不再出现收藏");
 
         System.out.println("ALL GES TESTS PASS (" + checks + " checks)");
     }

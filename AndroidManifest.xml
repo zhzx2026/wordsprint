@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.aidemo.wordsprint"
-    android:versionCode="34"
-    android:versionName="2.13">
+    android:versionCode="35"
+    android:versionName="2.14">
 
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.INTERNET"/>
@@ -34,6 +34,8 @@
             android:theme="@style/Theme.WordsPrint"
             android:configChanges="orientation|screenSize|keyboardHidden" />
         <activity android:name=".SettingsActivity" android:exported="false" />
+        <!-- 设置的子页面（外观 / 学习 / 数据与档案 / 关于与更新），像微信那样一层层进去 -->
+        <activity android:name=".SettingsSubActivity" android:exported="false" />
         <!-- 多用户档案：新建/切换/改名/删除；首次使用由 MainActivity 拉起来 -->
         <activity android:name=".ProfileActivity" android:exported="false"
             android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation"
@@ -41,7 +43,8 @@
         <activity android:name=".SearchActivity" android:exported="false"
             android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation"
             android:windowSoftInputMode="stateVisible|adjustResize" />
-        <activity android:name=".FavoritesActivity" android:exported="false" />
+        <!-- 错题本（用户：删除收藏功能，首页空出来的位置改放错题本） -->
+        <activity android:name=".WrongActivity" android:exported="false" />
         <!-- 词表预览 + 批量改进度（用户：「词本加一个仅预览，还可以直接批量编辑」） -->
         <activity android:name=".BookPreviewActivity" android:exported="false"
             android:configChanges="orientation|screenSize" />

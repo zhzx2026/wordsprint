@@ -126,14 +126,11 @@ public class MainActivity extends Activity {
         dash.findViewById(R.id.habitRev).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { openReview(); }
         });
-        dash.findViewById(R.id.habitTest).setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { startActivity(new Intent(MainActivity.this, FavoritesActivity.class)); }
-        });
         dash.findViewById(R.id.quickSearch).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { startActivity(new Intent(MainActivity.this, SearchActivity.class)); }
         });
-        dash.findViewById(R.id.quickFav).setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { startActivity(new Intent(MainActivity.this, FavoritesActivity.class)); }
+        dash.findViewById(R.id.quickWrong).setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { startActivity(new Intent(MainActivity.this, WrongActivity.class)); }
         });
         dash.findViewById(R.id.quickShare).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { startActivity(new Intent(MainActivity.this, ShareActivity.class)); }
@@ -157,11 +154,8 @@ public class MainActivity extends Activity {
 
         mark(R.id.habitWordMark, t.goalDone());
         mark(R.id.habitRevMark, t.revDone);
-        mark(R.id.habitTestMark, t.testDone);
         ((TextView) findViewById(R.id.habitRevSub)).setText(
                 getString(R.string.habit_rev) + " " + Math.min(99, t.revSec / 60) + "′");
-        ((TextView) findViewById(R.id.habitTestSub)).setText(
-                getString(R.string.habit_test) + " " + t.test + "张");
 
         // 有新版就一直挂着这条横幅（点一下就更新）；没有就收起来
         View banner = findViewById(R.id.upBanner);
@@ -437,10 +431,6 @@ public class MainActivity extends Activity {
             pctTv.setTextColor(acc);
             bar.setProgressTintList(ColorStateList.valueOf(acc));
 
-            // 行内「预览」：点一下直接看整本词表（批量改进度在预览页里）
-            cv.findViewById(R.id.btnPreview).setOnClickListener(new View.OnClickListener() {
-                @Override public void onClick(View v) { BookPreviewActivity.open(MainActivity.this, bk.id, false); }
-            });
             return cv;
         }
     }

@@ -21,6 +21,7 @@
     <string name="no_streak">今天开始打卡</string>
     <string name="tap_reveal">点击卡片查看释义</string>
     <string name="got_it">记住了</string>
+    <string name="word_detail_ok">知道了</string>
     <string name="dont_know">不认识</string>
     <string name="requeue_hint">已回炉，稍后再见</string>
     <string name="group_size">每组词数</string>
@@ -177,8 +178,6 @@
 
     <string name="habit_rev">温习</string>
     <string name="habit_rev_desc">%1$d 分钟</string>
-    <string name="habit_test">自测</string>
-    <string name="habit_test_desc">%1$d 张</string>
     <string name="habit_done">已完成</string>
     <string name="habit_undone">未完成</string>
 
@@ -200,7 +199,7 @@
     <string name="days_unit_short">%1$d天</string>
 
     <string name="quick_search">查词</string>
-    <string name="quick_fav">收藏</string>
+    <string name="quick_wrong">错题本</string>
     <string name="quick_share">分享战绩</string>
     <string name="quick_profile">档案</string>
 
@@ -220,14 +219,6 @@
     <string name="profile_keep_one">至少保留一个档案</string>
     <string name="profile_hint">换个名字刷，进度互不影响</string>
 
-    <string name="fav_title">我的收藏</string>
-    <string name="fav_empty">还没有收藏的词：刷词时点右上角爱心即可收藏</string>
-    <string name="fav_count">共 %1$d 个词</string>
-    <string name="fav_add">收藏这个词</string>
-    <string name="fav_remove">取消收藏</string>
-    <string name="fav_added">已加入收藏</string>
-    <string name="fav_removed">已取消收藏</string>
-    <string name="fav_start_review">开始复习收藏</string>
 
     <string name="search_title">查词</string>
     <string name="search_hint_word">输入英文单词或中文释义</string>
@@ -261,6 +252,7 @@
     <string name="set_skin_title">配色方案</string>
     <string name="set_skin_desc">五套配色，点一下立刻换；与深浅色各自独立</string>
     <string name="set_font_title">字体</string>
+    <string name="font_sample">Aa Bb Cc · 单词 apple 苹果 · 12345</string>
     <string name="set_font_poppins">Poppins</string>
     <string name="set_font_quicksand">Quicksand</string>
     <string name="set_font_system">系统字体</string>
@@ -279,17 +271,10 @@
     <string name="word_detail_title">单词详情</string>
     <string name="word_detail_book">出处：%1$s</string>
     <string name="word_not_found">词库里没有这个词</string>
-    <string name="fp_label">收藏</string>
-    <string name="fp_none">还没有收藏的词</string>
-    <string name="fp_start">开始复习收藏</string>
-    <string name="fav_review_of">%1$s · 收藏复习</string>
-    <string name="fav_review_empty">收藏夹是空的</string>
     <string name="total_words_n">%1$d 词</string>
     <string name="book_pick_title">选择要加入的词书</string>
     <string name="about_count_short">已掌握 %1$d 词 · 连续 %2$d 天</string>
     <!-- 自测（看中文想英文）与错题本订正（用户 2026-09-14 定的规则） -->
-    <string name="test_tap_reveal">想好了点一下，翻面对答案</string>
-    <string name="test_done">自测完成，今天又多练了一轮</string>
     <string name="wrong_added_book">已进错题本：订正要对 %1$d 次</string>
     <string name="wrong_add_more">又错一次：还得对 %1$d 次</string>
     <string name="wrong_still">订正中：还要对 %1$d 次</string>
@@ -297,6 +282,11 @@
     <string name="wrong_left_n">还要对 %1$d 次</string>
     <string name="wrong_more_n">… 共 %1$d 个错词，点「错词复习」逐个击破</string>
     <string name="wrong_review_done">错题本还剩 %1$d 个词 · 合计还要对 %2$d 次</string>
+    <string name="wrong_title">错题本</string>
+    <string name="wrong_start">开始订正</string>
+    <string name="wrong_page_count">共 %1$d 个词在册 · 合计还要对 %2$d 次</string>
+    <string name="wrong_page_empty">错题本是空的 ✓\n刷词时答「不认识」的词会进这里，连对 3 次才出去。</string>
+    <string name="wrong_book_line">%1$s · %2$d 个</string>
 
     <!-- ===== 手势操作（可自定义：设置页六个位置各挑一个动作） ===== -->
     <string name="ges_slot_up">上滑</string>
@@ -307,12 +297,10 @@
     <string name="ges_slot_long">长按</string>
 
     <string name="ges_act_none">不绑定</string>
-    <string name="ges_short_fav">收藏</string>
     <string name="ges_short_reveal">看释义</string>
     <string name="ges_short_know">记住了</string>
     <string name="ges_short_unknown">不认识</string>
     <string name="ges_short_lookup">查词</string>
-    <string name="ges_act_fav">收藏 / 取消收藏</string>
     <string name="ges_act_reveal">看释义（翻面）</string>
     <string name="ges_act_know">记住了</string>
     <string name="ges_act_unknown">不认识（进错题本）</string>
@@ -331,8 +319,14 @@
     <string name="ges_note">点按有个例外：没翻面时先翻面，翻面后再点才执行你绑的动作（谁都先想看一眼答案）。</string>
 
     <!-- ===== 设置页（v2.4 分组重排） ===== -->
-    <string name="set_study_title">学习</string>
-    <string name="set_mine_title">我的</string>
+    <string name="nav_appearance">外观</string>
+    <string name="nav_appearance_desc">深浅色 · 配色 · 字体 · 字号</string>
+    <string name="nav_study">学习</string>
+    <string name="nav_study_desc">语音 · 音标 · 音效 · 动画 · 每组词数 · 每日目标 · 手势</string>
+    <string name="nav_data">数据与档案</string>
+    <string name="nav_data_desc">档案切换 · 进度码导出与扫码导入 · 战绩分享</string>
+    <string name="nav_about">关于与更新</string>
+    <string name="nav_about_desc">版本信息 · 更新通道 · 检查更新</string>
     <string name="set_data_title">数据</string>
     <string name="set_speak_desc">看卡与翻卡时自动发音</string>
     <string name="set_phonetic_desc">单词下方显示音标</string>
@@ -375,6 +369,7 @@
     <string name="pv_undone">已经退回改之前的样子</string>
     <string name="book_missing">没找到这个词本</string>
     <string name="book_preview">仅预览词表</string>
-    <string name="book_preview_short">预览</string>
+    <string name="book_clear_progress">清除进度</string>
+    <string name="sheet_stats_group">已学 %1$d · 剩余 %2$d · 错词 %3$d · 下一组第 %4$d 组</string>
     <string name="book_batch">批量改进度</string>
 </resources>

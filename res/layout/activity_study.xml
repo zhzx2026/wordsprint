@@ -149,16 +149,7 @@
                     android:tint="?attr/wpText2"
                     android:contentDescription="@string/undo_answer"/>
 
-                <ImageView
-                    android:id="@+id/btnFav"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:layout_marginStart="8dp"
-                    android:padding="10dp"
-                    android:background="@drawable/bg_circle_chip"
-                    android:src="@drawable/ic_heart"
-                    android:tint="?attr/wpRed"
-                    android:contentDescription="@string/fav_added"/>
+                
             </LinearLayout>
 
             <LinearLayout
@@ -441,16 +432,7 @@
             android:textSize="16sp"
             android:textStyle="bold"/>
 
-        <TextView
-            android:id="@+id/btnTest"
-            android:layout_width="match_parent"
-            android:layout_height="46dp"
-            android:layout_marginTop="4dp"
-            android:gravity="center"
-            android:text="@string/habit_test"
-            android:textColor="?attr/wpBrand"
-            android:textSize="14.5sp"
-            android:textStyle="bold"/>
+        
 
         <TextView
             android:id="@+id/btnExit"

@@ -132,7 +132,7 @@ public class SearchActivity extends Activity {
         status.setText(getString(R.string.search_result, hits.size()));
         int shown = 0;
         for (final Words.Hit h : hits) {
-            View row = Words.row(this, h, false, new View.OnClickListener() {
+            View row = Words.row(this, h, new View.OnClickListener() {
                 @Override public void onClick(View v) { Words.detail(SearchActivity.this, h.word(), h); }
             });
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
