@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 设置 → 学习：语音/音标/音效/动画 · 每组词数 · 每日目标 · 手势自定义 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <TextView style="@style/SectionHead" android:text="@string/nav_study"/>
+
+    <LinearLayout style="@style/CardBox">
+        <LinearLayout style="@style/SettingRow">
+            <LinearLayout style="@style/SettingRowText">
+                <TextView style="@style/SettingTitle" android:text="@string/set_speak"/>
+                <TextView style="@style/SettingDesc" android:text="@string/set_speak_desc"/>
+            </LinearLayout>
+            <Switch android:id="@+id/swSpeak" style="@style/SettingSwitch" android:clickable="false" android:focusable="false"/>
+        </LinearLayout>
+        <View style="@style/SettingDivider"/>
+
+        <LinearLayout style="@style/SettingRow">
+            <LinearLayout style="@style/SettingRowText">
+                <TextView style="@style/SettingTitle" android:text="@string/set_phonetic"/>
+                <TextView style="@style/SettingDesc" android:text="@string/set_phonetic_desc"/>
+            </LinearLayout>
+            <Switch android:id="@+id/swPhonetic" style="@style/SettingSwitch" android:clickable="false" android:focusable="false"/>
+        </LinearLayout>
+        <View style="@style/SettingDivider"/>
+
+        <LinearLayout style="@style/SettingRow">
+            <LinearLayout style="@style/SettingRowText">
+                <TextView style="@style/SettingTitle" android:text="@string/set_sound"/>
+                <TextView style="@style/SettingDesc" android:text="@string/set_sound_desc"/>
+            </LinearLayout>
+            <Switch android:id="@+id/swSound" style="@style/SettingSwitch" android:clickable="false" android:focusable="false"/>
+        </LinearLayout>
+        <View style="@style/SettingDivider"/>
+
+        <LinearLayout style="@style/SettingRow">
+            <LinearLayout style="@style/SettingRowText">
+                <TextView style="@style/SettingTitle" android:text="@string/set_anim"/>
+                <TextView style="@style/SettingDesc" android:text="@string/set_anim_desc"/>
+            </LinearLayout>
+            <Switch android:id="@+id/swAnim" style="@style/SettingSwitch" android:clickable="false" android:focusable="false"/>
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView style="@style/SectionHead" android:text="@string/default_size"/>
+
+    <LinearLayout style="@style/CardBox">
+        <LinearLayout style="@style/SettingRow">
+            <LinearLayout style="@style/SettingRowText">
+                <TextView style="@style/SettingTitle" android:text="@string/default_size"/>
+                <TextView style="@style/SettingDesc" android:text="@string/default_size_desc"/>
+            </LinearLayout>
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/sizeChips"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingBottom="12dp"/>
+    </LinearLayout>
+
+    <TextView style="@style/SectionHead" android:text="@string/set_goal_title"/>
+
+    <LinearLayout style="@style/CardBox">
+        <LinearLayout style="@style/SettingRow">
+            <LinearLayout style="@style/SettingRowText">
+                <TextView style="@style/SettingTitle" android:text="@string/set_goal_title"/>
+                <TextView android:id="@+id/tvGoalDesc" style="@style/SettingDesc" android:text="@string/goal_pick_desc"/>
+            </LinearLayout>
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/goalChips"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingBottom="12dp"/>
+    </LinearLayout>
+
+    <!-- 手势操作（用户自己定，见 Ges/GesUi） -->
+    <TextView style="@style/SectionHead" android:text="@string/ges_title"/>
+
+    <LinearLayout style="@style/CardBox">
+        <LinearLayout style="@style/SettingRow">
+            <LinearLayout style="@style/SettingRowText">
+                <TextView style="@style/SettingTitle" android:text="@string/ges_subtitle"/>
+                <TextView style="@style/SettingDesc" android:text="@string/ges_note"/>
+            </LinearLayout>
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/gesBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingBottom="4dp"/>
+        <View style="@style/SettingDivider"/>
+        <LinearLayout style="@style/SettingRow" android:id="@+id/gesResetRow">
+            <LinearLayout style="@style/SettingRowText">
+                <TextView style="@style/SettingTitle" android:text="@string/ges_reset"/>
+                <TextView style="@style/SettingDesc" android:text="@string/ges_reset_desc"/>
+            </LinearLayout>
+            <TextView
+                android:id="@+id/gesReset"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_pill"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:text="@string/ges_reset"
+                android:textColor="?attr/wpBrand"
+                android:textSize="12.5sp"
+                android:textStyle="bold"/>
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

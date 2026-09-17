@@ -141,6 +141,14 @@ PUSH_TOKEN=<用户临时提供的 fine-grained PAT> bash scripts/promote.sh 1.0.
     尺寸不变，写完自解析校验内容指纹一致。进度按 `bookId`（md5(rel)）存取，与顺序无关 → 不会丢进度。
     App 侧显示顺序 = pack 里的顺序（`MainActivity.buildRows()` 不做二次排序），改数据文件即可生效。
 
+## 当前状态（2026-09-17 第七次更新 · 本线最新）
+- 🆕 **编号改动 + 转正（用户 2026-09-17：「把所有的 2 变为 3，转正为 4.0」）**：本线（`arena/01a09e21-wordsprint`，
+  即十二批功能线）编号从 2.x 整体改到 **3.x** —— dev 3.1（code 39）已推上 dev 通道（CI 绿），2026-09-17 用户确认转正 → **stable v4.0（code 40）**。
+  ⚠️ 撞车记录：并行会话 2026-09-16 在**老底子**（不含 v2.9~v2.14 任何功能）上发了 stable v3.0（tag `v3.0` / code 38，
+  src 只有 24 个文件、没有 WrongBook/HeatView/ShareCard…），并把 dev 通道也刷成了那个包；
+  本线合并 main 后已把 dev 通道刷回 **3.1/39**（功能齐全），转正 4.0 后 stable 通道也回到本线。
+  结论：**tag `v3.0` 与那个 main 提交里的「3.0」不代表功能版本**，功能以本线为准。
+
 ## 当前状态（2026-09-13 第六次更新）
 - 🆕 **新版本方案已落地并首发 stable v2.0（code 20，2026-09-13 用户确认直发）**：`VERSIONING.md` + `scripts/version.sh`
   （status/bump-dev/promote/sync/check），`push_release.sh`/`promote.sh` 已按新方案重写，`staging.yml` 加版本门禁，

@@ -37,7 +37,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
             android:text="英语 · 必修第一册"
-            android:textColor="@color/text_primary"
+            android:textColor="?attr/wpText"
             android:textSize="22sp"
             android:textStyle="bold"
             android:maxLines="1"
@@ -60,7 +60,7 @@
                 android:paddingTop="2dp"
                 android:paddingBottom="2dp"
                 android:text="人教版"
-                android:textColor="@color/brand1"
+                android:textColor="?attr/wpBrand"
                 android:textSize="11sp"
                 android:textStyle="bold"/>
 
@@ -70,7 +70,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
                 android:text="人教版 · 高中 · 共 377 词"
-                android:textColor="@color/text_secondary"
+                android:textColor="?attr/wpText2"
                 android:textSize="12sp"/>
         </LinearLayout>
 
@@ -100,7 +100,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/group_size"
-                    android:textColor="@color/text_secondary"
+                    android:textColor="?attr/wpText2"
                     android:textSize="11sp"
                     android:letterSpacing="0.1"/>
 
@@ -120,6 +120,8 @@
             </LinearLayout>
         </LinearLayout>
 
+        
+
         <TextView
             android:id="@+id/tvStats"
             android:layout_width="match_parent"
@@ -130,7 +132,7 @@
             android:paddingTop="10dp"
             android:paddingBottom="10dp"
             android:text="已学 0 · 剩余 377 · 错词 0"
-            android:textColor="@color/text_secondary"
+            android:textColor="?attr/wpText2"
             android:textSize="12.5sp"/>
 
         <!-- 顺序 + 间隔 -->
@@ -153,7 +155,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/order_label"
-                    android:textColor="@color/text_secondary"
+                    android:textColor="?attr/wpText2"
                     android:textSize="11sp"
                     android:letterSpacing="0.1"/>
 
@@ -177,7 +179,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/lag_label"
-                    android:textColor="@color/text_secondary"
+                    android:textColor="?attr/wpText2"
                     android:textSize="11sp"
                     android:letterSpacing="0.1"/>
 
@@ -187,7 +189,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="5dp"
                     android:text="每过 5 张再出现"
-                    android:textColor="@color/brand1"
+                    android:textColor="?attr/wpBrand"
                     android:textSize="13sp"
                     android:textStyle="bold"/>
 
@@ -224,18 +226,72 @@
                 android:focusable="false"/>
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/btnStart"
+        <!-- 工具行：四个等宽小按钮（预览词表 / 错题本 / 批量改进度 / 清除进度）。
+             2026-09-15 从一整排挤在一起的动作里挑了真正常用的几个，等宽等高；
+             2026-09-16 用户要求「每个词本打开时能看到总错题本加筛选」，补上「错题本」这一枚。 -->
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="54dp"
-            android:layout_marginTop="6dp"
-            android:background="@drawable/bg_btn_gradient"
-            android:gravity="center"
-            android:text="@string/start_brush"
-            android:textColor="#FFFFFFFF"
-            android:textSize="16sp"
-            android:textStyle="bold"/>
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal">
 
+            <TextView
+                android:id="@+id/btnPreview"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_pill"
+                android:gravity="center"
+                android:maxLines="1"
+                android:text="@string/book_preview"
+                android:textColor="?attr/wpBrand"
+                android:textSize="12.5sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:id="@+id/btnWrong"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_pill"
+                android:gravity="center"
+                android:maxLines="1"
+                android:text="@string/wrong_title"
+                android:textColor="?attr/wpBrand"
+                android:textSize="12.5sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:id="@+id/btnBatch"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_pill"
+                android:gravity="center"
+                android:maxLines="1"
+                android:text="@string/book_batch"
+                android:textColor="?attr/wpBrand"
+                android:textSize="12.5sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:id="@+id/btnReset"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_pill"
+                android:gravity="center"
+                android:maxLines="1"
+                android:text="@string/book_clear_progress"
+                android:textColor="?attr/wpRed"
+                android:textSize="12.5sp"
+                android:textStyle="bold"/>
+        </LinearLayout>
+
+        <!-- 底部：订正 + 开始刷词（主按钮更宽更显眼，落在拇指最容易点到的右下角） -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -246,26 +302,29 @@
             <TextView
                 android:id="@+id/btnReview"
                 android:layout_width="0dp"
-                android:layout_height="42dp"
+                android:layout_height="52dp"
                 android:layout_weight="1"
                 android:background="@drawable/bg_btn_outline"
                 android:gravity="center"
+                android:maxLines="1"
                 android:text="@string/review_mode"
-                android:textColor="@color/brand1"
-                android:textSize="13.5sp"
+                android:textColor="?attr/wpBrand"
+                android:textSize="14sp"
                 android:textStyle="bold"/>
 
             <TextView
-                android:id="@+id/btnReset"
-                android:layout_width="wrap_content"
-                android:layout_height="42dp"
+                android:id="@+id/btnStart"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_weight="1.4"
                 android:layout_marginStart="10dp"
+                android:background="@drawable/bg_btn_gradient"
                 android:gravity="center"
-                android:paddingStart="10dp"
-                android:paddingEnd="4dp"
-                android:text="@string/reset_progress"
-                android:textColor="@color/red"
-                android:textSize="13.5sp"/>
+                android:maxLines="1"
+                android:text="@string/start_brush"
+                android:textColor="#FFFFFFFF"
+                android:textSize="15.5sp"
+                android:textStyle="bold"/>
         </LinearLayout>
     </LinearLayout>
 </FrameLayout>

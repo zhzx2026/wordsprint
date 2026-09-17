@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  首页顶部（v2.4 重排）：作为书单 ListView 的 header 挂在列表上。
+  层级只有三层，从上到下：今天怎么样了（目标卡）→ 这段时间怎么样（热力图卡）→ 去哪里（快捷入口 + 书单）。
+
+  设计约定（改版请沿用，别再往卡里塞第四种字号）：
+    · 分组/卡片：圆角 20dp、内边距 16dp、卡片之间 14dp
+    · 数字：24sp 粗体；行标题 14sp 粗体；说明 11.5sp 次要色
+    · 状态一律用「勾/圆点 + 颜色」，不靠文字长短表达
+  id 与 MainActivity.java 对应，改名要两边一起改（scripts/refcheck.py 会查）。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="14dp"
+    android:paddingEnd="14dp"
+    android:paddingTop="4dp"
+    android:paddingBottom="6dp">
+
+    <!-- ============ ① 今天 ============ -->
+    <LinearLayout
+        android:id="@+id/goalCard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/bg_card_20"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="14dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/goal_title"
+                android:textColor="?attr/wpText"
+                android:textSize="14sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:id="@+id/goalBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_pill_green"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:text="@string/goal_met"
+                android:textColor="?attr/wpGreen"
+                android:textSize="11.5sp"
+                android:textStyle="bold"
+                android:visibility="gone"/>
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/goalSub"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="@string/goal_title"
+            android:textColor="?attr/wpText"
+            android:textSize="24sp"
+            android:textStyle="bold"/>
+
+        <ProgressBar
+            android:id="@+id/goalBar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="8dp"
+            android:layout_marginTop="10dp"
+            android:max="100"
+            android:progressDrawable="@drawable/progress_line"/>
+
+        <!-- 三个习惯：一行三个，勾选状态由 MainActivity 上色 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:id="@+id/habitWord"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center">
+                <TextView
+                    android:id="@+id/habitWordMark"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="○"
+                    android:textColor="?attr/wpText2"
+                    android:textSize="15sp"
+                    android:textStyle="bold"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:text="@string/habit_word"
+                    android:textColor="?attr/wpText2"
+                    android:textSize="11.5sp"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/habitRev"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center">
+                <TextView
+                    android:id="@+id/habitRevMark"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="○"
+                    android:textColor="?attr/wpText2"
+                    android:textSize="15sp"
+                    android:textStyle="bold"/>
+                <TextView
+                    android:id="@+id/habitRevSub"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:text="@string/habit_rev"
+                    android:textColor="?attr/wpText2"
+                    android:textSize="11.5sp"/>
+            </LinearLayout>
+
+            
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- 有新版就冒出来的一行（用户：检查更新不够灵敏 —— 首页盯着，有新包立刻能看见） -->
+    <LinearLayout
+        android:id="@+id/upBanner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:visibility="gone"
+        android:background="@drawable/bg_pill_brand"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:paddingTop="11dp"
+        android:paddingBottom="11dp">
+
+        <TextView
+            android:id="@+id/upBannerText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="#FFFFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold"/>
+
+        <TextView
+            android:id="@+id/upBannerGo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_pill_white20"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:text="@string/update_go"
+            android:textColor="#FFFFFFFF"
+            android:textSize="12.5sp"
+            android:textStyle="bold"/>
+    </LinearLayout>
+
+    <!-- ============ ② 热力图 ============ -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:orientation="vertical"
+        android:background="@drawable/bg_card_20"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="14dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/heat_title"
+                android:textColor="?attr/wpText"
+                android:textSize="14sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:id="@+id/heatStreak"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_pill_white20"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:text="@string/streak_cur"
+                android:textColor="?attr/wpAmber"
+                android:textSize="11.5sp"
+                android:textStyle="bold"/>
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/heatSub"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:text="@string/heat_sub"
+            android:textColor="?attr/wpText2"
+            android:textSize="11.5sp"/>
+
+                <!-- 热力图：尺寸按可用宽度自适应（HeatView 自己算格子与周数），
+             不再套横向滚动 —— 以前固定 53 周≈907dp，手机上右边一截会顶出屏幕 -->
+        <com.aidemo.wordsprint.HeatView
+            android:id="@+id/heat"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"/>
+        <!-- 图例 + 最高连续 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/heatBest"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/streak_best"
+                android:textColor="?attr/wpText2"
+                android:textSize="11.5sp"/>
+
+            <TextView
+                android:id="@+id/heatEmpty"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/heat_none"
+                android:textColor="?attr/wpText2"
+                android:textSize="11sp"/>
+            <View
+                android:id="@+id/heatL1"
+                android:layout_width="9dp"
+                android:layout_height="9dp"
+                android:layout_marginStart="6dp"/>
+            <View
+                android:id="@+id/heatL2"
+                android:layout_width="9dp"
+                android:layout_height="9dp"
+                android:layout_marginStart="3dp"/>
+            <View
+                android:id="@+id/heatL3"
+                android:layout_width="9dp"
+                android:layout_height="9dp"
+                android:layout_marginStart="3dp"/>
+            <View
+                android:id="@+id/heatL4"
+                android:layout_width="9dp"
+                android:layout_height="9dp"
+                android:layout_marginStart="3dp"/>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- ============ ③ 去哪里 ============ -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/quickSearch"
+            style="@style/QuickAction"
+            android:text="@string/quick_search"/>
+
+        <TextView
+            android:id="@+id/quickWrong"
+            style="@style/QuickAction"
+            android:layout_marginStart="8dp"
+            android:text="@string/quick_wrong"/>
+
+        <TextView
+            android:id="@+id/quickShare"
+            style="@style/QuickAction"
+            android:layout_marginStart="8dp"
+            android:text="@string/quick_share"/>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/shelfTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:layout_marginBottom="4dp"
+        android:paddingStart="4dp"
+        android:text="@string/shelf_title"
+        android:textColor="?attr/wpText2"
+        android:textSize="13sp"
+        android:textStyle="bold"/>
+</LinearLayout>

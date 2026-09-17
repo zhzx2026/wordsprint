@@ -15,12 +15,17 @@ S=src/com/aidemo/wordsprint
 D=test/src/com/aidemo/wordsprint
 mkdir -p "$D"
 # 被测源码就是发版用的那一份（不是 test/ 下的旧副本）
-cp "$S"/Engine.java "$S"/QREnc.java "$S"/QRUtil.java "$S"/Transfer.java "$S"/ProgressCode.java "$S"/Pack.java "$D"/
+cp "$S"/Engine.java "$S"/QREnc.java "$S"/QRUtil.java "$S"/Transfer.java "$S"/ProgressCode.java "$S"/Pack.java \
+   "$S"/ZipB64.java "$S"/Diary.java "$S"/Scale.java "$S"/Heat.java "$S"/BookEdit.java \
+   "$S"/Vers.java "$S"/Profiles.java \
+   "$S"/WrongBook.java "$S"/ShareGeom.java "$S"/Ges.java "$D"/
 rm -rf test/out && mkdir -p test/out
 
 echo "== javac（同一份源码）"
 javac -encoding UTF-8 -nowarn -d test/out -cp libs/zxing-core.jar \
-  "$D"/*.java test/T.java test/EngineTest.java test/QRHostTest.java test/CodeHostTest.java test/PackTest.java
+  "$D"/*.java test/T.java test/EngineTest.java test/QRHostTest.java test/CodeHostTest.java test/PackTest.java \
+  test/SharePayloadTest.java test/ScaleTest.java test/GesTest.java test/WrongBookTest.java test/ShareGeomTest.java \
+  test/HeatRampTest.java test/BookEditTest.java test/VersTest.java test/ProfilesTest.java
 
 CP=test/out:libs/zxing-core.jar
 echo "== EngineTest（刷词引擎 + 回炉区间断言）"
@@ -31,4 +36,28 @@ echo "== CodeHostTest（进度码复制/粘贴容错）"
 java -cp "$CP" CodeHostTest
 echo "== PackTest（wdb.dat 解析）"
 java -cp "$CP" PackTest
+echo "== SharePayloadTest（战绩分享负载 ↔ 在线页解码 / 二维码可扫）"
+java -cp "$CP" SharePayloadTest
+echo "== ScaleTest（字号缩放幂等：反复点/反复刷新不会越点越大）"
+java -cp "$CP" ScaleTest
+echo "== GesTest（手势映射：用户自定义 + 脏数据兜底）"
+java -cp "$CP" GesTest
+if command -v node >/dev/null 2>&1; then
+  echo "== WrongBookTest（错题本：错一次就进 / 连对 3 次才出 / 再错多加一次）"
+java -cp "$CP" WrongBookTest
+echo "== ShareGeomTest（战绩图版面：网格不压标签、二维码不出画布）"
+java -cp "$CP" ShareGeomTest
+echo "== VersTest（版本号/更新通道：装 dev 包就该盯 dev 通道）"
+java -cp "$CP" VersTest
+  echo "== ProfilesTest（多用户档案：数据归属、删号清理、全局设置不动）"
+java -cp "$CP" ProfilesTest
+  echo "== HeatRampTest（热力图在每套配色下都要看得见格子）"
+java -cp "$CP" HeatRampTest
+echo "== BookEditTest（词表批量编辑：范围解析 + 批量改掌握）"
+java -cp "$CP" BookEditTest
+echo "== SharePageTest（share/index.html 里那个手写 inflate 的解码测试）"
+  node test/share_page_test.js
+else
+  echo "-- 跳过 SharePageTest：没装 node（CI 上有）"
+fi
 echo "ALL HOST TESTS PASS"

@@ -21,6 +21,7 @@
     <string name="no_streak">今天开始打卡</string>
     <string name="tap_reveal">点击卡片查看释义</string>
     <string name="got_it">记住了</string>
+    <string name="word_detail_ok">知道了</string>
     <string name="dont_know">不认识</string>
     <string name="requeue_hint">已回炉，稍后再见</string>
     <string name="group_size">每组词数</string>
@@ -75,7 +76,7 @@
     <string name="review_mode">错词复习</string>
     <string name="review_with_count">错词复习 · %1$d</string>
     <string name="review_done">错词复习完成</string>
-    <string name="no_wrongs">错词本还是空的，继续保持</string>
+    <string name="no_wrongs">错题本是空的，继续保持</string>
     <string name="wrong_times">本组已错 %1$d 次</string>
     <string name="back_shelf">返回书架</string>
     <string name="sheet_stats">已学 %1$d · 剩余 %2$d · 错词 %3$d</string>
@@ -124,6 +125,10 @@
     <string name="update_dev_src" translatable="false">https://raw.githubusercontent.com/zhzx2026/wordsprint/dev/update.json</string>
     <string name="update_check">检查</string>
     <string name="update_checking">正在检查…</string>
+    <string name="update_checking_ch">正在检查（%1$s 通道）…</string>
+    <string name="update_cur_ver_ch">当前 v%1$s（code %2$d）· %3$s 通道</string>
+    <string name="update_found_dev">发现新版本 %1$s（dev 通道的测试包 · 当前 %2$s）</string>
+    <string name="update_latest_detail">已是最新版本（%1$s 通道 · 服务器 %2$s / code %3$d · 本机 v%4$s / code %5$d）</string>
     <string name="update_latest_now">已是最新版本</string>
     <string name="update_cur_ver">当前 v%1$s（code %2$d）</string>
     <string name="update_fail_short">检查失败：%1$s</string>
@@ -154,4 +159,230 @@
     <string name="code_full_btn">查看 / 手动复制全文</string>
     <string name="scan_import_desc">对准另一台手机出示的进度码</string>
     <string name="code_len">文本码 %1$d 字符</string>
+
+    <!-- ===== v2.1 新增：每日目标 / 热力图 / 打卡 / 档案 / 收藏 / 查词 / 战绩 / 词本配置 / 手势 / 配色 ===== -->
+    <string name="stage_college">大学</string>
+    <string name="goal_title">今日目标</string>
+    <string name="goal_progress">已刷 %1$d / %2$d 词</string>
+    <string name="goal_met">目标达成 ✓</string>
+    <string name="goal_gap">还差 %1$d 词</string>
+    <string name="goal_pick">设定每日目标</string>
+    <string name="goal_pick_desc">刷够就算完成，首页会打勾（每天 0 点重新开始）</string>
+    <string name="goal_only_today">只改今天</string>
+    <string name="goal_set_default">设为默认</string>
+    <string name="goal_custom">自定义</string>
+    <string name="goal_custom_hint">5 – 500 之间的数字</string>
+    <string name="goal_ok_today">今天的目标已改为 %1$d 词</string>
+    <string name="goal_ok_default">默认目标已改为 %1$d 词</string>
+    <string name="goal_progress_pct">%1$d%%</string>
+
+    <string name="habit_rev">温习</string>
+    <string name="habit_rev_desc">%1$d 分钟</string>
+    <string name="habit_done">已完成</string>
+    <string name="habit_undone">未完成</string>
+
+    <string name="heat_title">学习热力图</string>
+    <string name="heat_sub">一格一天 · 越深刷得越多</string>
+    <string name="heat_now">最近 %1$s</string>
+    <string name="heat_span_6m">6 个月</string>
+    <string name="heat_span_actual">最近 %1$d 个月</string>
+    <string name="heat_today">今天</string>
+    <string name="heat_none">这天没学</string>
+    <string name="heat_day_info">%1$s · 新词 %2$d · 温习 %3$d（目标 %4$d）</string>
+    <string name="heat_back_today">回到今天</string>
+    <string name="streak_cur">连续打卡</string>
+    <string name="streak_best">最高连续</string>
+    <string name="streak_done_days">达标天数</string>
+    <string name="days_unit">%1$d 天</string>
+    <string name="days_unit_short">%1$d天</string>
+
+    <string name="quick_search">查词</string>
+    <string name="quick_wrong">错题本</string>
+    <string name="quick_share">分享战绩</string>
+    <string name="quick_profile">档案</string>
+
+    <string name="profile_title">谁在刷词</string>
+    <string name="profile_first_title">先起个名字吧</string>
+    <string name="profile_first_desc">学习进度按名字分开存：进度、热力图、收藏各刷各的，互不打扰。</string>
+    <string name="profile_new">新建档案</string>
+    <string name="profile_name_hint">名字（最多 12 字）</string>
+    <string name="profile_create">创建并开始</string>
+    <string name="profile_current">当前</string>
+    <string name="profile_switch_to">切换到「%1$s」</string>
+    <string name="profile_renamed">已改名</string>
+    <string name="profile_rename_hint">新的名字</string>
+    <string name="profile_delete">删除这个档案</string>
+    <string name="profile_delete_confirm">删除「%1$s」会连它的掌握进度、热力图、收藏一起清掉，确定吗？</string>
+    <string name="profile_deleted">已删除档案</string>
+    <string name="profile_keep_one">至少保留一个档案</string>
+    <string name="profile_hint">换个名字刷，进度互不影响</string>
+
+
+    <string name="search_title">查词</string>
+    <string name="search_hint_word">输入英文单词或中文释义</string>
+    <string name="search_empty">没有找到匹配的词</string>
+    <string name="search_tip">内置全部词书（含大学四六级），离线可用</string>
+    <string name="search_result">找到 %1$d 个词</string>
+    <string name="search_from">%1$s</string>
+
+    <string name="share_title">学习战绩</string>
+    <string name="share_desc">长按图片可保存；微信扫图里的二维码能打开在线战绩页</string>
+    <string name="share_save">保存图片</string>
+    <string name="share_send">分享图片</string>
+    <string name="share_saved">已保存到相册</string>
+    <string name="share_save_fail">保存失败：%1$s</string>
+    <string name="share_none">还没有战绩：先刷几个词再分享</string>
+    <string name="share_headline">今天也把单词刷了</string>
+    <string name="share_mastered">累计掌握</string>
+    <string name="share_today">今日新词</string>
+    <string name="share_streak">连续打卡</string>
+    <string name="share_best">最高连续</string>
+    <string name="share_goal_days">达标天数</string>
+    <string name="share_heat">最近 26 周</string>
+    <string name="share_foot">刷单词 · 扫码看我的学习战绩</string>
+    <string name="share_no_app">分享图片失败，已保存到相册</string>
+
+
+    <string name="ges_title">手势操作</string>
+
+    <string name="set_theme_title">深色模式</string>
+    <string name="set_theme_desc">跟随系统，或一直浅色 / 一直深色</string>
+    <string name="set_skin_title">配色方案</string>
+    <string name="set_skin_desc">五套配色，点一下立刻换；与深浅色各自独立</string>
+    <string name="set_font_title">字体</string>
+    <string name="font_sample">Aa Bb Cc · 单词 apple 苹果 · 12345</string>
+    <string name="set_font_poppins">Poppins</string>
+    <string name="set_font_quicksand">Quicksand</string>
+    <string name="set_font_system">系统字体</string>
+    <string name="set_font_desc">内置字体保证字母 a 是单层写法；中文自动用系统字体</string>
+    <string name="set_scale_title">字号</string>
+    <string name="set_scale_normal">标准</string>
+    <string name="set_scale_auto">大屏自适应</string>
+    <string name="set_scale_big">特大</string>
+    <string name="set_scale_desc">大屏/平板自动放大字号（当前 ×%1$s）</string>
+    <string name="set_goal_title">每日目标</string>
+    <string name="set_profile_title">学习档案</string>
+    <string name="set_profile_desc">换名字即换一份独立进度</string>
+    <string name="set_share_title">学习战绩</string>
+    <string name="set_share_desc">生成战绩图（含目标完成情况与热力图）</string>
+
+    <string name="word_detail_title">单词详情</string>
+    <string name="word_detail_book">出处：%1$s</string>
+    <string name="word_not_found">词库里没有这个词</string>
+    <string name="total_words_n">%1$d 词</string>
+    <string name="book_pick_title">选择要加入的词书</string>
+    <string name="about_count_short">已掌握 %1$d 词 · 连续 %2$d 天</string>
+    <!-- 自测（看中文想英文）与错题本订正（用户 2026-09-14 定的规则） -->
+    <string name="wrong_added_book">已进错题本：订正要对 %1$d 次</string>
+    <string name="wrong_add_more">又错一次：还得对 %1$d 次</string>
+    <string name="wrong_still">订正中：还要对 %1$d 次</string>
+    <string name="wrong_cleared">连对 3 次，已掌握 ✓（仍留在错题本，可手动删）</string>
+    <string name="wrong_left_n">还要对 %1$d 次</string>
+    <string name="wrong_more_n">… 共 %1$d 个词还要订正，点「错词复习」逐个击破</string>
+    <string name="wrong_review_done">还要订正 %1$d 个词 · 合计还要对 %2$d 次</string>
+    <string name="wrong_title">错题本</string>
+    <string name="wrong_start">开始订正</string>
+    <string name="wrong_page_count">共 %1$d 个错词 · 还要订正 %2$d 个 · 已掌握 %3$d 个</string>
+    <string name="wrong_page_empty">错题本是空的 ✓\n刷词时答「不认识」的词会进这里；连对 3 次算已掌握，仍留在本里，可以手动删。</string>
+    <string name="wrong_book_line">%1$s · %2$d 个</string>
+    <!-- 错题本三档：只有这三档，界面上用五角星 1/2/3 个代替文字（星越多越熟） -->
+    <string name="wrong_t_miss">未掌握</string>
+    <string name="wrong_t_near">快掌握</string>
+    <string name="wrong_t_ok">已掌握</string>
+    <string name="wrong_filter_all">全部</string>
+    <string name="wrong_del">从错题本移除</string>
+    <string name="wrong_del_confirm">「%1$s」将从错题本移除。已学进度不受影响，以后再答错还会进来。</string>
+    <string name="wrong_del_ok">移除</string>
+    <string name="wrong_del_done">已移除 ✓</string>
+    <string name="wrong_clear_mastered">清空已掌握（%1$d 个）</string>
+    <string name="wrong_clear_confirm">把这 %1$d 个已掌握的词从错题本里清掉？已学进度不受影响。</string>
+    <string name="wrong_clear_ok">清空</string>
+    <string name="wrong_clear_done">已清掉 %1$d 个已掌握的词 ✓</string>
+    <string name="wrong_mastered_note">已掌握 %1$d 个（连对满 3 次，留档；可在错题本里手动删）</string>
+    <string name="no_wrongs_due">这个范围里没有要订正的词了（已掌握的都留着）</string>
+
+    <!-- ===== 手势操作（可自定义：设置页六个位置各挑一个动作） ===== -->
+    <string name="ges_slot_up">上滑</string>
+    <string name="ges_slot_down">下滑</string>
+    <string name="ges_slot_left">左滑</string>
+    <string name="ges_slot_right">右滑</string>
+    <string name="ges_slot_tap">点一下</string>
+    <string name="ges_slot_long">长按</string>
+
+    <string name="ges_act_none">不绑定</string>
+    <string name="ges_short_reveal">看释义</string>
+    <string name="ges_short_know">记住了</string>
+    <string name="ges_short_unknown">不认识</string>
+    <string name="ges_short_lookup">查词</string>
+    <string name="ges_act_reveal">看释义（翻面）</string>
+    <string name="ges_act_know">记住了</string>
+    <string name="ges_act_unknown">不认识（进错题本）</string>
+    <string name="ges_act_lookup">查词详情</string>
+
+    <string name="up_banner">发现新版本 %1$s（当前 %2$s）· 点这里更新</string>
+    <string name="undo_answer">上一个（撤销）</string>
+    <string name="undo_done">已撤销，重新选一次</string>
+    <string name="undo_none">还没有可撤销的操作</string>
+    <string name="ges_unfit">（不适合点按/长按）</string>
+    <string name="ges_pick_title">%1$s 绑哪个动作？</string>
+    <string name="ges_pick_desc">点一下直接生效，不用确定。</string>
+    <string name="ges_hint_dyn">%1$s %2$s · %3$s %4$s</string>
+    <string name="ges_reset">恢复默认手势</string>
+    <string name="ges_reset_done">已恢复默认手势</string>
+    <string name="ges_note">点按有个例外：没翻面时先翻面，翻面后再点才执行你绑的动作（谁都先想看一眼答案）。</string>
+
+    <!-- ===== 设置页（v2.4 分组重排） ===== -->
+    <string name="nav_appearance">外观</string>
+    <string name="nav_appearance_desc">深浅色 · 配色 · 字体 · 字号</string>
+    <string name="nav_study">学习</string>
+    <string name="nav_study_desc">语音 · 音标 · 音效 · 动画 · 每组词数 · 每日目标 · 手势</string>
+    <string name="nav_data">数据与档案</string>
+    <string name="nav_data_desc">档案切换 · 进度码导出与扫码导入 · 战绩分享</string>
+    <string name="nav_about">关于与更新</string>
+    <string name="nav_about_desc">版本信息 · 更新通道 · 检查更新</string>
+    <string name="set_data_title">数据</string>
+    <string name="set_speak_desc">看卡与翻卡时自动发音</string>
+    <string name="set_phonetic_desc">单词下方显示音标</string>
+    <string name="set_sound_desc">记住 / 回炉的轻音效与振动</string>
+    <string name="set_anim_desc">释义淡入与换卡动画</string>
+    <string name="default_size_desc">每组刷多少词</string>
+    <string name="profile_rename">改名</string>
+    <string name="ges_subtitle">六个位置，各挑一个动作</string>
+    <string name="ges_reset_desc">改回出厂那套（上滑收藏 · 下滑释义 · 左右判定）</string>
+    <string name="export_progress">导出 / 导入进度码</string>
+    <string name="update_src_title">更新源</string>
+    <string name="update_auto_desc">启动时轻量检查一次，有新版再提示</string>
+    <string name="update_check_now">检查更新</string>
+    <string name="update_desc">覆盖安装不丢进度</string>
+    <string name="ges_saved">已更新手势</string>
+    <string name="profile_rename_title">改个名字</string>
+    <string name="habit_word">刷词</string>
+    <string name="shelf_title">词书库</string>
+
+    <!-- ===== v2.9：词表仅预览 + 批量改进度（用户：词本加一个仅预览，还可以直接批量编辑） ===== -->
+    <string name="pv_note">仅预览：这一页只给你看词表，不动学习进度（要改就按右上角「批量改进度」）</string>
+    <string name="pv_summary">已掌握 %1$d / %2$d 词 · %3$d%% · 下次从第 %4$d 词接着刷</string>
+    <string name="pv_search_hint">搜单词或释义</string>
+    <string name="pv_empty">没有匹配的词</string>
+    <string name="pv_batch">批量改进度</string>
+    <string name="pv_start">去刷这本</string>
+    <string name="pv_batch_title">批量改进度</string>
+    <string name="pv_batch_tip">输入词号范围（这本共 %1$d 词）。写法随意：100-300 / 1~50 / 第100到300 / 只写一个数 / 留空=整本。</string>
+    <string name="pv_range_hint">例如 100-300</string>
+    <string name="pv_range_ok">第 %1$d–%2$d 个词（共 %3$d 个）· 其中已掌握 %4$d 个</string>
+    <string name="pv_act_mark">标记已掌握</string>
+    <string name="pv_act_unmark">取消已掌握</string>
+    <string name="pv_apply">就改这些</string>
+    <string name="pv_done">已改动 %1$d 个词（第 %2$d–%3$d）</string>
+    <string name="pv_none_mark">这些词本来就已经掌握了，没改动</string>
+    <string name="pv_none_unmark">这些词本来就没掌握，没改动</string>
+    <string name="pv_undo_tip">刚刚把第 %2$d–%3$d 个词（共 %1$d 个）改动了。要不要退回改之前？</string>
+    <string name="pv_undo">撤销这次改动</string>
+    <string name="pv_keep">就这样</string>
+    <string name="pv_undone">已经退回改之前的样子</string>
+    <string name="book_missing">没找到这个词本</string>
+    <string name="book_preview">仅预览词表</string>
+    <string name="book_clear_progress">清除进度</string>
+    <string name="sheet_stats_group">已学 %1$d · 剩余 %2$d · 错词 %3$d · 下一组第 %4$d 组</string>
+    <string name="book_batch">批量改进度</string>
 </resources>

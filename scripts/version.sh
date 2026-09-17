@@ -114,6 +114,29 @@ cmd_promote() {
   echo "下一步（需用户确认后执行）：提交 → 合 PR 到 main（CI 自动打 tag v$next并发 Release）"
 }
 
+# 手工纠正版本号（用户 2026-09-17 要求把编号从 2.x 改到 3.x）：
+# 用法 bash scripts/version.sh set 3.1 [code]；code 省略则取「本地/dev 通道/main」最大值 +1。
+cmd_set() {
+  local newv="$1" newc="${2:-}" ch base
+  case "$newv" in
+    *.*) : ;;
+    *) echo "用法：bash scripts/version.sh set <X.Y|X.0> [versionCode]" >&2; exit 2 ;;
+  esac
+  case "$newv" in *.*.*) echo "!! 三段号已退役（见 VERSIONING.md）" >&2; exit 2 ;; esac
+  ch="$(channel_of "$newv")"
+  [ "$ch" = legacy ] && { echo "!! 版本号 $newv 非法" >&2; exit 2; }
+  if [ -z "$newc" ]; then
+    base="$(max_code "$(cur_code)")"; newc=$(( base + 1 ))
+  fi
+  if [ "$newc" -le "$(cur_code)" ]; then
+    echo "!! 新 code 必须大于当前 code（OTA 只认严格变大）：$newc ≤ $(cur_code)" >&2; exit 2
+  fi
+  local oldv; oldv="$(cur_ver)"
+  apply "$newv" "$newc"
+  echo "版本纠正：v$oldv → v$newv（$ch，code $newc）"
+  echo "标识已同步：$MANIFEST / $NOTES / $README"
+}
+
 cmd_check() {
   local v ch; v="$(cur_ver)"; ch="$(channel_of "$v")"
   if [ "$ch" = legacy ]; then
@@ -128,6 +151,7 @@ case "${1:-status}" in
   bump-dev) cmd_bump_dev ;;
   promote)  cmd_promote ;;
   sync)     sync_ids "$(cur_ver)"; echo "已同步标识到 v$(cur_ver)" ;;
+  set)      cmd_set "$2" "$3" ;;
   check)    cmd_check ;;
-  *) echo "用法：bash scripts/version.sh {status|bump-dev|promote|sync|check}" >&2; exit 2 ;;
+  *) echo "用法：bash scripts/version.sh {status|bump-dev|promote|set X.Y [code]|sync|check}" >&2; exit 2 ;;
 esac

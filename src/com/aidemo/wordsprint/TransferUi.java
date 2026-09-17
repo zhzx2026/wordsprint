@@ -42,6 +42,8 @@ public class TransferUi {
     public static void importText(final Activity a, final String raw, final Done onDone, final boolean cancelable) {
         if (a == null) return;
         final String text = raw == null ? "" : raw;
+        // 注：「词本配置码（WPB1）」那条路已随「我的词本」一起删除（用户 2026-09-15），
+        // 现在扫码/粘贴只认学习进度码一种。
         new Thread(new Runnable() {
             @Override public void run() {
                 final ProgressCode.Out[] holder = new ProgressCode.Out[1];
@@ -109,14 +111,14 @@ public class TransferUi {
         col.setOrientation(LinearLayout.VERTICAL);
         TextView big = new TextView(a);
         big.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
-        big.setTextColor(a.getResources().getColor(R.color.text_primary));
+        big.setTextColor(Skin.c(a, R.attr.wpText));
         big.setText(a.getString(R.string.import_ok, res[0], res[1], dec.days.size()));
         col.addView(big, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         if (truncated) {
             TextView warn = new TextView(a);
             warn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
-            warn.setTextColor(a.getResources().getColor(R.color.amber));
+            warn.setTextColor(Skin.c(a, R.attr.wpAmber));
             warn.setText(R.string.import_truncated);
             warn.setLineSpacing(Ui.dp(a, 3), 1f);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
@@ -136,7 +138,7 @@ public class TransferUi {
         col.setOrientation(LinearLayout.VERTICAL);
         TextView tv = new TextView(a);
         tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
-        tv.setTextColor(a.getResources().getColor(R.color.text_secondary));
+        tv.setTextColor(Skin.c(a, R.attr.wpText2));
         tv.setLineSpacing(Ui.dp(a, 4), 1f);
         tv.setText(str(a, R.string.import_fail_body) + (err == null ? "" : "\n\n" + err));
         col.addView(tv, new LinearLayout.LayoutParams(
@@ -148,7 +150,7 @@ public class TransferUi {
             TextView d = new TextView(a);
             d.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f);
             d.setTypeface(android.graphics.Typeface.MONOSPACE);
-            d.setTextColor(a.getResources().getColor(R.color.text_secondary));
+            d.setTextColor(Skin.c(a, R.attr.wpText2));
             d.setText(diag);
             d.setBackgroundResource(R.drawable.bg_card_field);
             int pd = (int) Ui.dp(a, 8);
@@ -163,7 +165,7 @@ public class TransferUi {
             cp.setText(str(a, R.string.diag_copy));
             cp.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
             cp.setGravity(android.view.Gravity.CENTER);
-            cp.setTextColor(a.getResources().getColor(R.color.brand1));
+            cp.setTextColor(Skin.c(a, R.attr.wpBrand));
             cp.setBackgroundResource(R.drawable.bg_card_field);
             LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, (int) Ui.dp(a, 34));

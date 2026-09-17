@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:background="@drawable/bg_card_20"
+    android:paddingStart="16dp"
+    android:paddingEnd="14dp"
+    android:paddingTop="15dp"
+    android:paddingBottom="15dp">
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/pfName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:text="我"
+                android:textColor="?attr/wpText"
+                android:textSize="16.5sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:id="@+id/pfBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_tag"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:paddingTop="1.5dp"
+                android:paddingBottom="1.5dp"
+                android:text="@string/profile_current"
+                android:textColor="?attr/wpBrand"
+                android:textSize="10.5sp"
+                android:textStyle="bold"/>
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/pfInfo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="?attr/wpText2"
+            android:textSize="12sp"/>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/pfDel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_row_tap"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:text="@string/profile_delete"
+        android:textColor="?attr/wpRed"
+        android:textSize="12.5sp"
+        android:textStyle="bold"/>
+
+    <ImageView
+        android:id="@+id/pfChevron"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:tint="?attr/wpText2"
+        android:src="@drawable/ic_chevron"
+        android:contentDescription="@null"/>
+</LinearLayout>

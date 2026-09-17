@@ -38,7 +38,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:text="英语 · 必修第一册"
-                android:textColor="@color/text_primary"
+                android:textColor="?attr/wpText"
                 android:textSize="16.5sp"
                 android:textStyle="bold"/>
 
@@ -53,7 +53,7 @@
                 android:paddingTop="1.5dp"
                 android:paddingBottom="1.5dp"
                 android:text="人教版"
-                android:textColor="@color/brand1"
+                android:textColor="?attr/wpBrand"
                 android:textSize="10.5sp"
                 android:textStyle="bold"/>
         </LinearLayout>
@@ -64,7 +64,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:text="400 词"
-            android:textColor="@color/text_secondary"
+            android:textColor="?attr/wpText2"
             android:textSize="12sp"/>
     </LinearLayout>
 
@@ -80,7 +80,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="0%"
-            android:textColor="@color/brand1"
+            android:textColor="?attr/wpBrand"
             android:textSize="13sp"
             android:textStyle="bold"/>
 
@@ -94,4 +94,5 @@
             android:progress="0"
             android:progressDrawable="@drawable/progress_line"/>
     </LinearLayout>
-</LinearLayout>
+
+    </LinearLayout>

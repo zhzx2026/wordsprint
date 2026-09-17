@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  代码里手拼的行视图（词表预览的每一行）需要在复用时 findViewById 找回来，
+  这些 id 不属于任何布局文件，只能在这里声明。
+-->
+<resources>
+    <item name="pvNo" type="id"/>
+    <item name="pvWord" type="id"/>
+    <item name="pvMean" type="id"/>
+    <item name="pvMark" type="id"/>
+</resources>

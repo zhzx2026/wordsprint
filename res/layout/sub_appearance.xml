@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 设置 → 外观：深浅色 / 配色 / 字体 / 字号 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <TextView style="@style/SectionHead" android:text="@string/theme_title"/>
+
+    <LinearLayout style="@style/CardBox">
+        <LinearLayout style="@style/SettingRow">
+            <LinearLayout style="@style/SettingRowText">
+                <TextView style="@style/SettingTitle" android:text="@string/set_theme_title"/>
+                <TextView style="@style/SettingDesc" android:text="@string/set_theme_desc"/>
+            </LinearLayout>
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/nightChips"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingBottom="12dp"/>
+    </LinearLayout>
+
+    <TextView style="@style/SectionHead" android:text="@string/set_skin_title"/>
+
+    <LinearLayout style="@style/CardBox">
+        <LinearLayout style="@style/SettingRow">
+            <LinearLayout style="@style/SettingRowText">
+                <TextView style="@style/SettingTitle" android:text="@string/set_skin_title"/>
+                <TextView style="@style/SettingDesc" android:text="@string/set_skin_desc"/>
+            </LinearLayout>
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/skinChips"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"/>
+        <LinearLayout
+            android:id="@+id/skinPreview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="14dp"
+            android:orientation="horizontal"/>
+    </LinearLayout>
+
+    <TextView style="@style/SectionHead" android:text="@string/set_font_title"/>
+
+    <LinearLayout style="@style/CardBox">
+        <LinearLayout style="@style/SettingRow">
+            <LinearLayout style="@style/SettingRowText">
+                <TextView style="@style/SettingTitle" android:text="@string/set_font_title"/>
+                <TextView style="@style/SettingDesc" android:text="@string/set_font_desc"/>
+            </LinearLayout>
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/fontChips"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"/>
+        <TextView
+            android:id="@+id/tvFontSample"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="14dp"
+            android:text="@string/font_sample"
+            android:textColor="?attr/wpText"
+            android:textSize="16sp"/>
+    </LinearLayout>
+
+    <TextView style="@style/SectionHead" android:text="@string/set_scale_title"/>
+
+    <LinearLayout style="@style/CardBox">
+        <LinearLayout style="@style/SettingRow">
+            <LinearLayout style="@style/SettingRowText">
+                <TextView style="@style/SettingTitle" android:text="@string/set_scale_title"/>
+                <TextView android:id="@+id/tvScaleDesc" style="@style/SettingDesc" android:text="@string/set_scale_desc"/>
+            </LinearLayout>
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/scaleChips"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingBottom="12dp"/>
+    </LinearLayout>
+</LinearLayout>

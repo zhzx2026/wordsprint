@@ -37,6 +37,7 @@ public class SetupActivity extends Activity {
     @Override protected void onCreate(Bundle b) {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         super.onCreate(b);
+        Skin.apply(this);                       // 配色/字体/字号：必须在 setContentView 之前
         setContentView(R.layout.sheet_setup);
         setFinishOnTouchOutside(true);
         Db.ensureLoaded(this);
@@ -122,8 +123,13 @@ public class SetupActivity extends Activity {
 
         findViewById(R.id.btnReview).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
-                int cnt = prefs.wrongs(book.id, book.n).cardinality();
-                if (cnt == 0) { Toast.makeText(SetupActivity.this, R.string.no_wrongs, Toast.LENGTH_SHORT).show(); return; }
+                WrongBook wbNow = prefs.wrongBook(book.id);
+                if (wbNow.dueCount() == 0) {
+                    Toast.makeText(SetupActivity.this,
+                            wbNow.isEmpty() ? R.string.no_wrongs : R.string.no_wrongs_due,
+                            Toast.LENGTH_SHORT).show();
+                    return;
+                }
                 prefs.saveSetup(book.id, size, order, lag);
                 Intent it = new Intent(SetupActivity.this, StudyActivity.class);
                 it.putExtra("book", book.id);
@@ -133,12 +139,28 @@ public class SetupActivity extends Activity {
             }
         });
 
+        // 错题本：从词本进来 = 总错题本 + 本词本筛选（用户 2026-09-16）
+        findViewById(R.id.btnWrong).setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { WrongActivity.open(SetupActivity.this, book.id); }
+        });
+
+        // 仅预览词表 / 批量改进度（用户 2026-09-15 要求：不想一个词一个词点）
+        findViewById(R.id.btnPreview).setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                BookPreviewActivity.open(SetupActivity.this, book.id, false);
+            }
+        });
+        findViewById(R.id.btnBatch).setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                BookPreviewActivity.open(SetupActivity.this, book.id, true);
+            }
+        });
         findViewById(R.id.btnReset).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 android.widget.TextView body = new android.widget.TextView(SetupActivity.this);
                 body.setText(getString(R.string.reset_confirm, book.display()));
                 body.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f);
-                body.setTextColor(getResources().getColor(R.color.text_secondary));
+                body.setTextColor(Skin.c(SetupActivity.this, R.attr.wpText2));
                 body.setLineSpacing(Ui.dp(SetupActivity.this, 4), 1f);
                 Ui.cardDialog(SetupActivity.this, getString(R.string.reset_progress), body,
                         getString(R.string.reset_yes), new Runnable() {
@@ -151,6 +173,7 @@ public class SetupActivity extends Activity {
         });
 
         refresh();
+        Ui.finishSetup(this);       // 字号/配色整页收口：只在这里做一次（refresh() 每次点击都会跑，别放那儿）
     }
 
     private boolean isCustom(int s) {
@@ -169,7 +192,7 @@ public class SetupActivity extends Activity {
         et.setHint(getString(R.string.size_hint));
         et.setText(String.valueOf(size));
         et.setTextSize(17);
-        et.setTextColor(getResources().getColor(R.color.text_primary));
+        et.setTextColor(Skin.c(this, R.attr.wpText));
         et.setBackgroundResource(R.drawable.bg_card_field);
         et.setTypeface(android.graphics.Typeface.MONOSPACE);
         int pd = (int) Ui.dp(this, 14);
@@ -195,10 +218,11 @@ public class SetupActivity extends Activity {
         int done = m.cardinality();
         int wrong = p.wrongs(book.id, book.n).cardinality();
         int pct = book.n == 0 ? 0 : done * 100 / book.n;
-        ring.setProgress(pct, getResources().getColor(R.color.text_primary), getResources().getColor(R.color.text_secondary));
-        tvStats.setText(getString(R.string.sheet_stats, done, book.n - done, wrong));
-        tvCta.setText(done == 0 ? getString(R.string.start_brush_group, size)
-                : getString(R.string.continue_brush_group, p.next(book.id) / Math.max(1, size) + 1));
+        ring.setProgress(pct, Skin.c(this, R.attr.wpText), Skin.c(this, R.attr.wpText2));
+        // 主按钮现在是并排里的一个（宽度约六成），文案写短：组号挪到统计行
+        tvCta.setText(done == 0 ? getString(R.string.start_brush) : getString(R.string.continue_brush));
+        tvStats.setText(getString(R.string.sheet_stats_group, done, book.n - done, wrong,
+                p.next(book.id) / Math.max(1, size) + 1));
         ((TextView) findViewById(R.id.btnReview)).setText(wrong > 0
                 ? getString(R.string.review_with_count, wrong) : getString(R.string.review_mode));
         ((TextView) findViewById(R.id.btnReview)).setEnabled(true);

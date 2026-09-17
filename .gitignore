@@ -11,6 +11,8 @@ tools*.zip
 test/out/
 test/src/
 raw_xlsx/
+# 四六级词库的原始 json（16MB，可随时用 scripts/etl_cet.py --fetch 重新拉，不入库）
+raw_cet/
 刷单词*.apk
 artifacts/
 tree.json

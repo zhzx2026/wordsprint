@@ -35,7 +35,47 @@ public class Update {
 
     public interface Cb { void onResult(Info info, String err); }
 
+    /**
+     * 检查结果（不管有没有新版本都给）——用户反馈「显示已经是最新版本，但明明有新包」，
+     * 根因就是界面只说结论、不说依据。现在把「查了哪个通道、服务器上是什么版本、本机是什么版本」
+     * 全带回来，设置页直接写出来，一眼就能看出是不是查错了通道。
+     */
+    public static class Res {
+        public Info server;          // 服务器上的版本（查到了才非空；可能比本机旧）
+        public boolean newer;        // 服务器版本是不是比本机新
+        public int channel;          // 0 = stable（正式版）· 1 = dev（dev 分支）
+        public String url = "";      // 实际请求的地址
+        public String err;           // 失败原因（null = 请求成功）
+        public boolean viaDev;       // 结果取自 dev 通道（正式版通道比它旧时会发生）
+    }
+
+    public interface Cb2 { void onRes(Res r); }
+
+    public static String channelName(Context c, int ch) {
+        return ch == 1 ? c.getString(R.string.update_src_dev) : c.getString(R.string.update_src_stable);
+    }
+
     private static Info pending;   // 等待用户授予安装权限后继续
+
+    // ---------- 下载进度（对外只读，供设置页/首页/进度弹窗显示） ----------
+    // 以前进度只画在「下载中」那个弹窗里，弹窗要是被系统压到后面（或者授权页刚返回），
+    // 用户就完全看不到有没有在下载 —— 用户反馈「更新进度条没有」。现在进度也是全局状态，
+    // 哪个页面在台上哪个页面显示。
+    private static volatile boolean busy;
+    private static volatile int pct = -1;          // -1 = 还不确定百分比（服务端没给长度）
+    private static volatile String line = "";
+    private static volatile Info latest;           // 最近一次查到的新版本（首页横幅用）
+
+    public static boolean isBusy() { return busy; }
+    public static int progressPct() { return pct; }
+    public static String progressLine() { return line; }
+    public static Info newest() { return latest; }
+    public static void clearNewest() { latest = null; }
+
+    // ---------- 进度弹窗（唯一的进度入口：用户 2026-09-15「进度条是弹窗不是设置界面」） ----------
+    private static AlertDialog progressDlg;
+    private static Activity progressHost;
+    private static Runnable cancelHook;         // 当前下载的「取消」动作
 
     public static int myCode(Context c) {
         try { return c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionCode; }
@@ -46,61 +86,104 @@ public class Update {
         catch (Exception e) { return "?"; }
     }
 
-    /** 返回非 null = 有更新；url 为空视为未配置（err 提示） */
+    /** 返回非 null = 有更新（老接口，保留给「只关心有没有更新」的地方） */
     public static Info check(Context c) throws Exception {
-        int ch = Prefs.of(c).updateChannel();
-        String raw = ch == 1
-                ? c.getString(R.string.update_dev_src).trim()
-                : c.getString(R.string.update_default_src).trim();
-        if (raw.contains("YOUR_GITHUB"))
-            throw new Exception("GitHub 源未配置：先跑 scripts/github_setup.sh 你的用户名/仓库");
-        if (raw.isEmpty()) throw new Exception("未设置更新源地址");
-        String u = raw.toLowerCase().endsWith(".json") ? raw
-                : raw + (raw.endsWith("/") ? "" : "/") + "update.json";
-        HttpURLConnection conn = (HttpURLConnection) new URL(u).openConnection();
-        conn.setConnectTimeout(6000);
-        conn.setReadTimeout(8000);
-        conn.setInstanceFollowRedirects(true);
-        try {
-            int sc = conn.getResponseCode();
-            if (sc / 100 != 2) throw new Exception("HTTP " + sc);
-            InputStream in = conn.getInputStream();
-            StringBuilder sb = new StringBuilder();
-            byte[] buf = new byte[4096];
-            int n, tot = 0;
-            while ((n = in.read(buf)) > 0 && tot < 256 * 1024) {
-                sb.append(new String(buf, 0, n, "UTF-8"));
-                tot += n;
-            }
-            in.close();
-            JSONObject j = new JSONObject(sb.toString());
-            Info i = new Info();
-            i.code = j.optInt("versionCode", 0);
-            i.name = j.optString("versionName", String.valueOf(i.code));
-            String rel = j.optString("url");
-            if (rel.startsWith("http")) i.url = rel;
-            else {
-                int q = u.lastIndexOf('/');
-                i.url = u.substring(0, q + 1) + rel;
-            }
-            i.notes = j.optString("notes", "");
-            i.force = j.optBoolean("force", false);
-            return i.code > myCode(c) ? i : null;
-        } finally { conn.disconnect(); }
+        Res r = checkRes(c);
+        if (r.err != null) throw new Exception(r.err);
+        return r.newer ? r.server : null;
     }
 
-    public static void checkAsync(final Activity a, final Cb cb) {
+    /**
+     * 完整检查：请求 update.json，把服务器版本与本机版本比一比。
+     * 不抛异常 —— 失败原因放在 {@link Res#err}，界面可以照实显示（HTTP 码 / 连不上 / 没配置）。
+     *
+     * 装的是开发版包（版本号 X.Y）时，会**顺带看一眼 dev 通道**：正式版通道只在转正时才前进，
+     * 平时永远停在旧版本上，只看它就会出现「明明有新包却显示已是最新版本」
+     * （用户 2026-09-15 装机实测遇到的正是这个）。dev 上的包更新就用它，并在界面标明来源。
+     */
+    public static Res checkRes(Context c) {
+        Res r = fetch(c, Prefs.of(c).updateChannel());
+        if (r.channel == 0 && Vers.isDevName(myName(c))) {
+            Res d = fetch(c, 1);
+            int base = r.server == null ? myCode(c) : Math.max(r.server.code, myCode(c));
+            if (d.server != null && d.server.code > base) {
+                r.server = d.server;
+                r.newer = d.server.code > myCode(c);
+                r.viaDev = true;
+                r.url = d.url;
+                r.err = null;
+            }
+        }
+        return r;
+    }
+
+    /** 只查一个通道 */
+    private static Res fetch(Context c, int channel) {
+        Res r = new Res();
+        r.channel = channel;
+        try {
+            String raw = channel == 1
+                    ? c.getString(R.string.update_dev_src).trim()
+                    : c.getString(R.string.update_default_src).trim();
+            if (raw.contains("YOUR_GITHUB")) { r.err = "GitHub 源未配置"; return r; }
+            if (raw.isEmpty()) { r.err = "未设置更新源地址"; return r; }
+            String u = raw.toLowerCase().endsWith(".json") ? raw
+                    : raw + (raw.endsWith("/") ? "" : "/") + "update.json";
+            r.url = u;
+            HttpURLConnection conn = (HttpURLConnection) new URL(u).openConnection();
+            conn.setConnectTimeout(8000);
+            conn.setReadTimeout(10000);
+            conn.setInstanceFollowRedirects(true);
+            try {
+                int sc = conn.getResponseCode();
+                if (sc / 100 != 2) { r.err = "HTTP " + sc; return r; }
+                InputStream in = conn.getInputStream();
+                StringBuilder sb = new StringBuilder();
+                byte[] buf = new byte[4096];
+                int n, tot = 0;
+                while ((n = in.read(buf)) > 0 && tot < 256 * 1024) {
+                    sb.append(new String(buf, 0, n, "UTF-8"));
+                    tot += n;
+                }
+                in.close();
+                JSONObject j = new JSONObject(sb.toString());
+                Info i = new Info();
+                i.code = j.optInt("versionCode", 0);
+                i.name = j.optString("versionName", String.valueOf(i.code));
+                String rel = j.optString("url");
+                if (rel.startsWith("http")) i.url = rel;
+                else {
+                    int q = u.lastIndexOf('/');
+                    i.url = u.substring(0, q + 1) + rel;
+                }
+                i.notes = j.optString("notes", "");
+                i.force = j.optBoolean("force", false);
+                r.server = i;
+                r.newer = i.code > myCode(c);
+                return r;
+            } finally { conn.disconnect(); }
+        } catch (Throwable t) {
+            r.err = t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage();
+            return r;
+        }
+    }
+
+    /** 异步版：回调里连「查了哪个通道、服务器什么版本」一起给 */
+    public static void checkResAsync(final Activity a, final Cb2 cb) {
         new Thread(new Runnable() {
             @Override public void run() {
-                Info info = null; String err = null;
-                try { info = check(a); }
-                catch (Exception e) { err = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage(); }
-                final Info fi = info; final String fe = err;
+                final Res r = checkRes(a);
                 a.runOnUiThread(new Runnable() {
-                    @Override public void run() { cb.onResult(fi, fe); }
+                    @Override public void run() { cb.onRes(r); }
                 });
             }
         }).start();
+    }
+
+    public static void checkAsync(final Activity a, final Cb cb) {
+        checkResAsync(a, new Cb2() {
+            @Override public void onRes(Res r) { cb.onResult(r.newer ? r.server : null, r.err); }
+        });
     }
 
     /** 发现新版本 → 卡片弹窗（更新说明 + 立即更新/稍后） */
@@ -110,14 +193,14 @@ public class Update {
         TextView head = new TextView(a);
         head.setText(a.getString(R.string.update_found_v, info.name, myName(a)));
         head.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f);
-        head.setTextColor(a.getResources().getColor(R.color.text_primary));
+        head.setTextColor(Skin.c(a, R.attr.wpText));
         col.addView(head, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         if (!info.notes.isEmpty()) {
             TextView notes = new TextView(a);
             notes.setText(info.notes);
             notes.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
-            notes.setTextColor(a.getResources().getColor(R.color.text_secondary));
+            notes.setTextColor(Skin.c(a, R.attr.wpText2));
             notes.setLineSpacing(Ui.dp(a, 4), 1f);
             notes.setBackgroundResource(R.drawable.bg_card_field);
             int np = (int) Ui.dp(a, 11);
@@ -135,6 +218,7 @@ public class Update {
 
     /** 安装权限检查 → 下载 → 拉起安装器 */
     private static void begin(Activity a, Info info) {
+        if (busy) { showProgress(a); return; }      // 已在下载：别开第二条，把进度弹窗亮出来就行
         if (!canInstall(a)) {
             pending = info;
             Toast.makeText(a, R.string.update_need_perm, Toast.LENGTH_LONG).show();
@@ -150,10 +234,18 @@ public class Update {
         download(a, info);
     }
 
-    /** 从系统设置授权页返回后调用：若有挂起的更新则继续 */
+    /**
+     * 从系统设置授权页返回后调用：若有挂起的更新则继续。
+     *
+     * 以前只在首页 onResume 里调，从设置页点的更新一旦要授权，回来就**什么都不会发生**
+     * （表现和「进度条坏了」一模一样）。现在三个入口都调它；权限没给也不再静默 —— 说一句为什么。
+     */
     public static void resumePending(Activity a) {
         Info p = pending;
-        if (p != null && canInstall(a)) { pending = null; download(a, p); }
+        if (p == null) return;
+        if (canInstall(a)) { pending = null; download(a, p); return; }
+        pending = null;
+        try { Toast.makeText(a, R.string.update_need_perm, Toast.LENGTH_LONG).show(); } catch (Throwable ignored) {}
     }
 
     private static boolean canInstall(Context c) {
@@ -164,16 +256,88 @@ public class Update {
     private static void download(final Activity a, final Info info) {
         final File f = new File(a.getExternalFilesDir(null), "update.apk");
         final boolean[] cancel = {false};
-        final android.app.AlertDialog[] ref = new android.app.AlertDialog[1];
+        cancelHook = new Runnable() {
+            @Override public void run() { cancel[0] = true; }
+        };
+        busy = true;
+        pct = -1;
+        line = a.getString(R.string.update_downloading);
+        presentProgress(a, info);
+        new Thread(new Runnable() {
+            @Override public void run() { runDownload(a, info, f, cancel); }
+        }).start();
+    }
+
+    /**
+     * 进度条 drawable：**在代码里搭**，不走 XML。
+     *
+     * 用户 2026-09-16 报「更新进度条又坏了」，症状很具体：弹窗出来了、百分数在跳，就是**看不到条**。
+     * 根因就在旧实现 —— res/drawable/progress_update.xml 里写的是 ?attr/wpChipBg / ?attr/wpBrand /
+     * ?attr/wpBrand2，而它是用 Resources.getDrawable() 取的：那条路径不带 Activity 的主题，
+     * 主题属性解析不出来（轨道与进度都成了透明），于是「有数字、没条」。
+     * 现在颜色直接取 Skin 解析好的实色，再也不会出现「解析不到 = 隐形」这种事。
+     * 轨道色沿用热力图空档那套算法（surface 混 22% 正文色）：任何配色/深浅模式下都看得见。
+     */
+    private static android.graphics.drawable.Drawable barDrawable(Context c) {
+        float d = c.getResources().getDisplayMetrics().density;
+        float r = 5f * d;
+        int track = Heat.mix(Skin.c(c, R.attr.wpSurface), Skin.c(c, R.attr.wpText2), 0.22f);
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+        bg.setColor(track);
+        bg.setCornerRadius(r);
+        android.graphics.drawable.GradientDrawable fg = new android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{Skin.c(c, R.attr.wpBrand), Skin.c(c, R.attr.wpBrand2)});
+        fg.setCornerRadius(r);
+        android.graphics.drawable.ClipDrawable clip = new android.graphics.drawable.ClipDrawable(
+                fg, android.view.Gravity.START, android.graphics.drawable.ClipDrawable.HORIZONTAL);
+        android.graphics.drawable.LayerDrawable ld = new android.graphics.drawable.LayerDrawable(
+                new android.graphics.drawable.Drawable[]{bg, clip});
+        ld.setId(0, android.R.id.background);
+        ld.setId(1, android.R.id.progress);
+        return ld;
+    }
+
+    /**
+     * 建/重挂进度弹窗。下载中如果用户把弹窗关掉或切了页面，再点一次「立即更新」会走到这里，
+     * 而不是开始第二次下载（{@link #showProgress}）。
+     */
+    private static void presentProgress(final Activity a, final Info info) {
+        dismissProgress();
+        progressHost = a;
         float d = a.getResources().getDisplayMetrics().density;
         android.widget.ProgressBar pb = new android.widget.ProgressBar(a, null,
                 android.R.attr.progressBarStyleHorizontal);
         pb.setMax(100);
-        try { pb.setProgressDrawable(a.getResources().getDrawable(R.drawable.progress_update)); } catch (Throwable ignored) {}
+        pb.setProgress(0);
+        pb.setIndeterminate(false);
+        pb.setMinimumHeight((int) (10 * d));
+        // 样式全部在代码里给（见 barDrawable）；顺手清掉主题 tint —— 否则 ROM 的 accent 色会盖掉品牌渐变
+        try {
+            pb.setProgressDrawable(barDrawable(a));
+            pb.setProgressTintList(null);
+            pb.setProgressBackgroundTintList(null);
+            pb.setIndeterminateTintList(null);
+        } catch (Throwable ignored) {}
         final TextView st = new TextView(a);
         st.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
-        st.setTextColor(a.getResources().getColor(R.color.text_secondary));
+        st.setTextColor(Skin.c(a, R.attr.wpText2));
         st.setText(R.string.update_downloading);
+        // 弹窗不再「只在有进度事件时才动」：每 300ms 自己读一次全局进度。
+        // 服务端没给 Content-Length 时百分比也会按已下载量估算（pct 不会是 -1），所以条子一定会动。
+        final android.widget.ProgressBar fpb = pb;
+        final TextView fst = st;
+        final Runnable follow = new Runnable() {
+            @Override public void run() {
+                int p = progressPct();
+                if (p >= 0) fpb.setProgress(p);
+                if (line != null && line.length() > 0) fst.setText(line);
+                if (!busy) return;
+                fpb.postDelayed(this, 300);
+            }
+        };
+        follow.run();                 // 立刻就显示当前状态，别让用户先盯 300ms 的空条
+        pb.postDelayed(follow, 300);
         LinearLayout col = new LinearLayout(a);
         col.setOrientation(LinearLayout.VERTICAL);
         col.setBackgroundResource(R.drawable.bg_card_28);
@@ -183,7 +347,7 @@ public class Update {
         title.setText(a.getString(R.string.update_downloading_title, info.name));
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16.5f);
         title.setTypeface(title.getTypeface(), android.graphics.Typeface.BOLD);
-        title.setTextColor(a.getResources().getColor(R.color.text_primary));
+        title.setTextColor(Skin.c(a, R.attr.wpText));
         col.addView(title, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(
@@ -191,14 +355,14 @@ public class Update {
         slp.topMargin = (int) (10 * d);
         col.addView(st, slp);
         LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, (int) (8 * d));
+                ViewGroup.LayoutParams.MATCH_PARENT, (int) (10 * d));
         plp.topMargin = (int) (10 * d);
         col.addView(pb, plp);
         TextView cancelBtn = new TextView(a);
         cancelBtn.setText(R.string.update_cancel);
         cancelBtn.setGravity(android.view.Gravity.CENTER);
         cancelBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f);
-        cancelBtn.setTextColor(a.getResources().getColor(R.color.text_secondary));
+        cancelBtn.setTextColor(Skin.c(a, R.attr.wpText2));
         cancelBtn.setBackgroundResource(R.drawable.bg_btn_outline);
         LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, (int) (40 * d));
@@ -206,76 +370,146 @@ public class Update {
         col.addView(cancelBtn, clp);
         cancelBtn.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
-                cancel[0] = true;
-                try { if (ref[0] != null) ref[0].dismiss(); } catch (Throwable ignored) {}
+                if (cancelHook != null) cancelHook.run();
+                dismissProgress();
                 try { Toast.makeText(a, R.string.update_cancelled, Toast.LENGTH_SHORT).show(); } catch (Throwable ignored) {}
             }
         });
         // 走 Ui.presentCard：统一去掉系统对话框那层白面板（圆角外不再露白），且不可点外部误关
-        final AlertDialog dlg = Ui.presentCard(a, col, false);
-        ref[0] = dlg;
+        progressDlg = Ui.presentCard(a, col, false);
+    }
 
-        final int curCode = myCode(a);
-        new Thread(new Runnable() {
+    /** 下载中但看不到进度弹窗（用户切了页面 / 弹窗被系统收走）时，把它重新拉起来 */
+    public static void showProgress(Activity a) {
+        if (!busy || cancelHook == null) return;
+        if (progressDlg != null && progressHost == a && progressDlg.isShowing()) return;
+        Info info = new Info();
+        info.name = myName(a);
+        presentProgress(a, info);
+    }
+
+    private static void dismissProgress() {
+        try { if (progressDlg != null) progressDlg.dismiss(); } catch (Throwable ignored) {}
+        progressDlg = null;
+    }
+
+    /**
+     * 下载 + 安装的调度：失败会**自动重试一次**。
+     *
+     * 用户 2026-09-16 要求「彻底修好」。除了进度条本身（见 {@link #barDrawable}），
+     * 这里把「下载明明没完成却去装」这条最容易炸的路堵上：
+     *   · 服务端给了 Content-Length → 字节数必须一分不差；
+     *   · 再看能不能按 zip 打开、里面有没有 AndroidManifest.xml（被截断的包过不了）；
+     * 两次都不行才报错，并且把更新卡片重新亮出来（对着同一版可以直接点「立即更新」重试）。
+     */
+    private static void runDownload(final Activity a, final Info info, final File f, final boolean[] cancel) {
+        String err = null;
+        for (int attempt = 0; attempt < 2 && !cancel[0]; attempt++) {
+            try {
+                if (attempt > 0) {                       // 重试前把进度条拉回起点，别让它停在上一轮的位置
+                    pct = 0;
+                    line = a.getString(R.string.update_downloading);
+                }
+                fetch(a, info, f, cancel);
+                if (cancel[0]) { finishQuietly(f); return; }
+                busy = false;
+                cancelHook = null;
+                a.runOnUiThread(new Runnable() {
+                    @Override public void run() {
+                        dismissProgress();
+                        install(a, f, info);
+                    }
+                });
+                return;
+            } catch (Exception e) {
+                if (cancel[0]) { finishQuietly(f); return; }
+                err = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+            }
+        }
+        finishQuietly(f);
+        final String em = err;
+        a.runOnUiThread(new Runnable() {
             @Override public void run() {
-                HttpURLConnection c = null;
-                try {
-                    c = (HttpURLConnection) new URL(info.url).openConnection();
-                    c.setConnectTimeout(8000);
-                    c.setReadTimeout(15000);
-                    int sc = c.getResponseCode();
-                    if (sc / 100 != 2) throw new Exception("HTTP " + sc);
-                    long total = c.getContentLengthLong();
-                    InputStream in = c.getInputStream();
-                    FileOutputStream out = new FileOutputStream(f);
-                    byte[] buf = new byte[16384];
-                    long got = 0;
-                    int n;
-                    int lastPct = -1;
-                    while ((n = in.read(buf)) > 0) {
-                        if (cancel[0]) break;
-                        out.write(buf, 0, n);
-                        got += n;
-                        final int pct = total > 0 ? (int) (got * 100 / total)
-                                : (int) Math.min(99, got / 51200);
-                        if (pct != lastPct) {
-                            lastPct = pct;
-                            final String kb = String.format("%.1f MB / %.1f MB",
-                                    got / 1048576.0, Math.max(0, total) / 1048576.0);
-                            a.runOnUiThread(new Runnable() {
-                                @Override public void run() {
-                                    pb.setProgress(pct);
-                                    st.setText(a.getString(R.string.update_progress, pct) + "   " + kb);
-                                }
-                            });
-                        }
-                    }
-                    out.flush(); out.close(); in.close();
-                    if (cancel[0]) {
-                        try { if (f.exists()) f.delete(); } catch (Throwable ignored) {}
-                        return;
-                    }
-                    a.runOnUiThread(new Runnable() {
-                        @Override public void run() {
-                            try { dlg.dismiss(); } catch (Throwable ignored) {}
-                            install(a, f, info);
-                        }
-                    });
-                } catch (final Exception e) {
-                    try { if (f.exists()) f.delete(); } catch (Exception ignored) {}
-                    final String em = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
-                    a.runOnUiThread(new Runnable() {
-                        @Override public void run() {
-                            try { dlg.dismiss(); } catch (Throwable ignored) {}
-                            if (cancel[0] || a.isFinishing()) return;
-                            Toast.makeText(a, a.getString(R.string.update_fail, em), Toast.LENGTH_LONG).show();
-                        }
-                    });
-                } finally {
-                    if (c != null) try { c.disconnect(); } catch (Exception ignored) {}
+                dismissProgress();
+                if (cancel[0] || a.isFinishing()) return;
+                Toast.makeText(a, a.getString(R.string.update_fail, em), Toast.LENGTH_LONG).show();
+                showFound(a, info);          // 网络抖一下不该就此卡死：卡片再亮一次，等于给个「重试」按钮
+            }
+        });
+    }
+
+    /** 收尾：复位下载状态、删掉半截文件（取消/失败共用） */
+    private static void finishQuietly(File f) {
+        busy = false;
+        cancelHook = null;
+        pct = -1;
+        line = "";
+        try { if (f != null && f.exists()) f.delete(); } catch (Throwable ignored) {}
+    }
+
+    /** 下完一次（成功返回；失败抛异常，交给 {@link #runDownload} 决定重不重试） */
+    private static void fetch(final Activity a, final Info info, final File f, final boolean[] cancel) throws Exception {
+        HttpURLConnection c = null;
+        long startedAt = System.currentTimeMillis();
+        try {
+            c = (HttpURLConnection) new URL(info.url).openConnection();
+            c.setConnectTimeout(8000);
+            c.setReadTimeout(15000);
+            c.setInstanceFollowRedirects(true);
+            int sc = c.getResponseCode();
+            if (sc / 100 != 2) throw new Exception("HTTP " + sc);
+            long total = c.getContentLengthLong();
+            InputStream in = c.getInputStream();
+            FileOutputStream out = new FileOutputStream(f);
+            byte[] buf = new byte[16384];
+            long got = 0;
+            int n;
+            int lastPct = -1;
+            while ((n = in.read(buf)) > 0) {
+                if (cancel[0]) break;
+                out.write(buf, 0, n);
+                got += n;
+                // 注意：局部变量别叫 pct —— pct 是全局进度字段（同名会把自己的赋值改成写局部）
+                final int curPct = total > 0 ? (int) (got * 100 / total)
+                        : (int) Math.min(99, got / 51200);
+                if (curPct != lastPct) {
+                    lastPct = curPct;
+                    final String kb = String.format("%.1f MB / %.1f MB",
+                            got / 1048576.0, Math.max(0, total) / 1048576.0);
+                    final long fgot = got;
+                    final long t0 = System.currentTimeMillis() - startedAt;
+                    final String speed = t0 > 600
+                            ? String.format(" · %.1f MB/s", fgot / 1048576.0 / (t0 / 1000.0)) : "";
+                    final String text = a.getString(R.string.update_progress, curPct) + "   " + kb + speed;
+                    pct = curPct;                      // 全局进度（进度弹窗每 300ms 读它）
+                    line = text;
                 }
             }
-        }).start();
+            out.flush();
+            out.close();
+            in.close();
+            if (cancel[0]) return;
+            if (total > 0 && got != total) throw new Exception("下载不完整（" + got + "/" + total + " 字节）");
+            if (!looksLikeApk(f)) throw new Exception("文件不完整，缺少安装清单");
+        } finally {
+            if (c != null) try { c.disconnect(); } catch (Exception ignored) {}
+        }
+    }
+
+    /**
+     * 是不是一个完好的安装包：ZipFile 会读中央目录，被截断的包在这一步就露馅
+     * （只看头两个字节 "PK" 不够 —— 半包照样以 PK 开头）。
+     */
+    private static boolean looksLikeApk(File f) {
+        java.util.zip.ZipFile z = null;
+        try {
+            z = new java.util.zip.ZipFile(f);
+            return z.getEntry("AndroidManifest.xml") != null;
+        } catch (Exception e) {
+            return false;
+        } finally {
+            try { if (z != null) z.close(); } catch (Exception ignored) {}
+        }
     }
 
     private static void install(final Activity a, File f, Info info) {
@@ -291,20 +525,81 @@ public class Update {
         }
     }
 
-    /** MainActivity 启动时的自动检查（每天最多一次，同版本不重复提醒） */
-    public static void autoCheck(final Activity a) {
+    // ---------- 前台轮询：进度显示 + 更灵敏的检查 ----------
+
+    /** 页面实现它就能拿到「下载进度」和「查到新版本」的回调 */
+    public interface Watch {
+        /** pct < 0 = 大小未知；line = 一行说明 */
+        void onTick(int pct, String line);
+        /** 静默检查查到新版本（同一版本只回调一次） */
+        void onFound(Info info);
+    }
+
+    private static android.os.Handler h;
+    private static Runnable loop;
+    private static java.lang.ref.WeakReference<Activity> ref;
+    private static Watch wcb;
+    private static int tick;
+    private static int lastFoundCode = -1;
+
+    /**
+     * 页面 onResume 调它、onPause 调 {@link #stopWatch()}。
+     * 每 400ms 回一次进度（有下载在跑时才有内容），每 60 秒静默查一次更新 ——
+     * 「不够灵敏」就是这么来的：前台一直在问，不用退回桌面再进来。
+     */
+    public static void startWatch(Activity a, Watch w) {
+        ref = new java.lang.ref.WeakReference<Activity>(a);
+        wcb = w;
+        tick = 0;
+        if (h == null) h = new android.os.Handler(android.os.Looper.getMainLooper());
+        if (loop != null) h.removeCallbacks(loop);
+        loop = new Runnable() {
+            @Override public void run() {
+                Activity act = ref == null ? null : ref.get();
+                if (act == null || act.isFinishing()) { stopWatch(); return; }
+                if (wcb != null) wcb.onTick(pct, line);
+                // 下载在跑、弹窗却不在眼前（用户换了页面 / 弹窗被系统收走）→ 自动重新挂出来。
+                // 这也是「进度条坏了」的一类表现：不是没下载，而是根本没人显示它。
+                if (busy && !act.isFinishing() && (progressDlg == null || !progressDlg.isShowing())) {
+                    showProgress(act);
+                }
+                if (tick++ % 150 == 0 && !busy) silentCheck(act);     // 150 × 400ms = 60 秒
+                h.postDelayed(this, 400);
+            }
+        };
+        h.post(loop);
+        silentCheck(a);        // 一进页面就查一次（节流 60 秒由 silentCheck 自己管）
+    }
+
+    public static void stopWatch() {
+        if (h != null && loop != null) h.removeCallbacks(loop);
+        loop = null;
+        ref = null;
+        wcb = null;
+    }
+
+    /** 静默检查一次（节流 60 秒）：查到新版只回报，弹不弹窗由页面决定 */
+    private static void silentCheck(Activity a) {
         final Prefs p = Prefs.of(a);
         if (!p.on(Prefs.K_UP_AUTO, true)) return;
         long now = System.currentTimeMillis();
-        if (now - p.l(Prefs.K_UP_LAST, 0) < 20L * 3600 * 1000) return;
+        if (now - p.l(Prefs.K_UP_LAST, 0) < 60L * 1000) return;
         p.set(Prefs.K_UP_LAST, now);
-        checkAsync(a, new Cb() {
-            @Override public void onResult(Info info, String err) {
-                if (info == null) return;   // 自动检查静默
-                if (!info.force && p.i(Prefs.K_UP_SEEN, 0) == info.code) return;
+        checkResAsync(a, new Cb2() {
+            @Override public void onRes(Res r) {
+                Info info = r.newer ? r.server : null;
+                if (info == null) { if (r.err == null) latest = null; return; }
+                latest = info;
+                if (info.code == lastFoundCode) return;        // 同一个版本不反复打扰
+                if (!info.force && p.i(Prefs.K_UP_SEEN, 0) == info.code) {
+                    if (wcb != null) wcb.onFound(info);        // 提醒过了：首页横幅仍然亮着
+                    return;
+                }
                 p.set(Prefs.K_UP_SEEN, info.code);
-                showFound(a, info);
+                lastFoundCode = info.code;
+                if (wcb != null) wcb.onFound(info);
             }
         });
     }
+
 }

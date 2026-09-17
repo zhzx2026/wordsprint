@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 设置 → 数据与档案：档案切换 · 进度码导出/扫码导入 · 战绩分享 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <TextView style="@style/SectionHead" android:text="@string/set_profile_title"/>
+
+    <LinearLayout style="@style/CardBox">
+        <LinearLayout android:id="@+id/rowProfile" style="@style/SettingRow">
+            <LinearLayout style="@style/SettingRowText">
+                <TextView style="@style/SettingTitle" android:text="@string/set_profile_title"/>
+                <TextView android:id="@+id/tvProfileNow" style="@style/SettingDesc" android:text="@string/set_profile_desc"/>
+            </LinearLayout>
+            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:tint="?attr/wpText2" android:src="@drawable/ic_chevron" android:contentDescription="@null"/>
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView style="@style/SectionHead" android:text="@string/set_data_title"/>
+
+    <LinearLayout style="@style/CardBox">
+        <LinearLayout android:id="@+id/rowExport" style="@style/SettingRow">
+            <LinearLayout style="@style/SettingRowText">
+                <TextView style="@style/SettingTitle" android:text="@string/export_progress"/>
+                <TextView style="@style/SettingDesc" android:text="@string/transfer_desc"/>
+            </LinearLayout>
+            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:tint="?attr/wpText2" android:src="@drawable/ic_chevron" android:contentDescription="@null"/>
+        </LinearLayout>
+        <View style="@style/SettingDivider"/>
+
+        <LinearLayout android:id="@+id/rowScan" style="@style/SettingRow">
+            <LinearLayout style="@style/SettingRowText">
+                <TextView style="@style/SettingTitle" android:text="@string/scan_import"/>
+                <TextView style="@style/SettingDesc" android:text="@string/transfer_desc"/>
+            </LinearLayout>
+            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:tint="?attr/wpText2" android:src="@drawable/ic_chevron" android:contentDescription="@null"/>
+        </LinearLayout>
+        <View style="@style/SettingDivider"/>
+
+        <LinearLayout android:id="@+id/rowShare" style="@style/SettingRow">
+            <LinearLayout style="@style/SettingRowText">
+                <TextView style="@style/SettingTitle" android:text="@string/set_share_title"/>
+                <TextView style="@style/SettingDesc" android:text="@string/set_share_desc"/>
+            </LinearLayout>
+            <ImageView android:layout_width="18dp" android:layout_height="18dp" android:tint="?attr/wpText2" android:src="@drawable/ic_chevron" android:contentDescription="@null"/>
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

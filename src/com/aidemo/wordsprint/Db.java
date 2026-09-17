@@ -15,6 +15,8 @@ import java.util.List;
 public class Db {
     public static final int STAGE_PRIMARY = 0, STAGE_JUNIOR = 1, STAGE_SENIOR = 2,
             STAGE_EXAM = 3, STAGE_EXT = 4;
+    /** 大学四六级（wdb 里打包在词书库末尾；旧包里的 4 是「拓展」，别复用） */
+    public static final int STAGE_COLLEGE = 5;
 
     public static class Book {
         public String id, pub, title, series;
@@ -58,6 +60,7 @@ public class Db {
             case STAGE_JUNIOR: return "初中";
             case STAGE_SENIOR: return "高中";
             case STAGE_EXAM: return "考纲";
+            case STAGE_COLLEGE: return "大学";
             default: return "拓展";
         }
     }

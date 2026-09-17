@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 设置 → 关于与更新：版本信息 · 更新通道 · 自动检查开关 · 手动检查 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <TextView style="@style/SectionHead" android:text="@string/nav_about"/>
+
+    <LinearLayout style="@style/CardBox">
+        <LinearLayout style="@style/SettingRow">
+            <LinearLayout style="@style/SettingRowText">
+                <TextView style="@style/SettingTitle" android:text="@string/update_src_title"/>
+                <TextView android:id="@+id/tvUpdateState" style="@style/SettingDesc" android:text="@string/update_checking"/>
+            </LinearLayout>
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/srcChips"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingBottom="12dp"/>
+        <View style="@style/SettingDivider"/>
+
+        <LinearLayout style="@style/SettingRow">
+            <LinearLayout style="@style/SettingRowText">
+                <TextView style="@style/SettingTitle" android:text="@string/update_auto"/>
+                <TextView style="@style/SettingDesc" android:text="@string/update_auto_desc"/>
+            </LinearLayout>
+            <Switch android:id="@+id/swUpdate" style="@style/SettingSwitch" android:clickable="false" android:focusable="false"/>
+        </LinearLayout>
+        <View style="@style/SettingDivider"/>
+
+        <LinearLayout style="@style/SettingRow">
+            <LinearLayout style="@style/SettingRowText">
+                <TextView style="@style/SettingTitle" android:text="@string/update_check_now"/>
+                <TextView android:id="@+id/tvAbout" style="@style/SettingDesc" android:text="@string/update_desc"/>
+            </LinearLayout>
+            <TextView
+                android:id="@+id/btnUpdateCheck"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_btn_gradient"
+                android:paddingStart="18dp"
+                android:paddingEnd="18dp"
+                android:paddingTop="9dp"
+                android:paddingBottom="9dp"
+                android:text="@string/update_check_now"
+                android:textColor="#FFFFFFFF"
+                android:textSize="13.5sp"/>
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tvVersionFooter"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="22dp"
+        android:gravity="center"
+        android:textColor="?attr/wpText2"
+        android:textSize="11.5sp"/>
+</LinearLayout>

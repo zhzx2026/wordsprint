@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/bg">
+    android:background="?attr/wpBg">
 
     <!-- ===== 渐变头部 ===== -->
     <LinearLayout
@@ -32,18 +32,37 @@
                 android:textStyle="bold"
                 android:letterSpacing="0.02"/>
 
-            <TextView
-                android:id="@+id/tvSub"
+            <LinearLayout
+                android:id="@+id/btnProfile"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:layout_marginStart="10dp"
-                android:layout_marginTop="5dp"
-                android:text="@string/brand_sub"
-                android:textColor="@color/white70"
-                android:textSize="12sp"
-                android:maxLines="1"
-                android:ellipsize="end"/>
+                android:orientation="vertical"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:id="@+id/tvProfile"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/brand_sub"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="13sp"
+                    android:maxLines="1"
+                    android:ellipsize="end"/>
+
+                <TextView
+                    android:id="@+id/tvSub"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/brand_sub"
+                    android:textColor="@color/white70"
+                    android:textSize="11sp"
+                    android:maxLines="1"
+                    android:ellipsize="end"/>
+            </LinearLayout>
 
             <ImageView
                 android:id="@+id/btnSettings"
@@ -52,7 +71,7 @@
                 android:padding="9dp"
                 android:background="@drawable/bg_pill_white20"
                 android:src="@drawable/ic_settings"
-                android:tint="@color/surface"
+                android:tint="?attr/wpSurface"
                 android:contentDescription="@string/settings"/>
         </LinearLayout>
 
@@ -84,7 +103,7 @@
                         android:layout_height="13dp"
                         android:layout_marginEnd="4dp"
                         android:src="@drawable/ic_flame"
-                        android:tint="@color/amber"
+                        android:tint="?attr/wpAmber"
                         android:contentDescription="@null"/>
 
                     <TextView

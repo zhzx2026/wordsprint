@@ -27,6 +27,14 @@ else REMOTE="https://github.com/$REPO.git"; fi      # 本机跑就用现成的 g
   git config user.name wordsprint-ci
   git config user.email ci@wordsprint.local
   cp "$OLDPWD/$APK" wordsprint.apk
+  # 在线战绩页也跟着发：App 里的二维码在 dev 版指向 jsDelivr 的 @dev/share/index.html
+  if [ -f "$OLDPWD/share/index.html" ]; then
+    mkdir -p share && cp "$OLDPWD/share/index.html" share/index.html
+  fi
+  # 战绩页用相对路径取字体（../res/font/wp_word.ttf）：Pages 从 dev 分支托管时也要有这份文件
+  if [ -f "$OLDPWD/res/font/wp_word.ttf" ]; then
+    mkdir -p res/font && cp "$OLDPWD/res/font/wp_word.ttf" res/font/wp_word.ttf
+  fi
   _VER="$VER" _VC="$VC" _URL="$URLBASE/wordsprint.apk" _NOTES="$NOTES" python3 - <<'PY'
 import json, os
 d = {"versionCode": int(os.environ["_VC"]), "versionName": os.environ["_VER"],

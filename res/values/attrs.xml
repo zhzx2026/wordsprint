@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  配色方案（多套皮肤）用到的主题属性。
+  为什么要走 ?attr 而不是直接 @color：值资源没法按皮肤切换，主题属性可以。
+  默认值在 Theme.WordsPrint.Base 里给出（= 暖纸风），皮肤只是一层 overlay（Skin.java 用
+  Theme.applyStyle 挂上去），因此 深色模式 / Sheet 透明底 / 扫码页黑底 都不会被皮肤破坏。
+-->
+<resources>
+    <attr name="wpBg" format="color"/>
+    <attr name="wpSurface" format="color"/>
+    <attr name="wpText" format="color"/>
+    <attr name="wpText2" format="color"/>
+    <attr name="wpBrand" format="color"/>
+    <attr name="wpBrand2" format="color"/>
+    <attr name="wpBrandSoft" format="color"/>
+    <attr name="wpHeaderStart" format="color"/>
+    <attr name="wpHeaderEnd" format="color"/>
+    <attr name="wpLine" format="color"/>
+    <attr name="wpChipBg" format="color"/>
+    <attr name="wpStatusBar" format="color"/>
+    <attr name="wpGreen" format="color"/>
+    <attr name="wpGreenBg" format="color"/>
+    <attr name="wpGreen1" format="color"/>
+    <attr name="wpGreen2" format="color"/>
+    <attr name="wpRed" format="color"/>
+    <attr name="wpRedBg" format="color"/>
+    <attr name="wpAmber" format="color"/>
+    <attr name="wpTrack" format="color"/>
+    <attr name="wpCardStroke" format="color"/>
+</resources>

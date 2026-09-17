@@ -33,6 +33,15 @@ public class Engine {
     private int current = -1;
     private boolean flipped, busy;
 
+    // ---- 撤销上一步作答（点错「记住了 / 不认识」时救回来）----
+    // 每次 answer() 前整份状态拍一张快照；undo() 原样还原并把当前卡摆回那张（没翻面的状态）。
+    private int[] snapQ;
+    private int[][] snapDue;
+    private int[] snapFirst;
+    private BitSet snapMastered;
+    private int snapDrawn, snapTotal, snapOk, snapAns, snapFirstOk, snapRequeue, snapCurrent, snapPos;
+    private boolean snapFlipped, snapReview;
+
     public Engine(int n, int[] order, BitSet mastered, int pos,
                   int groupSize, int lag, boolean redoAll, Listener L) {
         this.n = n; this.order = order; this.mastered = mastered;
@@ -60,6 +69,7 @@ public class Engine {
 
     /** 开始本组：从 pos 起在 order 空间取 groupSize 个（跳过已掌握，redoAll 时全含） */
     public void startGroup() {
+        snapQ = null;
         review = false;
         q.clear(); due.clear(); firstShown.clear();
         drawn = 0; okCount = 0; answers = 0; firstOk = 0; requeues = 0;
@@ -78,6 +88,7 @@ public class Engine {
 
     /** 错词复习：以给定列表为整组，不推进 pos */
     public void startQueue(int[] idxs) {
+        snapQ = null;
         review = true;
         q.clear(); due.clear(); firstShown.clear();
         drawn = 0; okCount = 0; answers = 0; firstOk = 0; requeues = 0;
@@ -119,6 +130,7 @@ public class Engine {
     /** 记录一次作答（不含动画）；随后应调用 next() */
     public void answer(boolean ok) {
         if (current < 0 || busy) return;
+        snapshot();                       // 先拍照，答错了还能撤销
         busy = true;
         answers++;
         boolean already = mastered.get(current);
@@ -139,6 +151,48 @@ public class Engine {
 
     public void markFlipped() { flipped = true; }
 
+    // ---------------- 撤销 ----------------
+
+    /** 有没有可撤销的作答（同一组内有效；组结束/换组后自动失效） */
+    public boolean canUndo() { return snapQ != null; }
+
+    private void snapshot() {
+        snapQ = new int[q.size()];
+        int i = 0;
+        for (int w : q) snapQ[i++] = w;
+        snapDue = new int[due.size()][];
+        for (int k = 0; k < due.size(); k++) snapDue[k] = due.get(k).clone();
+        snapFirst = new int[firstShown.size()];
+        i = 0;
+        for (int w : firstShown) snapFirst[i++] = w;
+        snapMastered = (BitSet) mastered.clone();
+        snapDrawn = drawn; snapTotal = groupTotal; snapOk = okCount; snapAns = answers;
+        snapFirstOk = firstOk; snapRequeue = requeues; snapCurrent = current; snapPos = pos;
+        snapFlipped = flipped; snapReview = review;
+    }
+
+    /**
+     * 撤销上一步：队列、回炉表、已掌握、各项计数全部回到作答前，并把那张卡重新摆出来
+     * （未翻面）。listener 会收到 onShow(那张词)，界面照常刷新。
+     */
+    public void undo() {
+        if (snapQ == null) return;
+        q.clear();
+        for (int w : snapQ) q.addLast(w);
+        due.clear();
+        for (int[] d : snapDue) due.add(d);
+        firstShown.clear();
+        for (int w : snapFirst) firstShown.add(w);
+        mastered.clear();
+        mastered.or(snapMastered);
+        drawn = snapDrawn; groupTotal = snapTotal; okCount = snapOk; answers = snapAns;
+        firstOk = snapFirstOk; requeues = snapRequeue; current = snapCurrent; pos = snapPos;
+        flipped = snapFlipped; review = snapReview;
+        busy = false;
+        snapQ = null;
+        L.onShow(current);
+    }
+
     private void finishGroup() {
         boolean all = allMastered();
         if (!review && pos < n) {
@@ -146,6 +200,7 @@ public class Engine {
             if (pos > n) pos = n;
         }
         current = -1;
+        snapQ = null;                     // 组已结束：这张快照没有可撤销的界面了
         L.onGroupEnd(pos, all);
     }
 
