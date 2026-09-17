@@ -255,7 +255,8 @@ jobs:
               echo "③ 或手动打 tag：\`git tag -a $TAG -m '…' && git push origin $TAG\`（走 release.yml）；"
               echo "④ 或在 Actions 页手动 run 本 workflow（workflow_dispatch）。"
             fi
-            [ -n "$DISPATCH_REASON" ] && { echo; echo "手动触发备注：$DISPATCH_REASON"; }
+            # 尾行若是 `[ … ] && { … }`，条件为假时整组退出码就是 1 → 步骤红（发布明明成功了也红）。
+            if [ -n "$DISPATCH_REASON" ]; then echo; echo "手动触发备注：$DISPATCH_REASON"; fi
           } >> "$GITHUB_STEP_SUMMARY"
 
       # 失败时把日志写回 check-run，方便沙箱侧（读不到 Actions 日志下载链接）用 API 自查
