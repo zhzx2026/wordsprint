@@ -51,7 +51,8 @@ dev 1.1 ── +0.1 ──▶ dev 1.2 ── +0.1 ──▶ dev 1.3 ── 用�
 | # | 标识 | 位置 | 内容 |
 |---|---|---|---|
 | 1 | 唯一来源 | `AndroidManifest.xml` | `versionName` / `versionCode` |
-| 2 | 发布文案头 | `RELEASE_NOTES.md` 首行 | `刷单词 vX.Y`（正文是本轮改动说明，转正时原样成为 Release notes） |
+| 2 | 发布文案头 | `RELEASE_NOTES.md` 首行 | `刷单词 vX.Y`（正文是本轮改动说明，转正时**原样**成为 Release 正文与 `update.json` 的 `notes`） |
+| 2b | 发布文案正文 | `RELEASE_NOTES.md` 全文 | **只写当前这一版**：`make_release_manifest.sh` 会 `cat` 整份文件，而 `notes` 就是手机「发现新版本」弹窗里显示的那段字。发版前把上一版正文挪进 `CHANGELOG.md` 存档（v5.0 起的规矩；v4.0 那次堆到 202 行 / 20KB） |
 | 3 | 仓库展示 | `README.md` 当前版本行 | `**当前版本：vX.Y（dev/stable）**`（锚点 `CURRENT-VERSION`） |
 | 4 | App 内显示 | 设置页脚 / 更新页 / 粘贴导入页 | 读 manifest，自动同步，无需改代码 |
 
@@ -61,6 +62,7 @@ dev 1.1 ── +0.1 ──▶ dev 1.2 ── +0.1 ──▶ dev 1.3 ── 用�
 bash scripts/version.sh status     # 看当前版本/通道/下一步
 bash scripts/version.sh bump-dev   # 每轮迭代交付前跑：+0.1、code+1、同步标识
 bash scripts/version.sh promote    # 用户确认转正时跑：X.Y→(X+1).0（只改文件，再走合 PR 流程）
+bash scripts/version.sh set 5.0    # 用户点名要某个号时用（code 省略则取三方最大 +1）
 bash scripts/version.sh check      # CI 门禁同款校验
 bash scripts/staging_build.sh      # 出测试包（不变）
 ```
@@ -72,12 +74,25 @@ bash scripts/staging_build.sh      # 出测试包（不变）
 3. 转正前该提交的 staging CI 必须已 success；`RELEASE_NOTES.md` 正文必须是本轮人话文案。
 4. 旧 `1.0.x` 三段号已退役：`check` 判为 legacy，CI 拒绝构建（先 `bump-dev` 迁入新方案）。
 5. **转正 = 主版本 +1**（1.x→2.0、2.x→3.0）；目标号一律由 `version.sh` 推导，不许手算。
+6. **`RELEASE_NOTES.md` 只放当前这一版**（历史挪 `CHANGELOG.md`）：它会被整份塞进 Release 正文与 `update.json` 的 `notes`，
+   也就是手机弹窗里那段字 —— 堆历史 = 用户看到一整屏流水账。
+7. 用户点名要某个号（如 2026-09-17 的 2.x→3.x、4.0→5.0）时用 `bash scripts/version.sh set X.Y [code]`：
+   它同样只许改版本号那一处，code 省略则取三方最大 +1；`promote` 只能从 dev 走，stable 上不能直接 promote。
 
-## 8. 迁移与首发记录（2026-09-13）
+## 8. 迁移与发布台账
 
 - 2026-09-13 前的 `1.0.x`（含 v1.0.17/code 18）视为第 1 代，不再延续；旧 tag（`v1.0.8/9/14/17`）保留不动。
 - 迁移路径：`1.0.17（code 18）` →（`VERSION_NEW_MAJOR=2` bump）→ `工作版 2.1（code 19）` → 用户确认直发 → **stable v2.0（code 20）**。
-- **stable v2.0 已于 2026-09-13 发布**：tag `v2.0`、Release 资产 `wordsprint.apk + update.json`、`main` 已快进、
-  `releases/latest` 已指向它 —— 即第 1 代（1.0.x）的转正版，内容为 1.0.x 世代积累（更新源两档 / 高中排序 / PEP 小学词书 / 遮罩可关）。
-- 当前位置：**stable v3.0 已发布**（2.x 直接转正，code 38；下一轮 `bump-dev` → dev 3.1，code 自 39 起；下次转正 → v4.0）。
-- 历史残留：`v1.0.17` 有 tag 无 Release；误用 tag `main` 建的旧 Release 已不是 latest（是否删除待用户示下）。
+
+| 版本 | code | tag | Release | 日期 | 内容 / 备注 |
+|---|---|---|---|---|---|
+| v1.0.8 / v1.0.9 / v1.0.14 | … / 15 | ✓ | ✓ | 2026-09-13 | 第 1 代（`1.0.x` 三段号，已退役） |
+| v1.0.17 | 18 | ✓ | ✗ | — | 第 1 代末尾：有 tag 无 Release |
+| v2.0 | 20 | ✓ | ✓ | 2026-09-13 | 第 1 代的转正版（更新源两档 / 高中排序 / PEP 小学词书 / 遮罩可关） |
+| v3.0 | 38 | ✓ | ✗ | 2026-09-16 | ⚠️ 并行会话在**旧底子**上发的（`src/` 只有 26 个文件，不含 2.9~2.14 与第十二批功能），有 tag 无 Release —— **不代表功能版本，忽略它** |
+| v4.0 | 40 | ✓ | ✓ | 2026-09-17 | 十二批功能线转正（编号 2.x→3.x→4.0，`src/` 50 个文件）：四六级词库 / 两套字体 / 5 套配色 / 热力图 / 每日目标 / 多档案 / 错题本 / 战绩分享 / 自定义手势 / 查词 / 词表预览与批量改进度 + 更新进度条与下载校验修复 |
+| v5.0 | 41 | ✓ | ✓ | 2026-09-17 | **仓库整理版**：App 代码与 v4.0 完全相同（用户「修整一下整个仓库并且发布 5.0 apk 不用改」），只清仓库 —— CI 重复步骤 / 发布文案瘦身（历史进 `CHANGELOG.md`）/ README 数字对齐真实词库 / `test/` 分层 + 删过期副本 / 文档同步 |
+
+- **当前位置：stable v5.0（code 41）**。下一轮 `bump-dev` → dev 5.1（code 42 起）；下次转正 → v6.0。
+- 历史残留（要不要清由用户定，别自己动手）：tag `v1.0.17` 与 tag `v3.0` 都是有 tag 无 Release；
+  另有一个**误用 tag `main` 建的 Release**（2026-09-13），已不是 `latest`，但仍挂在 Releases 列表里。
