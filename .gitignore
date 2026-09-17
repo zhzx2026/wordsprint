@@ -24,3 +24,12 @@ test/ref/
 test/*.txt
 test/*.png
 test/m*.png
+# test/com/ 曾放过 5 份 src 的过期副本（Engine.java 还停在没有「撤销」的版本），v5.0 已删；别再回来
+test/com/
+# test/scratch/ 里那些一次性调试脚本的输入/输出（在仓库根跑时也可能落在根上）
+test/scratch/*.txt
+test/scratch/*.png
+/cases.txt
+/sweep_codes.txt
+/o3.txt
+/*.png

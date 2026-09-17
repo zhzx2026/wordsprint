@@ -14,8 +14,10 @@
 - `promote.sh` 新用法**不带版本号参数**（自动从当前 dev 推导）；`push_release.sh` 改为 dev 迭代（bump→构建→commit，不 tag 不 push）。
 
 ## 项目一句话
-「刷单词」：纯离线 Android 背词 App（人教版初高中 12 册 + 高考 3500，共 8824 词），
+「刷单词」：纯离线 Android 背词 App（小学 PEP 8 册 + 初中 5 册 + 高中 7 册 + 高考 3500 + 四六级 3 本
+= **24 本词书 / 16,571 词**，`res/raw/wdb.dat` 736,423 字节），
 无 Gradle、无第三方 UI 库，`bash build.sh` 直接出签名 APK；进度经 GitHub Releases OTA。
+> 这些数字别再手写猜：`test/scratch/Books.java` 会把 `wdb.dat` 里每本书的词数打出来（跑法见 `test/scratch/README.md`）。
 
 ## 目录速览（就是仓库根，别套 vocab-apk/ 这层目录）
 ```
@@ -25,9 +27,11 @@ wordsprint/
   src/com/aidemo/wordsprint/ 全部 Java 源码（无依赖库，libs/ 只有 zxing-core.jar）
   res/                       布局/配色/字符串；values-night/ 是深色配对
   libs/zxing-core.jar        3.5.3（仅用于解码 + 主机侧校验）
-  test/                      主机侧 JVM 测试（EngineTest/QRHostTest/CodeHostTest/Sweep2 等）
+  test/                      主机侧 JVM 测试（EngineTest/QRHostTest/CodeHostTest/PackTest/… 13 个 + node 的 share_page_test.js）
                              统一入口：bash scripts/run_tests.sh（本地与 CI 同一条命令）
-  scripts/                   构建/发布/发布 GitHub 化 的辅助脚本
+  test/scratch/              一次性调试脚本（QR 掩码对拍那批），**CI 不编译不运行**；跑法见该目录 README.md
+  scripts/                   版本/测试/构建/发布/词库 ETL 的辅助脚本；逐个说明见 scripts/README.md
+  CHANGELOG.md               历代发布文案存档（只供查阅，不进任何发布物）
   wordsprint.keystore        ⚠️ 签名钥匙：不入 git（.gitignore 已挡），但必须异地备份！丢了=以后所有版本无法覆盖安装（用户数据全丢）
 ```
 
@@ -68,25 +72,61 @@ java -cp out:../libs/zxing-core.jar QRHostTest      # 期望：ALL QR/TRANSFER T
 ```
 
 ## 发版流程（两段式，配合铁律）
+
+### ① 出装机测试包（随便做：不打 tag、不发 Release、不碰 main）
 ```bash
-# ① 暂存（可随便做，不碰 GitHub）：bump 版本→构建→本地 commit+tag
-SKIP_PUSH=1 bash scripts/push_release.sh "" "本次改动说明"
-#   → 把 ../刷单词-vX.Y.Z.apk 交给用户，让他实测（尤其改动涉及的交互）
-# ② 转正（用户明确同意后，仅此一步需要凭证）。注意 promote.sh 要求 **tag 已经建好**，它只做"快进 main + 推 tag"：
-git tag -a v1.0.14 -m "……"                                  # 先打本地附注 tag（tag 必须指向已 CI 变绿的提交）
-PUSH_TOKEN=<用户临时提供的 fine-grained PAT> bash scripts/promote.sh 1.0.14
-#    沙箱里 gh 已登录时不必问 PAT，直接：git push origin HEAD:refs/heads/main refs/tags/v1.0.14
-#    tag 推送即触发 release.yml：SDK→签名→build.sh→make_release_manifest.sh→gh release create
-#    ⚠️ 发布文案来源优先级：RELEASE_NOTES 环境变量 > 仓库根 **RELEASE_NOTES.md** > 最后一条提交标题
-#       （tag 触发时环境变量是空的，所以每版都要先更新 RELEASE_NOTES.md，否则 Release 页会贴一串技术提交信息）
-#    ✅ 转正前必做：该 commit 的 staging CI 必须已 success（别在 main 已快进后才 discovering 编译不过）
+bash scripts/version.sh status          # 先看当前版本/通道/code
+bash scripts/version.sh bump-dev        # 每轮迭代交付前：+0.1、code 取「本地/dev通道/main」最大 +1、同步三处标识
+# 然后把 RELEASE_NOTES.md 换成**这一版**的人话文案（旧文案挪 CHANGELOG.md，见坑 15）
+git add -A && git commit -m "dev vX.Y：……"
+bash scripts/staging_build.sh           # 推当前分支 → staging.yml：版本门禁 + run_tests.sh + 真钥匙构建
+#   产物：① Actions Artifacts 里的 wordsprint-staging-vX.Y（zip，解压得 apk）
+#         ② 孤儿分支 dev：wordsprint.apk + update.json（+ share/index.html，Pages 也从这里托管）
+#   手机装：设置 →「关于与更新」→ 更新源填 https://raw.githubusercontent.com/zhzx2026/wordsprint/dev → 检查 → 立即更新
+#   撤销 dev 通道：git push origin --delete dev
+# 本机有工具链 + keystore 时可以一条龙：bash scripts/push_release.sh "本次改动说明"（bump→build→commit，同样不 tag 不 push）
 ```
-- 凭证：向用户要 **fine-grained PAT**（只勾 wordsprint 仓库、Contents:RW、7 天），用完提醒撤销；
-  绝不把 token 写进任何文件/仓库内容/README。
-- CI：推 tag `vX.Y.Z` → `.github/workflows/release.yml` 自动构建发布；签名用仓库 Secret
-  `KEYSTORE_B64`（已配置好，别动）。Release assets = `wordsprint.apk` + `update.json`。
-- 手机 App 内置默认更新源 `github.com/zhzx2026/wordsprint/releases/latest/download/update.json`，
-  每 20h 静默检查一次，同版本不重复弹。设置页可手动「检查」。
+盯 CI（沙箱读不到 Actions 日志页，靠 workflow 自己写回的 check-run）：
+```bash
+SHA=$(git rev-parse HEAD); REPO=zhzx2026/wordsprint
+ID=$(gh api "/repos/$REPO/commits/$SHA/check-runs" --jq '.check_runs[]|select(.name=="ci-diagnostics").id')
+gh api "/repos/$REPO/check-runs/$ID" --jq .output.summary     # run_tests.sh + build.sh 全文
+```
+
+### ② 转正发布（**只有用户明确同意后**才做；两条路二选一，别同时走）
+```bash
+# 路 A（现在实际走的这条）：合 PR 到 main，auto_release.yml 自己把发布做完
+bash scripts/version.sh promote         # dev X.Y → stable (X+1).0；用户点名要某个号时用 version.sh set X.0
+git add -A && git commit -m "转正 vX.0：……"
+git push origin HEAD:refs/heads/<本会话分支>          # ⚠️ 只推自己的会话分支，别直接推 main
+gh pr create --base main --head <本会话分支> --title "转正 vX.0：……" --body "……"
+gh pr merge <n> --merge                  # 历史上都是用 merge commit（保留分支历史），不是 squash
+#   合并动作本身 = 转正授权（用户 2026-09-13 定的）。CI 随后：版本闸门（非 X.0 直接跳过并留 ::error::）
+#   → 远端 tag 是否已存在 → run_tests.sh → build.sh → **校验签名证书指纹** → 打附注 tag → 建 Release → 自证资产
+#   刹车：给 PR 打标签 no-release，或 PR 标题里写 [skip release]
+#   诊断：gh api "/repos/$REPO/check-runs/<id>" 里那个 auto-release-diagnostics（失败也写）
+
+# 路 B（手动打 tag）：bash scripts/promote.sh
+#   promote → commit → 推分支 → **轮询等 staging 变绿**（不绿就中止，main/tag 不动）→ 打附注 tag → 推 main + tag
+#   → release.yml 构建发布。它**不带版本号参数**（自动从当前 dev 推导）；沙箱 gh 已登录就不必问 PAT。
+```
+- **发布文案来源优先级**：`RELEASE_NOTES` 环境变量 > 仓库根 **`RELEASE_NOTES.md`** > 最后一条提交标题。
+  tag 触发时环境变量是空的 → 每版都必须先把 `RELEASE_NOTES.md` 换成本轮人话文案（上一版挪进 `CHANGELOG.md`），
+  否则 Release 页会贴一串技术提交信息，手机弹窗会贴一整屏历史流水账（坑 15）。
+- 凭证：优先用沙箱里已登录的 `gh`（Arena bot，PR #1~#7 都是它合的）。确实要向用户要 PAT 时：
+  fine-grained、只勾本仓库、Contents:RW、7 天，用完提醒撤销；**绝不把 token 写进任何文件/仓库内容/README**。
+- 手机侧更新行为：内置默认源 `github.com/zhzx2026/wordsprint/releases/latest/download/update.json`；
+  前台每 60 秒静默查一次（`Update.startWatch` 的 150 × 400ms）+ 进首页立刻查一次，发现新版首页亮横幅 + 弹窗，
+  同版本只弹一次窗；装 dev 包（`X.Y`）时默认盯 dev 通道，手选 stable 也会顺带看一眼 dev（`VersTest` 有断言）。
+- 发布完自证（沙箱 curl 不到 release-assets 域，一律用 API 元数据）：
+```bash
+gh api /repos/zhzx2026/wordsprint/releases/tags/vX.Y --jq '.assets[]|{name,size,digest}'   # apk + update.json 在不在、多大
+gh api /repos/zhzx2026/wordsprint/releases/latest --jq .tag_name                            # latest 指没指过来
+gh api "/repos/zhzx2026/wordsprint/contents/update.json?ref=dev" --jq .content | base64 -d  # dev 通道在发哪个号
+# 要把 APK 拿到工作区交给用户（>1MB 时 contents API 会拒，走 git blob API）：
+SHA=$(gh api "/repos/zhzx2026/wordsprint/contents/wordsprint.apk?ref=dev" --jq .sha)
+gh api "/repos/zhzx2026/wordsprint/git/blobs/$SHA" -H "Accept: application/vnd.github.raw" > 刷单词-vX.Y.apk
+```
 
 ## 技术坑清单（都踩过，别再踩）
 1. **Camera1**：`setPreviewSize/setFocusMode` 后**必须 `cam.setParameters(p)`**，之后还要 `getParameters()` 读回实际生效尺寸（驱动会自行调整，letterbox 和 buffer 都按读回值算）。用 `setPreviewCallback` 而不是手工 `addCallbackBuffer`（尺寸对不上=收不到帧或闪退，v1.0.5-1.0.8 就栽在这）。相机线程可能抛 `Error`，兜底要 `catch (Throwable)`。
@@ -119,17 +159,17 @@ PUSH_TOKEN=<用户临时提供的 fine-grained PAT> bash scripts/promote.sh 1.0.
     `code 16 / v1.0.15`，而我 13:48 从旧基线也 bump 到 16，两版同号 → 装过前者的手机永远收不到后者。
     取三者最大值 +1（当时正确答案是 **17 / v1.0.16**）。同理：合并 main 后**必须重放数据改动**，
     否则拿旧 `wdb.dat` 转正会把别人新加的词书删掉（本轮 21 本 9592 词差点被打回 13 本 8824 词）。
+12. **Base64 的"能解"不等于"解对"**：`getUrlDecoder()` 对先过滤过的串几乎不报错，字母表选错时它照样吐出一串
+    **错字节**，于是错误只在 inflate 那一步暴露——所以 `ProgressCode` 是"两套字母表各试一次，**以 inflate 成功为裁判**"，
+    别退回"先选字母表再解压"。同族陷阱还有两处：`Inflater.setInput()` 只保存引用不拷贝（输入/输出必须两个数组，
+    否则输出把未读完的输入盖掉）；`Window` 没有 `setWindowAnimationStyle()`（动画样式只能写
+    `WindowManager.LayoutParams.windowAnimations`）。
 13. **弹键盘会重建 Activity**：凡是页面上可能出现输入框/弹窗带输入的，`android:configChanges` 必须带上
     `keyboard|keyboardHidden|navigation`（v1.0.13 装机实测「扫码页点粘贴进度码＝退出」就是这个：
     扫码页只声明了 `orientation|screenSize`，弹窗里 EditText 一 `showSoftInput` → 配置变化 → 扫码页被销毁重建、
     对话框随之消失，表现成"点了就退出"）。更稳的做法：**相机页上不要挂输入窗口**——
     粘贴导入已改成独立 `PasteImportActivity`（`windowSoftInputMode=stateVisible|adjustResize`），
     成功时用 `static imported` 标记让扫码页在 `onResume` 收尾，不靠弹窗回调。
-12. **Base64 的"能解"不等于"解对"**：`getUrlDecoder()` 对先过滤过的串几乎不报错，字母表选错时它照样吐出一串
-    **错字节**，于是错误只在 inflate 那一步暴露——所以 `ProgressCode` 是"两套字母表各试一次，**以 inflate 成功为裁判**"，
-    别退回"先选字母表再解压"。同族陷阱还有两处：`Inflater.setInput()` 只保存引用不拷贝（输入/输出必须两个数组，
-    否则输出把未读完的输入盖掉）；`Window` 没有 `setWindowAnimationStyle()`（动画样式只能写
-    `WindowManager.LayoutParams.windowAnimations`）。
 
 14. **`etl.py` 的 `sort_key()` 册次匹配必须「选择性必修在前 + 命中即 break」**：
     `'选择性必修第二册'` 同时包含 `'必修第二'`，老代码那个循环**不 break**，先拿到 `选择性必修第二→21`
@@ -141,7 +181,48 @@ PUSH_TOKEN=<用户临时提供的 fine-grained PAT> bash scripts/promote.sh 1.0.
     尺寸不变，写完自解析校验内容指纹一致。进度按 `bookId`（md5(rel)）存取，与顺序无关 → 不会丢进度。
     App 侧显示顺序 = pack 里的顺序（`MainActivity.buildRows()` 不做二次排序），改数据文件即可生效。
 
-## 当前状态（2026-09-17 第七次更新 · 本线最新）
+15. **`RELEASE_NOTES.md` 会被整份塞进发布物** —— `scripts/make_release_manifest.sh` 直接 `cat` 它，
+    既当 Release 正文，也当 `update.json` 的 `notes`，而 `notes` 是手机「发现新版本」弹窗里
+    `Update.showFound()` 用一个 TextView 原样显示的那段字。所以这个文件**只写当前这一版**：
+    发版前把上一版文案挪进 `CHANGELOG.md` 存档（v5.0 起的新规矩）。
+    踩过：v4.0 那次文案从 2.x 一路堆到 4.0，202 行 → `update.json` 20,292 字节、Release 正文 8,128 字符，
+    弹窗里是一整屏读不完的流水账。
+    同族坑：`auto_release.yml` 的 apk 尺寸闸门是 `< 400000` 判失败，旁边注释曾写着「正常 ~570KB」——
+    那是加进 5 个字体文件之前的数字（v4.0 实际 911,769 字节），本轮已把注释改成实际尺寸；
+    闸门阈值本身没动（它只拦「产物明显不对」，别拿注释当现状，改尺寸前先 `gh api .../releases/tags/vX.Y` 看真值）。
+
+## 当前状态（2026-09-17 第八次更新 · 本线最新）
+- 🆕 **stable v5.0（code 41）= 仓库整理版**：用户 2026-09-17「修整一下整个仓库并且发布 5.0 apk 不用改」。
+  **App 侧一行代码没动**（`src/` 与 v4.0 逐字节相同），只收拾仓库本身，版本号用
+  `bash scripts/version.sh set 5.0` 定到 5.0（`promote` 只能从 dev X.Y 走，当前是 stable 4.0，所以用 `set`）。
+  本轮清理清单：
+  ① `staging.yml` 里「Publish dev channel」那一步**重复了两遍** → 每次构建往 `dev` 分支推两次、
+     触发两次 Pages 部署（Actions 列表里那对 success + cancelled 的 `pages build and deployment` 就是它）；删掉重复的。
+  ② `RELEASE_NOTES.md` 只留当前版本，历代文案原样挪进新的 `CHANGELOG.md`（见坑 15）。
+  ③ `README.md` 重写：词库数字对齐真实 `wdb.dat`（**24 本 / 16,571 词 / 0.70MB**，原来写 21 本 9,592 词 0.40MB，
+     漏了四六级三本）、APK 尺寸（0.9MB，原写 534KB）、补齐 v2~v4 从没写进 README 的功能
+     （字体/5 套配色/热力图/每日目标/多档案/错题本/战绩分享/手势/查词/词表预览与批量改进度/撤销），
+     并把构建·测试·版本·发布·安装写成分节表格。每组词数也改对了：实际是 **20/30/50/80/100/150**
+     （`SetupActivity.SIZES`），旧 README 写的 20/30/40/50/60/80/100/150 是编的。
+  ④ `test/` 分层：CI 跑的 13 个测试 + `T.java` + `share_page_test.js` 留在 `test/`；
+     QR 掩码对拍那批一次性脚本（Sweep/Sweep2/One*/Chk/Cmp/Diff/Dump/Dec*/Mask*/ReadCW/DbgMain*/Repro*/Books/pyqr.py）
+     收进 `test/scratch/` 并配 README（怎么编、怎么跑、哪些输入输出不入库）；
+     **删掉 `test/com/aidemo/wordsprint/` 下 5 份过期源码副本**（那份 `Engine.java` 还停在没有「撤销」的版本，
+     `run_tests.sh` 早就是拷 `src/` 到 `test/src/` 编译，这些副本谁都没用，只会看错逻辑）。
+  ⑤ 新增 `scripts/README.md`：15 个脚本逐个说明「干什么 / 谁调 / 什么时候用」，并标出两个已退役的
+     （`make_update.sh` = 早期局域网 http.server 更新流；`github_setup.sh` = 一次性 bootstrap，再跑会 `git tag -f`）。
+  ⑥ 文档同步：本文件（项目一句话的词库数字、目录速览、坑 15、坑 12/13 顺序理顺）、
+     `VERSIONING.md` §6 加「RELEASE_NOTES 只写当前版」+ §8 当前位置更新到 v5.0、`AGENTS.md` 指路、
+     `.gitignore` 补 `test/com/`、`test/scratch/*.txt|png` 与根目录的 `cases.txt/sweep_codes.txt/o3.txt/*.png`。
+- 📌 **发布路径**（本轮走的）：分支 `arena/01a0afbf-wordsprint` → push 触发 `staging.yml`（版本门禁 + 主机测试 +
+  真钥匙构建 + artifact + dev 通道）→ 等 `ci-diagnostics` 变绿 → 开 PR 合进 `main` → `auto_release.yml`
+  自动跑测试/构建/**校验签名证书**/打 tag `v5.0`/发 Release（`wordsprint.apk` + `update.json`）→ `releases/latest` 指向它 → 手机 OTA。
+  沙箱出不了包（没 JDK、没 keystore，见上文章节），所以 APK 只能由 CI 出；要拿产物就用
+  `gh api /repos/zhzx2026/wordsprint/contents/wordsprint.apk?ref=dev`（或 git blob API，>1MB 时走这条）。
+- ⏭️ 下一轮：`bash scripts/version.sh bump-dev` → dev 5.1（code 42 起）。
+
+
+## 当前状态（2026-09-17 第七次更新 · v4.0 转正那一轮）
 - 🆕 **编号改动 + 转正（用户 2026-09-17：「把所有的 2 变为 3，转正为 4.0」）**：本线（`arena/01a09e21-wordsprint`，
   即十二批功能线）编号从 2.x 整体改到 **3.x** —— dev 3.1（code 39）已推上 dev 通道（CI 绿），2026-09-17 用户确认转正 → **stable v4.0（code 40）**。
   ⚠️ 撞车记录：并行会话 2026-09-16 在**老底子**（不含 v2.9~v2.14 任何功能）上发了 stable v3.0（tag `v3.0` / code 38，

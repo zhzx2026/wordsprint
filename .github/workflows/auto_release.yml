@@ -220,7 +220,7 @@ jobs:
           cat /tmp/rel.json
           APK_SIZE=$(python3 -c "import json;a=json.load(open('/tmp/rel.json'))['assets'];print([x['size'] for x in a if x['name']=='wordsprint.apk'][0])")
           if [ "${APK_SIZE:-0}" -lt 400000 ]; then
-            echo "::error::Release 里的 wordsprint.apk 只有 ${APK_SIZE:-0} 字节，明显不对（正常 ~570KB）"
+            echo "::error::Release 里的 wordsprint.apk 只有 ${APK_SIZE:-0} 字节，明显不对（v4.0 = 911,769B，加字体后正常在 0.9MB 上下；闸门只拦「产物明显不对」）"
             exit 1
           fi
           echo "apk_size=$APK_SIZE" >> "$GITHUB_OUTPUT"

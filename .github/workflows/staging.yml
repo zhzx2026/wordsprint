@@ -137,21 +137,6 @@ jobs:
             echo "update.json： \`$URLBASE/update.json\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Publish dev channel（raw 直链 + update.json）
-        env:
-          DEV_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          bash scripts/publish_dev.sh "CI staging v${{ steps.meta.outputs.ver }}（code ${{ steps.meta.outputs.vc }}）"
-          URLBASE="https://raw.githubusercontent.com/${{ github.repository }}/dev"
-          {
-            echo
-            echo "### 手机装机地址（开发者通道）"
-            echo
-            echo "设置 → 更新源填 \`$URLBASE\` → 点「检查」→「立即更新」（同签名，覆盖安装不丢进度）"
-            echo
-            echo "update.json： \`$URLBASE/update.json\`"
-          } >> "$GITHUB_STEP_SUMMARY"
-
 # 战绩页（share/index.html）不走 Actions 发布，而是用 Pages 的「Deploy from a branch」：
 # 仓库 Settings → Pages → Source = Deploy from a branch → dev → /(root)。
 # 原因：GITHUB_TOKEN 没有创建 Pages 站点的权限（实测 Resource not accessible by integration），
