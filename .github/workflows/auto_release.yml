@@ -180,15 +180,27 @@ jobs:
 
       - name: Publish Release
         if: steps.gate.outputs.go == 'yes'
+        id: pub
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
-          set -e
+          # pipefail：下面用 `| tee` 留日志，没有它 gh 的失败会被 tee 的 0 盖掉（这正是上次「绿着没发出去」的一类坑）
+          set -eo pipefail
+          TAG="${{ steps.gate.outputs.tag }}"
           python3 -c "import json;print(json.load(open('dist/update.json'))['notes'])" > notes.txt
-          TAG="${{ steps.meta.outputs.tag }}"
-          gh release view "$TAG" >/dev/null 2>&1 \
-            && gh release upload "$TAG" dist/wordsprint.apk dist/update.json --clobber \
-            || gh release create "$TAG" dist/wordsprint.apk dist/update.json --title "刷单词 $TAG" --notes-file notes.txt
-          echo "✓ Release 已发布：https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG"
+          echo "即将发布：$TAG（code ${{ steps.gate.outputs.vc }}，notes $(wc -c < notes.txt) 字节）" | tee /tmp/pub.log
+          # 不用 `A && B || C` 那条链：2026-09-17 v4.0 那一次它在「什么都没建出来」的情况下
+          # 也让步骤变绿了（Release 不存在、verify 才炸，根因查不到日志）。改成显式 if/else + 事后自证。
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "已存在同 tag 的 Release → 覆盖上传资产" | tee -a /tmp/pub.log
+            gh release upload "$TAG" dist/wordsprint.apk dist/update.json --clobber 2>&1 | tee -a /tmp/pub.log
+          else
+            echo "创建 Release $TAG" | tee -a /tmp/pub.log
+            gh release create "$TAG" dist/wordsprint.apk dist/update.json \
+              --title "刷单词 $TAG" --notes-file notes.txt 2>&1 | tee -a /tmp/pub.log
+          fi
+          # 自证：这一步必须真能查到 Release，查不到就当场红（别等 Verify 步才发现）
+          gh release view "$TAG" --json tagName,isDraft,url \
+            --jq '"✓ 已确认发布：\(.tagName) draft=\(.isDraft) \(.url)"' | tee -a /tmp/pub.log
 
       # 沙箱/助手侧 curl 不到 release-assets 域，所以用 API 元数据自证发布物存在且尺寸正常
       - name: Verify published assets
@@ -198,8 +210,14 @@ jobs:
         run: |
           set -e
           TAG="${{ steps.gate.outputs.tag }}"
-          gh api "/repos/$GITHUB_REPOSITORY/releases/tags/$TAG" \
-            --jq '{tag:.tag_name,name:.name,latest_draft:.draft,assets:[.assets[]|{name,size,digest}]}' | tee /tmp/rel.json
+          if ! gh api "/repos/$GITHUB_REPOSITORY/releases/tags/$TAG" \
+            --jq '{tag:.tag_name,name:.name,latest_draft:.draft,assets:[.assets[]|{name,size,digest}]}' > /tmp/rel.json; then
+            echo "::error::Release $TAG 查不到（Publish Release 没真正建出来）"
+            echo "线上现有 Release 的 tag："
+            gh api "/repos/$GITHUB_REPOSITORY/releases?per_page=10" --jq '.[] | .tag_name'
+            exit 1
+          fi
+          cat /tmp/rel.json
           APK_SIZE=$(python3 -c "import json;a=json.load(open('/tmp/rel.json'))['assets'];print([x['size'] for x in a if x['name']=='wordsprint.apk'][0])")
           if [ "${APK_SIZE:-0}" -lt 400000 ]; then
             echo "::error::Release 里的 wordsprint.apk 只有 ${APK_SIZE:-0} 字节，明显不对（正常 ~570KB）"
@@ -250,7 +268,8 @@ jobs:
           { echo "===== scripts/run_tests.sh ====="; cat /tmp/t.log 2>/dev/null || echo "(无)";
             echo; echo "===== build.sh ====="; cat /tmp/b.log 2>/dev/null || echo "(无)";
             echo; echo "===== apksigner ====="; cat /tmp/certs.txt 2>/dev/null || echo "(无)";
-            echo; echo "===== release ====="; cat /tmp/rel.json 2>/dev/null || echo "(无)"; } > /tmp/diag.log
+            echo; echo "===== release ====="; cat /tmp/rel.json 2>/dev/null || echo "(无)";
+            echo; echo "===== publish ====="; cat /tmp/pub.log 2>/dev/null || echo "(无)"; } > /tmp/diag.log
           tail -c 24000 /tmp/diag.log | iconv -f utf-8 -t utf-8 -c > /tmp/diag.trim || cp /tmp/diag.log /tmp/diag.trim
           gh api --method POST "/repos/$GITHUB_REPOSITORY/check-runs" \
             -f name=auto-release-diagnostics -f head_sha="${{ github.sha }}" \
