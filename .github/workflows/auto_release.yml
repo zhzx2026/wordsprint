@@ -60,7 +60,7 @@ jobs:
           if ! printf '%s' "$VER" | grep -Eq '^[0-9]+\.0$'; then
             echo "go=no" >> "$GITHUB_OUTPUT"
             echo "reason=当前版本 v$VER 不是 stable 号（X.0）：dev 版合 main 不会发布" >> "$GITHUB_OUTPUT"
-            echo "::error::合并即发布已跳过：v$VER 是 dev 版。转正流程：bash scripts/version.sh promote（X.Y→X.0）→ 提交 → 再合 PR（规则见 VERSIONING.md）"
+            echo "::error::合并即发布已跳过：v$VER 是 dev 版。转正流程：bash scripts/version.sh promote（X.Y→(X+1).0）→ 提交 → 再合 PR（规则见 VERSIONING.md）"
             exit 0
           fi
 
