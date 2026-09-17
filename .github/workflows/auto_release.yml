@@ -183,7 +183,8 @@ jobs:
         id: pub
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
-          set -e
+          # pipefail：下面用 `| tee` 留日志，没有它 gh 的失败会被 tee 的 0 盖掉（这正是上次「绿着没发出去」的一类坑）
+          set -eo pipefail
           TAG="${{ steps.gate.outputs.tag }}"
           python3 -c "import json;print(json.load(open('dist/update.json'))['notes'])" > notes.txt
           echo "即将发布：$TAG（code ${{ steps.gate.outputs.vc }}，notes $(wc -c < notes.txt) 字节）" | tee /tmp/pub.log
