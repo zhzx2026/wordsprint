@@ -1,8 +1,8 @@
 {
- "versionCode": 42,
- "versionName": "5.1",
+ "versionCode": 41,
+ "versionName": "5.0",
  "url": "https://raw.githubusercontent.com/zhzx2026/wordsprint/dev/wordsprint.apk",
- "notes": "CI staging v5.1（code 42）",
+ "notes": "CI staging v5.0（code 41）（最近构建：arena01a0b2c2）",
  "force": false,
  "channel": "dev"
 }
