@@ -13,6 +13,17 @@
 - dev 不合 main、不打 tag；tag 只打 stable（`v2.0`…）；旧 `1.0.x` 三段号已退役（`check` 判 legacy，CI 拒绝）。
 - `promote.sh` 新用法**不带版本号参数**（自动从当前 dev 推导）；`push_release.sh` 改为 dev 迭代（bump→构建→commit，不 tag 不 push）。
 
+## 🧩 多分支并行守则（用户 2026-09-18 定版，与发版铁律同级）
+
+多条 Arena 会话分支（`arena/<id>-wordsprint`）并行时，规则全文见 `VERSIONING.md` §8，要点：
+
+- **版本号晚绑定**：开发期不动 manifest；发包实测前 / 转正前先 `git fetch && git rebase origin/main` 再 `version.sh bump-dev`。撞号由 staging CI 的 `check-unique` 门禁拦截，不用人肉记。
+- **测试包可辨识**：artifact 名带分支 id + run 号；APK 设置页脚有构建标识（分支id·短sha）。
+- **dev 通道分坑位**：装机更新源填 `…/dev/channels/<分支id>`，别填根地址（会被任何分支覆盖）。
+- **同机双装**：`SBS=1 bash scripts/staging_build.sh` 出包名带后缀的包，可与正式包并存对比。
+- **日志解耦**：会话流水账写 `docs/logs/<分支id>.md`（只写自己的文件），别往本文件追加流水账；
+  合并转正时由合并 PR 把结论摘回来。
+
 ## 项目一句话
 「刷单词」：纯离线 Android 背词 App（小学 PEP 8 册 + 初中 5 册 + 高中 7 册 + 高考 3500 + 四六级 3 本
 = **24 本词书 / 16,571 词**，`res/raw/wdb.dat` 736,423 字节），

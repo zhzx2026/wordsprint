@@ -39,6 +39,7 @@ channel_of() {
 }
 
 # 三方最大 code（AGENT.md 坑11）：本地 / dev 通道 update.json / main 的 manifest。
+# v2（VERSIONING.md §8）：arena/** 分支的 manifest code 也纳入 —— 多分支并行时 bump 自动避开别人领过的号。
 # gh 或网络不可用时静默退回本地值（由调用方保证已是最新）。
 max_code() {
   local m="$1" repo d mm
@@ -49,6 +50,14 @@ max_code() {
       case "$d" in ''|*[!0-9]*) ;; *) if [ "$d" -gt "$m" ]; then m="$d"; fi ;; esac
       mm="$(gh api "/repos/$repo/contents/AndroidManifest.xml?ref=main" --jq .content 2>/dev/null | base64 -d 2>/dev/null | grep -oE 'versionCode="[0-9]*"' | sed 's/[^0-9]//g' | head -1)" || mm=""
       case "$mm" in ''|*[!0-9]*) ;; *) if [ "$mm" -gt "$m" ]; then m="$mm"; fi ;; esac
+      # 别的 arena 分支领过的 code 也算数（它们可能还没合并）
+      local b
+      while read -r b; do
+        [ -n "$b" ] || continue
+        d="$(gh api "/repos/$repo/contents/AndroidManifest.xml?ref=$b" --jq .content 2>/dev/null | base64 -d 2>/dev/null \
+             | grep -oE 'versionCode="[0-9]*"' | sed 's/[^0-9]//g' | head -1)" || d=""
+        case "$d" in ''|*[!0-9]*) ;; *) if [ "$d" -gt "$m" ]; then m="$d"; fi ;; esac
+      done < <(gh api "/repos/$repo/branches" --paginate --jq '.[].name' 2>/dev/null | grep '^arena/' || true)
     fi
   fi
   echo "$m"
@@ -76,7 +85,8 @@ apply() { # $1=新 versionName $2=新 versionCode
 
 cmd_status() {
   local v c ch; v="$(cur_ver)"; c="$(cur_code)"; ch="$(channel_of "$v")"
-  echo "当前：v$v（$ch，code $c）"
+  echo "当前：v$v（$ch，code $c）分支id：$(bash "$(dirname "$0")/branch_id.sh" 2>/dev/null || echo '?')"
+  echo "提示：发包实测/转正前先 git fetch && git rebase origin/main 再动版本（晚绑定防撞号，VERSIONING.md §8）"
   case "$ch" in
     dev)    echo "下一步：bump-dev → v${v%%.*}.$(( ${v##*.} + 1 ))；promote → v$(( ${v%%.*} + 1 )).0（stable）" ;;
     stable) echo "下一步：bump-dev → v${v%%.*}.1（新一轮 dev）" ;;
@@ -146,12 +156,85 @@ cmd_check() {
   echo "版本合法：v$v（$ch，code $(cur_code)）"
 }
 
+# ── 多分支撞号门禁（VERSIONING.md §8）──────────────────────────────────
+# 规则：如果某个 versionCode 已被另一条**分叉了的** arena 分支领走（谁也不包含谁的提交），
+# 本分支的 CI 直接失败 —— 提示先 rebase 最新 main 再 bump-dev 重新领号。
+# 同名（如两条分支都叫 5.1）只警告不拦：code 才是 OTA 唯一凭证，名字后合并的会再 bump。
+repo_slug() { git remote get-url origin 2>/dev/null | sed -E 's#(https://|git@)(github\.com[:/])##; s#\.git$##'; }
+
+remote_ver_code() { # $1=分支名 → 输出 "ver code"（取不到则空）
+  gh api "/repos/$(repo_slug)/contents/AndroidManifest.xml?ref=$1" --jq .content 2>/dev/null \
+    | base64 -d 2>/dev/null \
+    | grep -oE 'versionName="[^"]*"|versionCode="[0-9]*"' \
+    | sed 's/versionName="//;s/versionCode="//;s/"//g' | paste -sd' ' -
+}
+
+relation_to_head() { # $1=远端分支 sha → identical|ancestor(它是我们的祖先)|descendant(我们是它的祖先)|diverged|unknown
+  local rel
+  # compare base=对方...head=我们：ahead = 我们在对方前面（对方是祖先）；behind = 我们在后面（对方包含我们）
+  rel="$(gh api "/repos/$(repo_slug)/compare/$1...$(git rev-parse HEAD)" --jq .status 2>/dev/null)" || rel=""
+  case "$rel" in
+    identical) echo identical ;;
+    ahead)     echo ancestor ;;     # 对方是 head 的祖先（我们包含它）
+    behind)    echo descendant ;;   # 我们是对方的祖先（它包含我们）
+    diverged)  echo diverged ;;
+    *)         echo unknown ;;
+  esac
+}
+
+cmd_check_unique() {
+  local my_ver my_code my_ch main_code head_sha b bv bc rel
+  my_ver="$(cur_ver)"; my_code="$(cur_code)"; my_ch="$(channel_of "$my_ver")"
+  head_sha="$(git rev-parse HEAD)"
+  my_branch="${GIT_BRANCH:-$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')}"
+  echo "撞号检查：本分支 ${my_branch:-?}（v$my_ver / code $my_code）"
+
+  if ! command -v gh >/dev/null 2>&1 || [ -z "$(repo_slug)" ]; then
+    echo "⚠ 无 gh 或 origin，跳过撞号检查（CI 上不会发生）"; return 0
+  fi
+
+  # main 的 code 作为基线：还没 bump（stable 且 code ≤ main）= 还没领号，必过
+  main_code="$(gh api "/repos/$(repo_slug)/contents/AndroidManifest.xml?ref=main" --jq .content 2>/dev/null \
+      | base64 -d 2>/dev/null | grep -oE 'versionCode="[0-9]*"' | sed 's/[^0-9]//g' | head -1)"
+  case "$main_code" in ''|*[!0-9]*) main_code=0 ;; esac
+  if [ "$my_ch" = stable ] && [ "$my_code" -le "$main_code" ]; then
+    echo "✓ 尚未领号（v$my_ver ≤ main code $main_code）—— 开发期不动版本，发包实测前才 bump（晚绑定）"
+    return 0
+  fi
+
+  local fail=0 warn=0
+  while read -r b; do
+    [ -n "$b" ] || continue
+    [ "$b" = "$my_branch" ] && continue          # 自己的远端分支（哪怕是旧 sha）不算"别人"
+    bv="$(remote_ver_code "$b")"
+    bc="${bv##* }"; bv="${bv%% *}"; [ "$bv" = "$bc" ] && bv=""
+    case "$bc" in ''|*[!0-9]*) continue ;; esac
+    [ "$bc" -lt "$main_code" ] && continue       # 还停在老 main 上的分支没有占号
+    rel="$(relation_to_head "$(gh api "/repos/$(repo_slug)/branches/$b" --jq .commit.sha 2>/dev/null)")"
+    if [ "$rel" = identical ] || [ "$rel" = ancestor ] || [ "$rel" = descendant ]; then
+      continue                                    # 同一提交 / 它包含我们 / 我们包含它 → 同一条线
+    fi
+    if [ "$bc" = "$my_code" ]; then
+      echo "::error::撞号：versionCode $my_code 已被分支 $b（v$bv）占用（两条分支已分叉）。先 git fetch && git rebase origin/main，再 bash scripts/version.sh bump-dev 重新领号" >&2
+      fail=1
+    elif [ "$bv" = "$my_ver" ]; then
+      echo "⚠ 同名不同号：$b 也叫 v$my_ver（code $bc vs 本地 $my_code）。后合并的一方转正前要再 bump 一次让出名字" >&2
+      warn=1
+    fi
+  done < <(gh api "/repos/$(repo_slug)/branches" --paginate --jq '.[].name' 2>/dev/null | grep '^arena/' || true)
+
+  if [ "$fail" = 1 ]; then exit 1; fi
+  [ "$warn" = 1 ] && return 0
+  echo "✓ 无撞号"
+}
+
 case "${1:-status}" in
-  status)   cmd_status ;;
-  bump-dev) cmd_bump_dev ;;
-  promote)  cmd_promote ;;
-  sync)     sync_ids "$(cur_ver)"; echo "已同步标识到 v$(cur_ver)" ;;
-  set)      cmd_set "$2" "$3" ;;
-  check)    cmd_check ;;
-  *) echo "用法：bash scripts/version.sh {status|bump-dev|promote|set X.Y [code]|sync|check}" >&2; exit 2 ;;
+  status)       cmd_status ;;
+  bump-dev)     cmd_bump_dev ;;
+  promote)      cmd_promote ;;
+  sync)         sync_ids "$(cur_ver)"; echo "已同步标识到 v$(cur_ver)" ;;
+  set)          cmd_set "$2" "$3" ;;
+  check)        cmd_check ;;
+  check-unique) cmd_check_unique ;;
+  *) echo "用法：bash scripts/version.sh {status|bump-dev|promote|set X.Y [code]|sync|check|check-unique}" >&2; exit 2 ;;
 esac

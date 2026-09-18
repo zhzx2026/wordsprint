@@ -352,11 +352,15 @@ public class Ui {
         }
     }
 
-    /** 装没装上、装的哪一版，得让用户一眼看见（页脚 + 弹窗标题都用它） */
+    /** 装没装上、装的哪一版、哪条分支的包，得让用户一眼看见（页脚 + 弹窗标题都用它） */
     public static String versionTag(android.content.Context c) {
         try {
             String v = c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionName;
-            return v == null || v.length() == 0 ? "" : "  v" + v;
+            if (v == null || v.length() == 0) return "";
+            String tag = "  v" + v;
+            String st = BuildInfo.STAMP;           // 构建期写入的 分支id·短sha（本地直接编译时为空）
+            if (st != null && st.length() > 0) tag += " · " + st;
+            return tag;
         } catch (Throwable t) {
             return "";
         }

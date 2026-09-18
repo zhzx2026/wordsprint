@@ -10,6 +10,10 @@ on:
   workflow_dispatch:
     inputs:
       label: { description: "备注（只写进构建摘要）", required: false, default: "staging" }
+      side_by_side:
+        description: "同机双装包（包名加分支后缀，可与正式包并存；只能手动安装）"
+        required: false
+        default: "false"
   push:
     branches: ["arena/**", "staging/**", "dev-build"]
 permissions:
@@ -25,6 +29,13 @@ jobs:
 
       - name: 版本格式门禁（VERSIONING.md）
         run: bash scripts/version.sh check
+
+      # 多分支并行防撞号（VERSIONING.md §8）：同 code 已被分叉的另一条 arena 分支领走 → 拦下
+      - name: 多分支撞号门禁（VERSIONING.md §8）
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GIT_BRANCH: ${{ github.ref_name }}
+        run: bash scripts/version.sh check-unique
 
       # 沙箱/助手侧经常读不到 Actions 的日志下载链接（外网白名单），
       # 所以把失败输出的前几行转成 ::error:: 注解 —— API 能查到，助手才能自己迭代。
@@ -58,7 +69,10 @@ jobs:
           echo "$KEYSTORE_B64" | base64 -d > wordsprint.keystore
 
       - name: Build
-        env: { SDK_ROOT: "${{ runner.temp }}/sdk", KS_PASS: "${{ secrets.KS_PASS }}" }
+        env:
+          SDK_ROOT: "${{ runner.temp }}/sdk"
+          KS_PASS: "${{ secrets.KS_PASS }}"
+          SIDE_BY_SIDE: "${{ github.event.inputs.side_by_side == 'true' && '1' || '0' }}"
         run: |
           set +e
           bash build.sh > /tmp/b.log 2>&1; ec=$?
@@ -72,23 +86,38 @@ jobs:
 
       - name: Meta
         id: meta
+        env: { GIT_BRANCH: "${{ github.ref_name }}" }
         run: |
           VER=$(grep -oE 'versionName="[^"]*"' AndroidManifest.xml | sed 's/versionName="//;s/"//')
           VC=$(grep -oE 'versionCode="[0-9]*"' AndroidManifest.xml | sed 's/[^0-9]//g')
-          echo "ver=$VER" >> "$GITHUB_OUTPUT"
-          echo "vc=$VC" >> "$GITHUB_OUTPUT"
+          BID=$(bash scripts/branch_id.sh)
+          SBS="${{ github.event.inputs.side_by_side == 'true' && '-sbs' || '' }}"
+          APK="wordsprint-v${VER}${SBS}.apk"
+          [ -f "$APK" ] || APK="wordsprint-v${VER}.apk"
+          echo "ver=$VER"  >> "$GITHUB_OUTPUT"
+          echo "vc=$VC"    >> "$GITHUB_OUTPUT"
+          echo "bid=$BID"  >> "$GITHUB_OUTPUT"
+          echo "apk=$APK"  >> "$GITHUB_OUTPUT"
+          echo "sbs=$SBS"  >> "$GITHUB_OUTPUT"
 
       - name: 摘要
         run: |
           {
-            echo "## 暂存测试包 v${{ steps.meta.outputs.ver }}（code ${{ steps.meta.outputs.vc }}）"
+            echo "## 暂存测试包 v${{ steps.meta.outputs.ver }}（code ${{ steps.meta.outputs.vc }}）· 分支 \`${{ steps.meta.outputs.bid }}\`"
             echo
-            echo "备注：${{ github.event.inputs.label }}"
+            echo "备注：${{ github.event.inputs.label }}；run #${{ github.run_number }}"
+            if [ -n "${{ steps.meta.outputs.sbs }}" ]; then
+              echo
+              echo "> **同机双装包**：包名带 \`.sbs.${{ steps.meta.outputs.bid }}\` 后缀，可与正式包并存（数据隔离）。"
+              echo "> 只能手动安装（下载 artifact），**应用内更新对它无效**。"
+            fi
             echo
-            echo "本页底部 **Artifacts** → 下载 \`wordsprint-staging-v${{ steps.meta.outputs.ver }}\`"
-            echo "（是个 zip，解压得到 \`wordsprint-v${{ steps.meta.outputs.ver }}.apk\`）→ 覆盖安装，同签名、进度不丢。"
+            echo "本页底部 **Artifacts** → 下载 \`wordsprint-staging-v${{ steps.meta.outputs.ver }}-${{ steps.meta.outputs.bid }}-r${{ github.run_number }}${{ steps.meta.outputs.sbs }}\`"
+            echo "（是个 zip，解压得到 \`${{ steps.meta.outputs.apk }}\`）→ 覆盖安装（同分支），同签名、进度不丢。"
             echo
-            echo "**没有**打 tag、**没有**发 Release：手机不会收到 OTA。"
+            echo "**没有**打 tag、**没有**发 Release：手机不会收到 stable OTA。"
+            echo
+            echo "App 内（设置页脚）应显示：\`v${{ steps.meta.outputs.ver }} · ${{ steps.meta.outputs.bid }}\` 开头的构建标识 —— 装错包一眼能看出来。"
           } >> "$GITHUB_STEP_SUMMARY"
 
       # 助手侧/无日志权限的人读不到 Actions 日志下载链接，所以把日志全文塞进一个自建 check-run，
@@ -114,15 +143,17 @@ jobs:
       - name: Upload artifact（不是 Release）
         uses: actions/upload-artifact@v4
         with:
-          name: wordsprint-staging-v${{ steps.meta.outputs.ver }}
-          path: wordsprint-v${{ steps.meta.outputs.ver }}.apk
+          name: wordsprint-staging-v${{ steps.meta.outputs.ver }}-${{ steps.meta.outputs.bid }}-r${{ github.run_number }}${{ steps.meta.outputs.sbs }}
+          path: ${{ steps.meta.outputs.apk }}
           retention-days: 14
           if-no-files-found: error
 
-      # 开发者通道：同一份包推到孤儿分支 dev；手机「设置 → 更新源」填
-      # https://raw.githubusercontent.com/<owner>/<repo>/dev 就能用 App 内「检查更新」装机。
+      # 开发者通道：同一份包推到孤儿分支 dev 的「本分支坑位」channels/<分支id>/，各分支互不覆盖
+      # （VERSIONING.md §8）；手机「设置 → 更新源」填自己分支的坑位地址就能用 App 内「检查更新」装机。
       # 依然不建 tag / 不建 Release。撤销： git push origin --delete dev
+      # 双装包不发通道：它包名带后缀，应用内更新本来就装不了，发了只会误导。
       - name: Publish dev channel（raw 直链 + update.json）
+        if: github.event.inputs.side_by_side != 'true'
         env:
           DEV_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -130,11 +161,13 @@ jobs:
           URLBASE="https://raw.githubusercontent.com/${{ github.repository }}/dev"
           {
             echo
-            echo "### 手机装机地址（开发者通道）"
+            echo "### 手机装机地址（开发者通道 · 本分支坑位）"
             echo
-            echo "设置 → 更新源填 \`$URLBASE\` → 点「检查」→「立即更新」（同签名，覆盖安装不丢进度）"
+            echo "设置 → 更新源填 \`$URLBASE/channels/${{ steps.meta.outputs.bid }}\` → 点「检查」→「立即更新」（同签名，覆盖安装不丢进度）"
             echo
-            echo "update.json： \`$URLBASE/update.json\`"
+            echo "update.json： \`$URLBASE/channels/${{ steps.meta.outputs.bid }}/update.json\`"
+            echo
+            echo "> 根地址 \`$URLBASE\` 也仍可用（= 最近一次构建），但会被**任何分支**的下一次构建覆盖；多分支并行时装机请认准自己的坑位地址。"
           } >> "$GITHUB_STEP_SUMMARY"
 
 # 战绩页（share/index.html）不走 Actions 发布，而是用 Pages 的「Deploy from a branch」：
