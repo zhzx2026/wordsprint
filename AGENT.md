@@ -191,8 +191,28 @@ gh api "/repos/zhzx2026/wordsprint/git/blobs/$SHA" -H "Accept: application/vnd.g
     那是加进 5 个字体文件之前的数字（v4.0 实际 911,769 字节），本轮已把注释改成实际尺寸；
     闸门阈值本身没动（它只拦「产物明显不对」，别拿注释当现状，改尺寸前先 `gh api .../releases/tags/vX.Y` 看真值）。
 
-## 当前状态（2026-09-17 第八次更新 · 本线最新）
-- 🆕 **stable v5.0（code 41）= 仓库整理版**：用户 2026-09-17「修整一下整个仓库并且发布 5.0 apk 不用改」。
+16. **更新进度条：别再用「ProgressBar + drawable」画**（用户 2026-09-18 第四次报「更新没有进度条」）。
+    前三次都在 Android 侧改画法（v1.0.9 白角 → 第六批全局进度 → 第十二批「条根本画不出来」），
+    改完只能等装机，于是来回四轮。根因是那条链路太长：主题属性解析不到 → 透明、
+    ROM 的 `colorAccent` tint 盖掉、`ClipDrawable` 的 level 没刷新、系统样式把 drawable 换成自己的 ——
+    任何一环失灵都是同一个症状「有数字、没条」，而主机侧一行断言都写不出来。
+    现在：`UpdateBar`（自绘 View，onDraw 两个圆角矩形，没有 drawable/level/tint）+
+    `DlProg`（纯 java 的百分比/文案/配色算术）+ `DlProgTest`（10 套配色 × 对比度硬断言，
+    含「主题一个色都没解析出来」的兜底路径）。**再动这块先看 DlProgTest**。
+    另外两条容易漏的：① 弹窗判定「要不要重挂」必须比 `progressHost`，光看 `isShowing()`
+    会漏掉「弹窗挂在已经不在前台的那个页面的窗口上」；② `Update` 里进度百分比是**静态字段 `pct`**，
+    局部变量别同名（同名会把自己的赋值写成写局部变量）。
+    ⚠️ 还有个前提要跟用户说清楚：OTA 过程中的进度条是**手机上当前这个版本**画的，
+    修好的进度条要等装上这一版**之后**的那次更新才看得到。
+
+## 当前状态（2026-09-18 第九次更新 · 本线最新）
+- 🆕 **dev v5.1（code 42）= 更新进度条重做**：用户 2026-09-18「更新没有进度条」（第四次）。
+  改动见坑 16：`UpdateBar`（自绘，不再用 ProgressBar+drawable）+ `DlProg`（纯 java 算术/配色）
+  + `DlProgTest`（14 个 JVM 测试里的新成员，1026 条断言）；弹窗加「校验安装包 / 准备安装」两个阶段；
+  重挂判定补 `progressHost`；`runDownload` 改 `catch (Throwable)`（漏 Error 会让 `busy` 永远 true）。
+  沙箱里跑通了两条真检查：`bash scripts/run_tests.sh`（ALL HOST TESTS PASS）+
+  用 API 34 的 `android.jar` 全量 `javac` 全部 50 个源文件（`Update.java`/`UpdateBar.java` 在内）0 error。
+- **stable v5.0（code 41）= 仓库整理版**：用户 2026-09-17「修整一下整个仓库并且发布 5.0 apk 不用改」。
   **App 侧一行代码没动**（`src/` 与 v4.0 逐字节相同），只收拾仓库本身，版本号用
   `bash scripts/version.sh set 5.0` 定到 5.0（`promote` 只能从 dev X.Y 走，当前是 stable 4.0，所以用 `set`）。
   本轮清理清单：
