@@ -16,6 +16,9 @@ import java.io.FileNotFoundException;
  * （项目不引 AndroidX，这个 ~60 行的实现即 FileProvider 的最小等价物；仅放行该一个文件名。）
  */
 public class ApkProvider extends ContentProvider {
+    /** 权威写法（多分支双装安全）：包名运行时取 —— 同机双装（包名带 .sbs.<分支id> 后缀）也对得上 manifest */
+    public static String auth(android.content.Context c) { return c.getPackageName() + ".update"; }
+    /** @deprecated 仅为可读性保留的默认包名常量；运行时请用 {@link #auth(android.content.Context)} */
     public static final String AUTH = "com.aidemo.wordsprint.update";
 
     @Override public boolean onCreate() { return true; }

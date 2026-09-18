@@ -102,6 +102,11 @@ public class Update {
      * （用户 2026-09-15 装机实测遇到的正是这个）。dev 上的包更新就用它，并在界面标明来源。
      */
     public static Res checkRes(Context c) {
+        if (BuildInfo.SBS) {          // 同机双装包（包名带后缀）：应用内更新的 APK 是正式包名，装不上只会白报错
+            Res r = new Res();
+            r.err = "同机双装测试包不支持应用内更新，请从 GitHub Actions 的 staging artifact 手动下载安装";
+            return r;
+        }
         Res r = fetch(c, Prefs.of(c).updateChannel());
         if (r.channel == 0 && Vers.isDevName(myName(c))) {
             Res d = fetch(c, 1);
@@ -514,7 +519,7 @@ public class Update {
 
     private static void install(final Activity a, File f, Info info) {
         Intent it = new Intent(Intent.ACTION_VIEW);
-        it.setDataAndType(Uri.parse("content://" + ApkProvider.AUTH + "/" + "update.apk"),
+        it.setDataAndType(Uri.parse("content://" + ApkProvider.auth(a) + "/" + "update.apk"),
                 "application/vnd.android.package-archive");
         it.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
         try {
