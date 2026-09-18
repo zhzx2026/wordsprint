@@ -1,6 +1,6 @@
 # 刷单词 WordsPrint
 
-**当前版本：v5.0（stable）** <!-- CURRENT-VERSION -->
+**当前版本：v5.1（dev）** <!-- CURRENT-VERSION -->
 
 一个精致的**离线背单词 Android 应用**：以「整本课本」为单位刷词，覆盖小学到大学的主流词表。
 无 Gradle、无第三方 UI 库，`bash build.sh` 直接出签名 APK；更新走 GitHub Releases（App 内 OTA）。
@@ -74,6 +74,12 @@
   查了哪个通道、服务器什么版本、本机什么版本（判断逻辑是纯 java + `VersTest` 主机测试）
 - 下载有进度弹窗（百分比 / 已下 / 总量 / 速度），下完按长度核对 + 用 zip 读一遍（必须有 `AndroidManifest.xml`），
   被截断或拿到错误页一律判失败并**自动重下一次**；装包走 `ApkProvider` + `REQUEST_INSTALL_PACKAGES`
+- **进度条是自己画的**（`UpdateBar`，不用系统 ProgressBar）：用户前后四次反馈「更新没有进度条」，
+  根因都在「ProgressBar + drawable + level + tint」这条链路上（解析不到主题色 = 透明、
+  ROM 的 accent 盖掉、level 不刷新、系统样式换 drawable —— 任何一环失灵都是「有数字没条」）。
+  现在只有两个圆角矩形，颜色取不透明实色，没有可失灵的中间环节；百分比/文案/配色算术抽成
+  纯 java 的 `DlProg`，`DlProgTest` 拿 10 套配色断言「轨道与进度都看得见」。
+  弹窗分四个阶段（连接中 / 下载中 / 校验安装包 / 准备安装），页面换了会把弹窗重新挂到当前页面上
 
 ## 构建与测试（无 Gradle，纯 SDK 工具链）
 
@@ -89,7 +95,8 @@ bash build.sh                    # ⑤ aapt2 → javac → d8 → zipalign → a
 `CodeHostTest`（进度码复制/粘贴容错，含截断恢复）、`PackTest`（wdb.dat 解析）、`SharePayloadTest`、
 `ScaleTest`（字号缩放幂等）、`GesTest`（手势映射）、`WrongBookTest`（错题本规则）、
 `ShareGeomTest`（战绩图版面）、`HeatRampTest`（热力图在每套配色下都看得见格子）、
-`BookEditTest`（范围解析 + 批量改掌握）、`VersTest`（版本/更新通道）、`ProfilesTest`（多档案隔离），
+`BookEditTest`（范围解析 + 批量改掌握）、`VersTest`（版本/更新通道）、`ProfilesTest`（多档案隔离）、
+`DlProgTest`（更新下载进度：百分比不卡 0 + 条子在 10 套配色下都看得见），
 外加 node 跑的 `share_page_test.js`（在线战绩页那个手写 inflate）。**发版前必过**。
 
 产物：minSdk 26 / targetSdk 34，自适应桌面图标（vector），APK 约 0.9MB（v4.0 实测 911,769 字节，含 ZXing 解码库与两套字体）。

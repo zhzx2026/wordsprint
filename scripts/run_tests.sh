@@ -17,7 +17,7 @@ mkdir -p "$D"
 # 被测源码就是发版用的那一份（不是 test/ 下的旧副本）
 cp "$S"/Engine.java "$S"/QREnc.java "$S"/QRUtil.java "$S"/Transfer.java "$S"/ProgressCode.java "$S"/Pack.java \
    "$S"/ZipB64.java "$S"/Diary.java "$S"/Scale.java "$S"/Heat.java "$S"/BookEdit.java \
-   "$S"/Vers.java "$S"/Profiles.java \
+   "$S"/Vers.java "$S"/Profiles.java "$S"/DlProg.java \
    "$S"/WrongBook.java "$S"/ShareGeom.java "$S"/Ges.java "$D"/
 rm -rf test/out && mkdir -p test/out
 
@@ -25,7 +25,8 @@ echo "== javac（同一份源码）"
 javac -encoding UTF-8 -nowarn -d test/out -cp libs/zxing-core.jar \
   "$D"/*.java test/T.java test/EngineTest.java test/QRHostTest.java test/CodeHostTest.java test/PackTest.java \
   test/SharePayloadTest.java test/ScaleTest.java test/GesTest.java test/WrongBookTest.java test/ShareGeomTest.java \
-  test/HeatRampTest.java test/BookEditTest.java test/VersTest.java test/ProfilesTest.java
+  test/HeatRampTest.java test/BookEditTest.java test/VersTest.java test/ProfilesTest.java \
+  test/DlProgTest.java
 
 CP=test/out:libs/zxing-core.jar
 echo "== EngineTest（刷词引擎 + 回炉区间断言）"
@@ -42,6 +43,8 @@ echo "== ScaleTest（字号缩放幂等：反复点/反复刷新不会越点越�
 java -cp "$CP" ScaleTest
 echo "== GesTest（手势映射：用户自定义 + 脏数据兜底）"
 java -cp "$CP" GesTest
+echo "== DlProgTest（更新下载进度：百分比不卡 0 + 条子在 10 套配色下都看得见）"
+java -cp "$CP" DlProgTest
 if command -v node >/dev/null 2>&1; then
   echo "== WrongBookTest（错题本：错一次就进 / 连对 3 次才出 / 再错多加一次）"
 java -cp "$CP" WrongBookTest
