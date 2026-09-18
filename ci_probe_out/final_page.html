@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1.0,user-scalable=no,viewport-fit=cover"
+    />
+    <link rel="icon" type="image/svg+xml" href="//res.wx.qq.com/t/wx_fed/finder/web/finder-preview/res/favicon.svg" />
+    <link
+      rel="stylesheet"
+      href="https://res.wx.qq.com/t/wx_fed/weui-source/res/2.6.22/weui.min.css"
+    />
+    <title>视频号</title>
+    <script type="module" crossorigin src="//res.wx.qq.com/t/wx_fed/finder/web/finder-preview/res/assets/feed.c7cfbd1f.js"></script>
+    <link rel="modulepreload" crossorigin href="//res.wx.qq.com/t/wx_fed/finder/web/finder-preview/res/assets/mmfinderopenwebapisvr.c59e0da7.js">
+    <link rel="modulepreload" crossorigin href="//res.wx.qq.com/t/wx_fed/finder/web/finder-preview/res/assets/merlin.a4ad855d.js">
+    <link rel="stylesheet" href="//res.wx.qq.com/t/wx_fed/finder/web/finder-preview/res/assets/mmfinderopenwebapisvr.8d7399f7.css">
+    <link rel="stylesheet" href="//res.wx.qq.com/t/wx_fed/finder/web/finder-preview/res/assets/merlin.3e0ff942.css">
+    <link rel="stylesheet" href="//res.wx.qq.com/t/wx_fed/finder/web/finder-preview/res/assets/feed.e3b7c327.css">
+  </head>
+  <body>
+    <script>
+      // 尽早执行主题检测和设置，避免闪烁
+      (function() {
+        try {
+          // 使用传统方法解析 URL 参数，兼容性更好
+          var search = window.location.search;
+          var theme = null;
+          if (search) {
+            var params = search.substring(1).split('&');
+            for (var i = 0; i < params.length; i++) {
+              var pair = params[i].split('=');
+              if (pair[0] === 'theme') {
+                theme = decodeURIComponent(pair[1]);
+                break;
+              }
+            }
+          }
+          
+          if (theme === 'dark') {
+            document.body.setAttribute('data-weui-theme', 'dark');
+            document.body.setAttribute('data-theme', 'dark');
+          } else if (theme === 'light') {
+            document.body.setAttribute('data-weui-theme', 'light');
+            document.body.setAttribute('data-theme', 'light');
+          }
+          // 如果 theme 为 null 或其他值，则不设置，跟随系统主题
+        } catch (e) {
+          // 静默失败，不影响页面加载
+          console.error('Theme detection error:', e);
+        }
+      })();
+    </script>
+    <noscript>
+    </noscript>
+    <div id="app"></div>
+    
+  </body>
+</html>
