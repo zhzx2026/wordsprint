@@ -1,0 +1,19 @@
+# 临时工作流（用完即删）：在 runner 上跑 test/scratch/ci_video_probe.py 探视频号解析链路。
+# 结果：摘要写进 check-run `arena-video-probe`（沙箱侧 gh api 可读），原始响应落到 ci_probe_out/。
+name: arena-probe
+on:
+  push:
+    branches: ["arena/01a0b2c5-wordsprint"]
+permissions:
+  contents: write
+  checks: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run probe
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SPH_CODE: AdkSr23ZQm
+        run: python3 test/scratch/ci_video_probe.py
