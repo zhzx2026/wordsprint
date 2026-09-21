@@ -5,7 +5,7 @@
 # 用法：
 #   bash scripts/branch_audit.sh             # 报告（✗ 不影响退出码）
 #   bash scripts/branch_audit.sh --strict    # 有 ✗ 就 exit 1（给脚本 / CI 用）
-#   NO_FETCH=1 bash scripts/branch_audit.sh  # 不联网 fetch origin main
+#   NO_FETCH=1 bash scripts/branch_audit.sh  # 不联网 fetch（默认只抓 origin/main 的远端跟踪引用）
 set -e
 cd "$(dirname "$0")/.."
 export LANG=C.UTF-8 LC_ALL=C.UTF-8
@@ -86,7 +86,9 @@ case "$CH" in
 esac
 
 if [ "${NO_FETCH:-0}" != "1" ] && git rev-parse --git-dir >/dev/null 2>&1; then
-  git fetch -q origin main 2>/dev/null || true
+  # ⚠️ 必须写全 refspec：仓库里有个 tag 也叫 `main`（历史误建），
+  #    `git fetch origin main` 会被解析成那个 tag，origin/main 反而不更新（判断「是否落后 main」会失真）。
+  git fetch -q origin '+refs/heads/main:refs/remotes/origin/main' 2>/dev/null || true
 fi
 if git rev-parse --verify -q origin/main >/dev/null 2>&1; then
   MAIN_VER="$(git show origin/main:AndroidManifest.xml 2>/dev/null | grep -oE 'versionName="[^"]*"' | sed 's/versionName="//;s/"//' || true)"

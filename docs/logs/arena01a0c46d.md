@@ -18,3 +18,14 @@
   收口方式（已给用户三个选项，推荐「promote 成 v6.0 合 PR 发布」）——**等用户拍板，本文件只记录事实**。
 - 另一处发现：App 内置 dev 更新源是**根地址**（`…/dev/update.json`），多条会话并行时会被别的分支构建刷新，
   只有手动填「更新源」才走本分支坑位 → 已列为可选改进（构建期把本分支坑位编进包，属 App 改动，需用户点头）。
+
+## 结果（同日续记）
+
+- **v6.0 已转正发布**：`version.sh promote` 5.1→**6.0（code 43）** → PR #11 合并（`5d95b8c`）→
+  `auto_release.yml` 绿 → tag `v6.0` + Release（`wordsprint.apk` 915,865B + `update.json` 2,075B）→
+  `releases/latest` 已指向 v6.0 → 手机 OTA 收到 v6.0。**main 回到「只有 stable」的正轨。**
+- 发布文案：`RELEASE_NOTES.md` 改写成 v6.0 人话版（进度条修复 + 多会话机制），v5.1 原文归档进 `CHANGELOG.md`。
+- **新踩的坑（已写进 AGENT.md 坑 17）**：仓库里有个误建的 tag 也叫 `main` →
+  `git fetch origin main` 被解析成那个 tag（`origin/main` 不更新）→ `branch_audit.sh` 里已改用全 refspec
+  `+refs/heads/main:refs/remotes/origin/main`；凡 `main` 简写一律换全名。
+- 收尾：`BRANCHING.md` §7 记结果；dev 通道保持不动（正式发布不刷 dev，规则见 §8）。
