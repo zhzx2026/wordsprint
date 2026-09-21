@@ -200,19 +200,20 @@ gh api "/repos/$REPO/check-runs/$ID" --jq .output.summary
 
 | 对象 | 状态 |
 |---|---|
-| `main` @ `5f29f20`（PR #10 合并） | ⚠️ **manifest = 5.1 / code 42（dev 号）**，README 写「当前版本：v5.1（dev）」—— 合并时没走 `promote`，main 上留了一个**未转正的 dev 版本** |
-| 最近 Release | `v5.0`（code 41，2026-09-17）。手机 OTA 拿到的还是 v5.0，**比 main 落后一版** |
-| `dev` 分支 | 坑位 `channels/arena01a0b2c2/`（合并前那条会话留下的，v5.1 / code 42）与 `channels/arena01a0c46d/`（本会话 = 文档+门禁这一轮，同号 42，App 代码与前者相同）；根 `update.json` = v5.1 / code 42 |
+| `main` @ `5f29f20`（PR #10 合并） | 收口前：manifest = 5.1 / code 42（dev 号）、README 写「v5.1（dev）」—— 合并时没走 `promote`，main 上留了一个未转正的 dev 版本 |
+| 最近 Release **（收口前）** | `v5.0`（code 41，2026-09-17）→ 手机 OTA 拿到的还是 v5.0，比 main 落后一版 |
+| **收口后（2026-09-21）** | `main` = **stable v6.0 / code 43**；tag `v6.0` + Release 已发；`releases/latest` → v6.0；手机 OTA 收到 v6.0 |
+| `dev` 分支 | 坑位 `channels/arena01a0b2c2/`（合并前那条会话留下的，v5.1 / code 42）与 `channels/arena01a0c46d/`（本会话，同号 42）；根 `update.json` = v5.1 / code 42（正式发布**不刷新** dev 通道 —— 见 §8 的「通道刷新规则」） |
 | Pages | 来源 = `dev` / `/`，地址 `https://zhzx2026.github.io/wordsprint/`，状态 built |
 | 其它分支 | 远端只有 `main`、`dev`（工作分支合并后都已删除） |
 
-**收口方式（等用户拍板）**
+**处理结果（2026-09-21，用户确认后执行）**
 
-1. **现在就转正**：`bash scripts/version.sh promote`（dev 5.1 → stable **6.0**，code 取 max+1 = 43）→ 合 PR → 自动打 tag `v6.0` 并发 Release，
-   main 回到「只有 stable」的正轨，手机收到 OTA。**这是推荐做法**（main 上的代码已经被用户实测过：dev 5.1 = 更新进度条重做）。
-2. **暂不发布**：让 main 先领先一版，等下一轮功能做完一起 promote 转正 —— 期间 main 与线上 Release 不一致，
-   每个接手的人都要知道这件事（否则会以为 main = 线上）。
-3. 回退 main 到 v5.0（**不推荐**）：要 force push 正式分支，还会丢掉已合并的多分支机制。
+`bash scripts/version.sh promote` → **stable v6.0（code 43）** → 合 PR 进 main → `auto_release.yml` 打 tag `v6.0` + 发 Release
+→ `releases/latest` 指向它 → 手机 OTA 收到 v6.0。**收口完成：main 回到「只有 stable」的正轨，main 与线上 Release 一致。**
+
+（备选方案留档：① 暂不发布、等下一轮一起转正 —— main 会领先线上 Release；② 回退 main 到 v5.0 —— 要 force push，不推荐。
+两种都不要用，只是记录当时为什么选「立即转正」。）
 
 ### 可选改进（等用户点头再动 App 代码）
 
@@ -222,10 +223,56 @@ gh api "/repos/$REPO/check-runs/$ID" --jq .output.summary
 
 ---
 
-## 8. 变更记录 / 维护
+## 8. 测试版（dev 包）怎么测 —— 装机实测 SOP
+
+### 8.1 三种装法，按需要选
+
+| 方式 | 怎么做 | 什么时候用 | 进度 |
+|---|---|---|---|
+| **A. App 内更新**（推荐） | 设置 →「关于与更新」→ **更新源**填本分支坑位<br>`https://raw.githubusercontent.com/zhzx2026/wordsprint/dev/channels/<分支id>`<br>→「检查」→「立即更新」 | 日常迭代实测，最省事 | **保留**（同签名覆盖安装） |
+| **B. Actions artifact 手动装** | GitHub → Actions → `staging` → 本分支最新一条 run → 页面底部 **Artifacts** → 下载 `wordsprint-staging-v<ver>-<分支id>-r<run号>.zip` → 解压得 apk → 手机允许「未知来源」→ 安装 | 坑位地址不好填、包不想要覆盖安装、或 CI 里挂过双装包时 | 保留（覆盖安装） |
+| **C. 同机双装包**（对比测试） | `SBS=1 bash scripts/staging_build.sh`（或 workflow_dispatch 勾 `side_by_side`）→ 只能走 B 手动装 | 想「旧版 / 新版在同一台手机上并排对比」 | 隔离（包名带 `.sbs.<分支id>` 后缀，跨版本不能覆盖，应用内更新对它是关的） |
+
+**装对了没有？** 看 设置 页脚那行构建标识：`v6.0 · arena01a0c46d·8a104e2`（版本 · 分支id·短sha）。
+和 CI 摘要里写的对不上，就是装错包了（多会话并行时最常见的错就是装到了别人坑位的包）。
+
+### 8.2 通道刷新规则（决定你「检查更新」能看到什么）
+
+- **dev 通道（根地址 + 各坑位）只由 `staging.yml` 刷新** —— 也就是「每次构建」时更新。
+  正式发布（`auto_release.yml` / `release.yml`）**不碰 dev 通道**。
+- 所以装机实测的正确姿势：**每轮改动都跑一次 staging 构建**，再在手机上「检查更新」。
+- 判断「有没有新版」只看 `update.json` 里的 `versionCode` 是否**严格大于**本机 code（显示名不参与），
+  所以同一轮里反复构建不会重复弹窗，换了新号才会。
+- **内置源 vs 手填源**：正式包（`X.0`）只看正式源（`releases/latest`）；dev 包（`X.Y`）会**顺带看一眼 dev 根地址**。
+  dev 根地址是「最近一次构建」、**任何分支都会刷新它** → 多会话并行时，手机「更新源」要**手填本分支坑位**，
+  否则可能出现「装 A 分支的包、拿到 B 分支的包」（BRANCHING.md §3）。
+- 撤销整条 dev 通道：`git push origin --delete dev`；只撤某个坑位：删 `channels/<id>/`。
+
+### 8.3 测完怎么回退 / 怎么反馈
+
+- **回退**：从 [Releases](https://github.com/zhzx2026/wordsprint/releases/latest) 下最新 stable 覆盖安装（同签名，进度不丢），
+  或把「更新源」改回正式源（留空 = 用内置正式源）。
+- **反馈格式**（对定位问题最有用）：现象 + 复现步骤 + 设置页脚那行 `vX.Y · 分支id·短sha`。
+  有了这行，能直接对上「哪条分支、哪个构建、哪份源码」。
+
+---
+
+## 9. 每轮收尾检查单（照着走就不会漏）
+
+1. `bash scripts/run_tests.sh` 绿（本地与 CI 同一条命令）；
+2. `bash scripts/branch_audit.sh` 无 ✗ 项；
+3. 版本号只由 `scripts/version.sh` 改（`bump-dev` / `promote` / `set`），没手写 `sed`；
+4. `RELEASE_NOTES.md` 只写**当前这一版**（上一版已挪进 `CHANGELOG.md`）；
+5. 推自己的 `arena/**` 分支 → `staging.yml` 绿 → 按 §8 装机实测；
+6. **用户确认**后转正：`version.sh promote` → 开 PR → 合并（= 授权发布）→ 校验 `releases/latest`；
+7. 合并后：删掉自己的会话分支；`channels/<自己的分支id>/` 坑位不再需要时可删（`dev` 分支留给下一次迭代）。
+
+---
+
+## 10. 变更记录 / 维护
 
 | 日期 | 改了什么 |
 |---|---|
-| 2026-09-21 | 新建：把原本散在 `VERSIONING.md` §8、`share/README.md`、`AGENT.md` 发版流程里的「分支分工」集中到这一份；顺带给 `publish_dev.sh` 加**产物白名单断言**、新增 `scripts/branch_audit.sh` 体检脚本 |
+| 2026-09-21 | 新建：把原本散在 `VERSIONING.md` §8、`share/README.md`、`AGENT.md` 发版流程里的「分支分工」集中到这一份；顺带给 `publish_dev.sh` 加**产物白名单断言**、新增 `scripts/branch_audit.sh` 体检脚本；新增 §8 测试版装机 SOP、§9 收尾检查单；§7 记录「main 上的 dev 5.1」收口为 **v6.0** 并发 Release |
 
 > 改这份文件 = 改规则：动之前先问用户；改完在表格里追加一行。

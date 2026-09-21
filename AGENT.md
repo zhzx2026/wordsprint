@@ -232,8 +232,10 @@ gh api "/repos/zhzx2026/wordsprint/git/blobs/$SHA" -H "Accept: application/vnd.g
   PR #10 合并时没走 `promote`，而最近 Release 还是 **v5.0（code 41）**，即 **main 领先线上 Release 一版、手机收不到**。
   三个选项（推荐第 1 个）见 BRANCHING.md §7：① `version.sh promote` → **v6.0（code 43）** → 合 PR 发布；
   ② 暂不发布，等下一轮一起转正；③ 回退 main（不推荐）。**下次接手前先看这条。**
+- ✅ **收口（2026-09-21，同日完成）**：`version.sh promote` → **stable v6.0（code 43）** → 合 PR → `auto_release.yml` 打 tag `v6.0` + 发 Release
+  → `releases/latest` → 手机 OTA 收到 v6.0。main 回到「只有 stable」的正轨。做法与备选方案记录在 BRANCHING.md §7。
 - ⚠️ 另一处：App 内置的 dev 更新源是**根地址**（`…/dev/update.json`），多条会话并行时会被别的分支构建刷新；
-  装机实测要手填本分支坑位 `…/dev/channels/<id>/`（BRANCHING.md §3）。
+  装机实测要手填本分支坑位 `…/dev/channels/<id>/`（BRANCHING.md §3、§8 有完整 SOP）。
 
 ## 当前状态（2026-09-18 第九次更新）
 - 🆕 **dev v5.1（code 42）= 更新进度条重做**：用户 2026-09-18「更新没有进度条」（第四次）。
