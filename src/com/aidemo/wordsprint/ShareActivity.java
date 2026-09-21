@@ -149,7 +149,7 @@ public class ShareActivity extends Activity {
         if (bmp == null) { toast(getString(R.string.share_none)); return; }
         try {
             File f = writeCache();
-            Uri uri = Uri.parse("content://" + ApkProvider.AUTH + "/" + f.getName());
+            Uri uri = Uri.parse("content://" + ApkProvider.auth(this) + "/" + f.getName());
             Intent i = new Intent(Intent.ACTION_SEND);
             i.setType("image/png");
             i.putExtra(Intent.EXTRA_STREAM, uri);
