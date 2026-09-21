@@ -45,7 +45,7 @@
 
 | 对象 | 状态 |
 |---|---|
-| Release 名为「刷单词 main」（tag `main`） | 2026-09-13 误用 tag 建的异常 Release，已不是 `latest`，仍挂在 Releases 列表里 |
+| Release 名为「刷单词 main」（tag `main`） | 2026-09-13 误用 tag 建的异常 Release，已不是 `latest`，仍挂在 Releases 列表里。**副作用**：这个 tag 与分支 `main` 同名 → 把 `main` 当简写用的命令会歧义（`git fetch origin main` 会去抓 tag、`origin/main` 不更新；`git push origin main` 同理）→ 一律写全名 `refs/heads/main`（AGENT.md 坑 17）。要根治只能删掉它 —— **那是用户的东西，删之前先问用户** |
 | tag `v1.0.17`、tag `v3.0` | 有 tag、**没有 Release**。`v3.0` 是并行会话在旧底子上发的，**不代表功能版本，忽略它** |
 | tag `v1.0.8 / v1.0.9 / v1.0.14` | 第 1 代 `1.0.x` 三段号，已退役（`version.sh check` 判 legacy，CI 拒绝构建） |
 
@@ -202,8 +202,8 @@ gh api "/repos/$REPO/check-runs/$ID" --jq .output.summary
 |---|---|
 | `main` @ `5f29f20`（PR #10 合并） | 收口前：manifest = 5.1 / code 42（dev 号）、README 写「v5.1（dev）」—— 合并时没走 `promote`，main 上留了一个未转正的 dev 版本 |
 | 最近 Release **（收口前）** | `v5.0`（code 41，2026-09-17）→ 手机 OTA 拿到的还是 v5.0，比 main 落后一版 |
-| **收口后（2026-09-21）** | `main` = **stable v6.0 / code 43**；tag `v6.0` + Release 已发；`releases/latest` → v6.0；手机 OTA 收到 v6.0 |
-| `dev` 分支 | 坑位 `channels/arena01a0b2c2/`（合并前那条会话留下的，v5.1 / code 42）与 `channels/arena01a0c46d/`（本会话，同号 42）；根 `update.json` = v5.1 / code 42（正式发布**不刷新** dev 通道 —— 见 §8 的「通道刷新规则」） |
+| **收口后（2026-09-21）** | `main` = **stable v6.0 / code 43**；PR #11 合并 → `auto_release.yml` 打 tag `v6.0` + 发 Release（`wordsprint.apk` 915,865B + `update.json`）；`releases/latest` → v6.0；手机 OTA 收到 v6.0 |
+| `dev` 分支 | 每个跑过 staging 构建的分支各有一个坑位 `channels/<分支id>/`（曾出现 `arena01a0b2c2`、`arena01a0c46d`）；根 `update.json` = **最近一次 staging 构建**（会随后续构建变化，别把某个号记死 —— 现查：`gh api "/repos/zhzx2026/wordsprint/contents/update.json?ref=dev" --jq .content \| base64 -d`）。正式发布**不刷新** dev 通道 —— 见 §8 的「通道刷新规则」 |
 | Pages | 来源 = `dev` / `/`，地址 `https://zhzx2026.github.io/wordsprint/`，状态 built |
 | 其它分支 | 远端只有 `main`、`dev`（工作分支合并后都已删除） |
 
@@ -273,6 +273,7 @@ gh api "/repos/$REPO/check-runs/$ID" --jq .output.summary
 
 | 日期 | 改了什么 |
 |---|---|
+| 2026-09-21 | §7 补记 v6.0 转正发布结果；§1 残留台账补 `tag main` 的 refname 歧义副作用（AGENT.md 坑 17）；`branch_audit.sh` 的 fetch 改全 refspec |
 | 2026-09-21 | 新建：把原本散在 `VERSIONING.md` §8、`share/README.md`、`AGENT.md` 发版流程里的「分支分工」集中到这一份；顺带给 `publish_dev.sh` 加**产物白名单断言**、新增 `scripts/branch_audit.sh` 体检脚本；新增 §8 测试版装机 SOP、§9 收尾检查单；§7 记录「main 上的 dev 5.1」收口为 **v6.0** 并发 Release |
 
 > 改这份文件 = 改规则：动之前先问用户；改完在表格里追加一行。

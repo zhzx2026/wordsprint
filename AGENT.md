@@ -222,18 +222,22 @@ gh api "/repos/zhzx2026/wordsprint/git/blobs/$SHA" -H "Accept: application/vnd.g
     局部变量别同名（同名会把自己的赋值写成写局部变量）。
     ⚠️ 还有个前提要跟用户说清楚：OTA 过程中的进度条是**手机上当前这个版本**画的，
     修好的进度条要等装上这一版**之后**的那次更新才看得到。
+17. **仓库里有个 tag 也叫 `main`**（2026-09-13 误建的 Release「刷单词 main」留下的）→ 凡是把 `main`
+    当 refname 简写用的命令都会歧义：`git fetch origin main` 会去抓**那个 tag**（`origin/main` 不更新，
+    于是"我是不是落后 main"的判断会失真），`git push origin main` 同理。**一律写全名**：
+    `git fetch origin +refs/heads/main:refs/remotes/origin/main`、`git push origin HEAD:refs/heads/main`
+    （`git rebase origin/main` / `refs/remotes/origin/main` 这类远端跟踪引用不受影响）。
+    要根治只能删掉那个误建的 tag/Release —— **那是用户的东西，要删先问用户**（BRANCHING.md §1 残留台账）。
 
 ## 当前状态（2026-09-21 第十次更新 · 本线最新）
-- 🆕 **分支分工澄清（`arena/01a0c46d-wordsprint`）**：新增 **[BRANCHING.md](BRANCHING.md)** 作为「谁写哪个分支」的唯一权威
-  （main / dev / arena 的分工、文件写入矩阵、**Pages 战绩页托管分工**、手机两个更新源、多会话七道机制 + 红线）；
+- 🆕 **分支分工澄清 + v6.0 转正（`arena/01a0c46d-wordsprint`，2026-09-21）**：
+  ① 新增 **[BRANCHING.md](BRANCHING.md)** 作为「谁写哪个分支」的唯一权威（main / dev / arena 分工、文件写入矩阵、
+  **Pages 战绩页托管分工**、手机两个更新源、多会话七道机制 + 红线、**§8 测试版装机 SOP**、§9 收尾检查单）；
   `publish_dev.sh` 加**产物白名单门禁**（dev 上多塞非产物文件 → 当场失败）；新增只读体检脚本 `scripts/branch_audit.sh`。
-  详细过程见 `docs/logs/arena01a0c46d.md`。**App 代码零改动**（所以没有 bump 版本、没出测试包）。
-- ⚠️ **体检发现（待用户拍板收口）**：`main` @ 5f29f20 上是 **v5.1 / code 42（dev 号）** ——
-  PR #10 合并时没走 `promote`，而最近 Release 还是 **v5.0（code 41）**，即 **main 领先线上 Release 一版、手机收不到**。
-  三个选项（推荐第 1 个）见 BRANCHING.md §7：① `version.sh promote` → **v6.0（code 43）** → 合 PR 发布；
-  ② 暂不发布，等下一轮一起转正；③ 回退 main（不推荐）。**下次接手前先看这条。**
-- ✅ **收口（2026-09-21，同日完成）**：`version.sh promote` → **stable v6.0（code 43）** → 合 PR → `auto_release.yml` 打 tag `v6.0` + 发 Release
-  → `releases/latest` → 手机 OTA 收到 v6.0。main 回到「只有 stable」的正轨。做法与备选方案记录在 BRANCHING.md §7。
+  ② **体检发现 main 上挂着未转正的 dev 5.1**（PR #10 合并时没 promote，而 Release 还是 v5.0 → main 领先线上、手机收不到）
+  → 用户确认后 `version.sh promote` 转成 **stable v6.0（code 43）**、合 PR #11 → `auto_release.yml` 自动打 tag `v6.0` + 发 Release
+  → `releases/latest` 指向它 → 手机 OTA 收到 v6.0。**App 代码与 v5.1 逐字节相同**（只有版本号 + 文档变化）。
+  详细过程见 `docs/logs/arena01a0c46d.md`；备选方案留档在 BRANCHING.md §7。
 - ⚠️ 另一处：App 内置的 dev 更新源是**根地址**（`…/dev/update.json`），多条会话并行时会被别的分支构建刷新；
   装机实测要手填本分支坑位 `…/dev/channels/<id>/`（BRANCHING.md §3、§8 有完整 SOP）。
 
