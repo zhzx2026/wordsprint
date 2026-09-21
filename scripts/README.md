@@ -8,6 +8,7 @@
 | 脚本 | 干什么 | 什么时候跑 |
 |---|---|---|
 | `version.sh status` | 打印当前版本 / 通道（dev·stable·legacy）/ code，并预测下一步 | 接手仓库第一件事 |
+| `branch_audit.sh [--strict]` | **分支分工体检**（只读）：当前分支的角色与纪律、版本通道、tag 违规、是否落后 `origin/main`、远端各 `arena/**` 分支领的号（`--strict` 时有 ✗ 就 exit 1）。规则见 [BRANCHING.md](../BRANCHING.md) | 接手仓库、换分支、发包前 |
 | `version.sh bump-dev` | 一轮 dev 迭代：`X.Y → X.(Y+1)`（stable `X.0` 则回到 `X.1`），`versionCode` 取「本地 / dev 通道 / main」三者最大值 +1，同步 `AndroidManifest.xml` + `RELEASE_NOTES.md` 首行 + `README.md` 当前版本行 | 每轮改动交付给用户实测**之前** |
 | `version.sh promote` | 转正：dev `X.Y` → stable `(X+1).0`（只改文件，不打 tag 不 push） | 用户明确说「可以转正」之后 |
 | `version.sh set X.Y [code]` | 手工指定版本号（用户要求改编号时用，如 2026-09-17 的 2.x→3.x、2026-09-17 的 4.0→5.0）；code 省略则同样取三方最大 +1 | 用户点名要某个号 |
@@ -21,7 +22,7 @@
 
 | 脚本 | 谁调 | 干什么 |
 |---|---|---|
-| `publish_dev.sh ["说明"]` | `staging.yml` | 把刚构建的 apk + `update.json` + `share/index.html` + `res/font/wp_word.ttf` 推到孤儿分支 `dev`（raw 直链可达，GitHub Pages 也从这里托管战绩页）。撤销：`git push origin --delete dev` |
+| `publish_dev.sh ["说明"]` | `staging.yml` | 把刚构建的 apk + `update.json` + `share/index.html` + `res/font/wp_word.ttf` 推到孤儿分支 `dev`（raw 直链可达，GitHub Pages 也从这里托管战绩页）。**产物白名单门禁**：dev 上多塞任何非产物文件都会当场失败（BRANCHING.md §1/§2）。撤销：`git push origin --delete dev` |
 | `make_release_manifest.sh` | `release.yml` / `auto_release.yml` | 组装 `dist/wordsprint.apk` + `dist/update.json`。**文案优先级：`RELEASE_NOTES` 环境变量 > 仓库根 `RELEASE_NOTES.md` > 最后一条提交标题**，所以 `RELEASE_NOTES.md` 必须只写当前这一版（它会整份变成 Release 正文与手机弹窗里那段字；历史文案存档在 `CHANGELOG.md`） |
 | `setup_tools.sh` | 维护机 / `AGENT.md` | 把 JDK17（temurin）+ Android SDK build-tools 34 + platform 34 下到 `./tools`（已 gitignore）。⚠️ Arena 沙箱出网是白名单制，`api.adoptium.net` / `dl.google.com` 都不通，**沙箱里跑不出来** |
 

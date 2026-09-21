@@ -1,6 +1,6 @@
 # 刷单词 WordsPrint
 
-**当前版本：v5.1（dev）** <!-- CURRENT-VERSION -->
+**当前版本：v6.0（stable）** <!-- CURRENT-VERSION -->
 
 一个精致的**离线背单词 Android 应用**：以「整本课本」为单位刷词，覆盖小学到大学的主流词表。
 无 Gradle、无第三方 UI 库，`bash build.sh` 直接出签名 APK；更新走 GitHub Releases（App 内 OTA）。
@@ -121,6 +121,18 @@ bash build.sh                    # ⑤ aapt2 → javac → d8 → zipalign → a
   只想验证能不能编出来：`ALLOW_FRESH_KEY=1 bash build.sh`（产物不可覆盖安装）。
 - CI 门禁：dev 版（`X.Y`）合 main 会被 `auto_release.yml` 跳过并提示先转正；tag 只打给 stable。
 
+## 分支与发布通道
+
+三条线各司其职，规则全文见 [BRANCHING.md](BRANCHING.md)：
+
+| 分支 / 资源 | 分工 |
+|---|---|
+| `main` | **正式线**：只有它打 tag、发 [Releases](https://github.com/zhzx2026/wordsprint/releases)，版本永远是 stable `X.0`。App 内置 OTA 源读 `releases/latest/download/update.json` |
+| `dev` | **产物通道**（孤儿分支，只有 CI 能写）：放测试包 `wordsprint.apk` / `update.json` 与各会话独立的装机坑位 `channels/<分支id>/`；在线战绩页（GitHub Pages）现在也从这里托管 |
+| `arena/<id>-wordsprint` | **工作分支**：一条 Arena 会话一条，代码/文档只在这里改；`bash scripts/staging_build.sh` 出测试包，用户确认后转正合进 `main` |
+
+接手仓库先跑 `bash scripts/branch_audit.sh`（只读体检：我在哪条线、该干什么、有没有踩线）。
+
 ## 安装
 
 从 [Releases](https://github.com/zhzx2026/wordsprint/releases/latest) 下载 `wordsprint.apk`
@@ -138,11 +150,12 @@ src/com/aidemo/wordsprint/  全部 Java 源码（无第三方依赖，libs/ 只�
 res/                        布局 / 配色 / 字符串 / 字体；values-night/ 是深色配对；raw/wdb.dat 是词库
 test/                       主机侧 JVM 测试（CI 跑的那批）；test/scratch/ 是一次性调试脚本
 scripts/                    构建 / 版本 / 发布 / ETL 辅助脚本（清单见 scripts/README.md）
-share/                      在线战绩页（GitHub Pages 从 dev 分支托管）
+share/                      在线战绩页（GitHub Pages 现从 dev 分支托管，切到 main 的规则见 BRANCHING.md §4）
 data/                       词库源数据（小学 tsv、四六级 tsv.gz）
 .github/workflows/          staging.yml（测试包）· auto_release.yml（合并即发布）· release.yml（打 tag 发布）
 AGENT.md / AGENTS.md        给接手这个仓库的 AI 的交接说明（含踩坑清单）
 VERSIONING.md               版本迭代与转正规则
+BRANCHING.md                分支分工（main / dev / arena）+ Pages 托管 + 多会话并行机制
 RELEASE_NOTES.md            当前这一版的发布文案（会进 Release 正文与 update.json）
 CHANGELOG.md                历代发布文案存档（只供查阅）
 ```
