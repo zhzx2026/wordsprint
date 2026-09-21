@@ -128,6 +128,31 @@
 
 ---
 
+### 4.1 「dev 分支能不能删」决策树（用户 2026-09-21 问过）
+
+删掉 `dev` 只会影响两件事：① 手机「更新源」手填的那条**测试通道**（App 内检查更新装机实测最快的那条路）；
+② **Pages 战绩页的托管来源**（只在「Pages 源 = dev」时）。
+
+```
+要删 dev 吗？
+└─ 先看 Pages 源是什么？（Settings → Pages，或 gh api /repos/<repo>/pages --jq .source.branch）
+   ├─ 源 = dev ──▶ 不能直接删！先把源切到 main（Settings → Pages → Deploy from a branch → main / (root) → Save）
+   │                否则：战绩页 404，已经分享出去的二维码 / 战绩图全部打不开
+   └─ 源 = main（或 Actions）──▶ 可以删：git push origin --delete dev
+```
+
+删掉之后：
+
+- **装机实测改走 artifact**：Actions → `staging` → 最新 run → Artifacts → 下载 zip → 手动安装（§8.1 的 B 方案）；
+  只是没了「手机上点一下就更新」这条便利。
+- **随时可以重建**：任意一次 staging 构建都会自动把 `dev` 从零建起来（`publish_dev.sh` 拉不到旧 dev 就空树起步），
+  所以删除是**可逆**的，不是破坏性操作。
+- **手机端配合**：把「更新源」留空 = 用内置正式源；填了旧坑位地址的会报 404（按 §8.3 回退）。
+
+一句话：**`dev` 是可删可重建的产物区；但它是 Pages 的唯一来源时，必须先切源、再删。**
+
+---
+
 ## 5. 多 Arena 会话同时开工：系统逻辑
 
 ### 5.1 七道机制（为什么并行不打架）
@@ -273,7 +298,7 @@ gh api "/repos/$REPO/check-runs/$ID" --jq .output.summary
 
 | 日期 | 改了什么 |
 |---|---|
-| 2026-09-21 | §7 补记 v6.0 转正发布结果；§1 残留台账补 `tag main` 的 refname 歧义副作用（AGENT.md 坑 17）；`branch_audit.sh` 的 fetch 改全 refspec |
+| 2026-09-21 | 新增 §4.1「dev 能不能删」决策树（Pages 先切源再删；dev 可重建）；§7 补记 v6.0 转正发布结果；§1 残留台账补 `tag main` 的 refname 歧义副作用（AGENT.md 坑 17）；`branch_audit.sh` 的 fetch 改全 refspec |
 | 2026-09-21 | 新建：把原本散在 `VERSIONING.md` §8、`share/README.md`、`AGENT.md` 发版流程里的「分支分工」集中到这一份；顺带给 `publish_dev.sh` 加**产物白名单断言**、新增 `scripts/branch_audit.sh` 体检脚本；新增 §8 测试版装机 SOP、§9 收尾检查单；§7 记录「main 上的 dev 5.1」收口为 **v6.0** 并发 Release |
 
 > 改这份文件 = 改规则：动之前先问用户；改完在表格里追加一行。
