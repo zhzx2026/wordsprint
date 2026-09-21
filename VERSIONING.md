@@ -96,3 +96,37 @@ bash scripts/staging_build.sh      # 出测试包（不变）
 - **当前位置：stable v5.0（code 41）**。下一轮 `bump-dev` → dev 5.1（code 42 起）；下次转正 → v6.0。
 - 历史残留（要不要清由用户定，别自己动手）：tag `v1.0.17` 与 tag `v3.0` 都是有 tag 无 Release；
   另有一个**误用 tag `main` 建的 Release**（2026-09-13），已不是 `latest`，但仍挂在 Releases 列表里。
+
+## 8. 多 Arena 分支并行（2026-09-18 增补：防撞号 & 测试便利）
+
+> 一句话：**版本号晚绑定 —— 分支开发期不动 manifest，发包实测前 / 合并转正前先 rebase main 再 `bump-dev`；撞没撞号由 CI 门禁说了算。**
+
+每条 Arena 会话分支是 `arena/<id>-wordsprint`，**分支短 id**（`bash scripts/branch_id.sh`，如 `arena01a0b2c2`）
+是它在 artifact 名、dev 通道坑位、APP 构建标识里的"身份证"。
+
+### 8.1 防撞号
+1. **晚绑定**：开发期不动 `AndroidManifest.xml` 版本（保持从 main 带下来的号）；只在两个时刻动版本：
+   ① 发包实测前 `git fetch && git rebase origin/main` → `bash scripts/version.sh bump-dev`；
+   ② 转正前同样先 rebase 再 `promote`。谁先 rebase+push 谁先用号，后到的自动避开。
+2. **取号范围**：`max_code` 现在扫 本地 / dev 通道 / main / **所有 `arena/**` 远端分支**，bump 自动跳过别人领过的 code。
+3. **CI 门禁**：`staging.yml` 里有「多分支撞号门禁」= `version.sh check-unique` —— 同 versionCode 已被
+   **分叉的**另一条 arena 分支占用（compare API 判 diverged）→ 直接 fail 并提示 rebase + bump；
+   同 versionName 不同 code 只警告（后合并的转正前再 bump 让出名字）。还没领号（stable 且 code ≤ main）必过。
+
+### 8.2 测试便利
+4. **测试包可辨识**：staging artifact 名 = `wordsprint-staging-v<ver>-<分支id>-r<run号>`；
+   APK 内构建标识 `BuildInfo.STAMP`（build.sh 编译期生成，分支id·短sha）显示在设置页脚
+   （`v5.1 · arena01a0b2c2·10c270e`），装错包一眼可见。
+5. **dev 通道分坑位**：`publish_dev.sh` 把包发到 `dev` 分支 `channels/<分支id>/`，每条分支有独立更新源
+   `https://raw.githubusercontent.com/<owner>/<repo>/dev/channels/<分支id>`，互不覆盖；
+   根目录保留「最近一次构建」兼容旧写法；发布前增量拉旧 dev 分支，**别的坑位不丢**。
+6. **同机双装**：`SBS=1 bash scripts/staging_build.sh`（或手动触发 staging 勾 side_by_side）→
+   包名 `com.aidemo.wordsprint.sbs.<分支id>`、provider authorities 同步改写（build.sh 自检 badging）、
+   数据隔离、可与正式包并存；**应用内更新对双装包禁用**（`Update.checkRes` 早退提示，装正式包名必失败）。
+7. **日志解耦**：会话流水账写 `docs/logs/<分支id>.md`（每分支一个文件，合并零冲突）；
+   `AGENT.md` 只留长期规则，合并转正时由合并 PR 摘回结论。
+
+### 8.3 冲突最少的合并顺序
+- 共享文件只剩三类：manifest 版本块（一行冲突，rebase 后重跑 bump 即解）、
+  `docs/logs/`（每分支一个文件，天然无冲突）、文档版本行（由 `version.sh sync` 幂等修复）。
+- 原则：**分支生命周期越短越好，做完就合；合前必 rebase；rebase 后必重新过撞号门禁。**

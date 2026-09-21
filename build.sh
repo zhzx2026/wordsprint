@@ -18,12 +18,47 @@ VER=$(grep -oE 'versionName="[^"]*"' AndroidManifest.xml | sed 's/versionName="/
 VC=$(grep -oE 'versionCode="[0-9]*"' AndroidManifest.xml | sed 's/versionCode="//;s/"//')
 B=build
 rm -rf $B && mkdir -p $B/gen $B/classes $B/dex
+
+# ── 多分支并行（VERSIONING.md §8）：① 构建标识（手机上认包）② 同机双装（SIDE_BY_SIDE=1）──
+BID=$(bash scripts/branch_id.sh 2>/dev/null || echo local)
+SHA7=$(git rev-parse --short=7 HEAD 2>/dev/null || echo unknown)
+STAMP="$BID·$SHA7"; SBS=0
+if [ "${SIDE_BY_SIDE:-0}" = "1" ]; then SBS=1; STAMP="$STAMP·sbs"; fi
+cat > src/com/aidemo/wordsprint/BuildInfo.java <<EOF
+package com.aidemo.wordsprint;
+
+/** 构建标识：本文件由 build.sh 在编译前自动生成（VERSIONING.md §8），手改无效、构建后自动还原。 */
+public final class BuildInfo {
+    public static final String STAMP = "$STAMP";
+    public static final boolean SBS = $([ "$SBS" = "1" ] && echo true || echo false);
+
+    private BuildInfo() {}
+}
+EOF
+MANIFEST=AndroidManifest.xml
+PKG=com.aidemo.wordsprint
+if [ "$SBS" = "1" ]; then
+  PKG="com.aidemo.wordsprint.sbs.$BID"
+  # provider authorities 必须等于 运行时 getPackageName()+".update"（ApkProvider.auth），
+  # 否则同机装第二个双装包会因 authorities 撞车而失败 —— 所以 manifest 用改过的副本参与 link。
+  sed "s/android:authorities=\"com.aidemo.wordsprint.update\"/android:authorities=\"$PKG.update\"/" \
+      AndroidManifest.xml > $B/AndroidManifest.sbs.xml
+  MANIFEST=$B/AndroidManifest.sbs.xml
+  echo "== SIDE_BY_SIDE：包名 $PKG（与正式包并存、数据隔离；应用内更新已禁用）"
+fi
+
 echo "== aapt2 compile"
 $BT/aapt2 compile --dir res -o $B/res.zip
 echo "== aapt2 link (v$VER / code $VC)"
-$BT/aapt2 link -o $B/app.unsigned.apk -I "$AJ" --manifest AndroidManifest.xml \
+RENAME=""
+[ "$SBS" = "1" ] && RENAME="--rename-manifest-package $PKG"
+$BT/aapt2 link -o $B/app.unsigned.apk -I "$AJ" --manifest "$MANIFEST" \
    -R $B/res.zip --java $B/gen --min-sdk-version 26 --target-sdk-version 34 \
-   --version-code "$VC" --version-name "$VER" --auto-add-overlay
+   --version-code "$VC" --version-name "$VER" --auto-add-overlay $RENAME
+# 自检：包名与 authorities 必须真被改写（占位符/漏改会让双装包装不上，在这里就拦下）
+GOTPKG=$($BT/aapt2 dump badging $B/app.unsigned.apk | sed -n "s/^package: name='\([^']*\)'.*/\1/p" | head -1)
+if [ "$GOTPKG" != "$PKG" ]; then echo "!! 包名不符：manifest 里是 $GOTPKG，期望 $PKG"; exit 1; fi
+if $BT/aapt2 dump badging $B/app.unsigned.apk | grep -q '\${'; then echo "!! manifest 里有未替换的占位符"; exit 1; fi
 echo "== javac"
 find src $B/gen -name '*.java' > $B/srcs.txt
 javac -encoding UTF-8 -source 8 -target 8 -nowarn -bootclasspath "$AJ" -cp libs/zxing-core.jar -d $B/classes @$B/srcs.txt 2> $B/javac.log || { cat $B/javac.log; exit 1; }
@@ -61,6 +96,9 @@ fi
 $BT/apksigner sign --ks "$KS" --ks-pass pass:$KS_PASS --key-pass pass:$KS_PASS \
   --v1-signing-enabled true --v2-signing-enabled true --out $B/wordsprint-signed.apk $B/app.aligned.apk
 cp $B/wordsprint-signed.apk wordsprint-v$VER.apk
+if [ "$SBS" = "1" ]; then cp $B/wordsprint-signed.apk "wordsprint-v$VER-$BID-sbs.apk"; fi
+# 构建标识是临时改写：签完名立刻还原，工作区不留脏文件
+git checkout -q -- src/com/aidemo/wordsprint/BuildInfo.java 2>/dev/null || true
 $BT/apksigner verify --print-certs $B/wordsprint-signed.apk | head -3
 ls -la wordsprint-v$VER.apk
-echo "BUILD OK"
+echo "BUILD OK（$STAMP）"
