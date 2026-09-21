@@ -63,11 +63,13 @@ public class Update {
     // 哪个页面在台上哪个页面显示。
     private static volatile boolean busy;
     private static volatile int pct = -1;          // -1 = 还不确定百分比（服务端没给长度）
+    private static volatile int stage = DlProg.CONNECT;
     private static volatile String line = "";
     private static volatile Info latest;           // 最近一次查到的新版本（首页横幅用）
 
     public static boolean isBusy() { return busy; }
     public static int progressPct() { return pct; }
+    public static int progressStage() { return stage; }
     public static String progressLine() { return line; }
     public static Info newest() { return latest; }
     public static void clearNewest() { latest = null; }
@@ -75,7 +77,11 @@ public class Update {
     // ---------- 进度弹窗（唯一的进度入口：用户 2026-09-15「进度条是弹窗不是设置界面」） ----------
     private static AlertDialog progressDlg;
     private static Activity progressHost;
-    private static Runnable cancelHook;         // 当前下载的「取消」动作
+    private static Runnable followHook;           // 进度弹窗那个 300ms 自刷新（关窗时要撤掉）
+    private static View followView;               // followHook 挂在哪个视图上（撤回调要用）
+    private static String progressName = "";      // 正在下的版本号（重挂弹窗时标题要写对）
+    private static boolean uiBroken;              // 这一轮进度弹窗挂不上去（别再每 400ms 重试一次）
+    private static Runnable cancelHook;           // 当前下载的「取消」动作
 
     public static int myCode(Context c) {
         try { return c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionCode; }
@@ -260,42 +266,30 @@ public class Update {
             @Override public void run() { cancel[0] = true; }
         };
         busy = true;
+        uiBroken = false;                  // 新一轮下载：进度弹窗重新给一次机会
         pct = -1;
+        stage = DlProg.CONNECT;
         line = a.getString(R.string.update_downloading);
-        presentProgress(a, info);
+        try {
+            presentProgress(a, info);
+        } catch (Throwable t) {
+            // 弹窗起不来也不能装作什么都没发生（用户只会看到「点了没反应」）：把原因说出来，
+            // 下载照常跑完 —— 装包那一步不需要弹窗。
+            uiBroken = true;
+            try { Toast.makeText(a, a.getString(R.string.update_ui_fail, t.getClass().getSimpleName()),
+                    Toast.LENGTH_LONG).show(); } catch (Throwable ignored) {}
+        }
         new Thread(new Runnable() {
             @Override public void run() { runDownload(a, info, f, cancel); }
         }).start();
     }
 
-    /**
-     * 进度条 drawable：**在代码里搭**，不走 XML。
-     *
-     * 用户 2026-09-16 报「更新进度条又坏了」，症状很具体：弹窗出来了、百分数在跳，就是**看不到条**。
-     * 根因就在旧实现 —— res/drawable/progress_update.xml 里写的是 ?attr/wpChipBg / ?attr/wpBrand /
-     * ?attr/wpBrand2，而它是用 Resources.getDrawable() 取的：那条路径不带 Activity 的主题，
-     * 主题属性解析不出来（轨道与进度都成了透明），于是「有数字、没条」。
-     * 现在颜色直接取 Skin 解析好的实色，再也不会出现「解析不到 = 隐形」这种事。
-     * 轨道色沿用热力图空档那套算法（surface 混 22% 正文色）：任何配色/深浅模式下都看得见。
-     */
-    private static android.graphics.drawable.Drawable barDrawable(Context c) {
-        float d = c.getResources().getDisplayMetrics().density;
-        float r = 5f * d;
-        int track = Heat.mix(Skin.c(c, R.attr.wpSurface), Skin.c(c, R.attr.wpText2), 0.22f);
-        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
-        bg.setColor(track);
-        bg.setCornerRadius(r);
-        android.graphics.drawable.GradientDrawable fg = new android.graphics.drawable.GradientDrawable(
-                android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[]{Skin.c(c, R.attr.wpBrand), Skin.c(c, R.attr.wpBrand2)});
-        fg.setCornerRadius(r);
-        android.graphics.drawable.ClipDrawable clip = new android.graphics.drawable.ClipDrawable(
-                fg, android.view.Gravity.START, android.graphics.drawable.ClipDrawable.HORIZONTAL);
-        android.graphics.drawable.LayerDrawable ld = new android.graphics.drawable.LayerDrawable(
-                new android.graphics.drawable.Drawable[]{bg, clip});
-        ld.setId(0, android.R.id.background);
-        ld.setId(1, android.R.id.progress);
-        return ld;
+    /** 阶段文案（连接中 / 下载中 / 校验 / 准备安装）—— 弹窗每 300ms 读一次 */
+    private static String stageLabel(Context c, int st) {
+        if (st == DlProg.VERIFY) return c.getString(R.string.update_verifying);
+        if (st == DlProg.INSTALL) return c.getString(R.string.update_installing);
+        if (st == DlProg.CONNECT) return c.getString(R.string.update_connecting);
+        return c.getString(R.string.update_downloading);
     }
 
     /**
@@ -306,38 +300,30 @@ public class Update {
         dismissProgress();
         progressHost = a;
         float d = a.getResources().getDisplayMetrics().density;
-        android.widget.ProgressBar pb = new android.widget.ProgressBar(a, null,
-                android.R.attr.progressBarStyleHorizontal);
-        pb.setMax(100);
-        pb.setProgress(0);
-        pb.setIndeterminate(false);
-        pb.setMinimumHeight((int) (10 * d));
-        // 样式全部在代码里给（见 barDrawable）；顺手清掉主题 tint —— 否则 ROM 的 accent 色会盖掉品牌渐变
-        try {
-            pb.setProgressDrawable(barDrawable(a));
-            pb.setProgressTintList(null);
-            pb.setProgressBackgroundTintList(null);
-            pb.setIndeterminateTintList(null);
-        } catch (Throwable ignored) {}
+        // 进度条是**自己画**的（UpdateBar）：不再有 ProgressBar + drawable + level + tint 这条
+        // 「任何一环失灵就变成有数字没条」的链路。算术与配色在纯 java 的 DlProg 里，有主机断言。
+        final UpdateBar bar = new UpdateBar(a);
         final TextView st = new TextView(a);
         st.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
         st.setTextColor(Skin.c(a, R.attr.wpText2));
         st.setText(R.string.update_downloading);
         // 弹窗不再「只在有进度事件时才动」：每 300ms 自己读一次全局进度。
         // 服务端没给 Content-Length 时百分比也会按已下载量估算（pct 不会是 -1），所以条子一定会动。
-        final android.widget.ProgressBar fpb = pb;
-        final TextView fst = st;
         final Runnable follow = new Runnable() {
             @Override public void run() {
                 int p = progressPct();
-                if (p >= 0) fpb.setProgress(p);
-                if (line != null && line.length() > 0) fst.setText(line);
+                int s = progressStage();
+                bar.setProgress(p, s);
+                String l = line;
+                st.setText(l == null || l.length() == 0 ? stageLabel(a, s) : l);
                 if (!busy) return;
-                fpb.postDelayed(this, 300);
+                bar.postDelayed(this, 300);
             }
         };
+        followHook = follow;
+        followView = bar;
         follow.run();                 // 立刻就显示当前状态，别让用户先盯 300ms 的空条
-        pb.postDelayed(follow, 300);
+        bar.postDelayed(follow, 300);
         LinearLayout col = new LinearLayout(a);
         col.setOrientation(LinearLayout.VERTICAL);
         col.setBackgroundResource(R.drawable.bg_card_28);
@@ -345,6 +331,7 @@ public class Update {
         col.setPadding(pad, pad, pad, (int) (10 * d));
         TextView title = new TextView(a);
         title.setText(a.getString(R.string.update_downloading_title, info.name));
+        progressName = info.name;
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16.5f);
         title.setTypeface(title.getTypeface(), android.graphics.Typeface.BOLD);
         title.setTextColor(Skin.c(a, R.attr.wpText));
@@ -357,7 +344,7 @@ public class Update {
         LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, (int) (10 * d));
         plp.topMargin = (int) (10 * d);
-        col.addView(pb, plp);
+        col.addView(bar, plp);
         TextView cancelBtn = new TextView(a);
         cancelBtn.setText(R.string.update_cancel);
         cancelBtn.setGravity(android.view.Gravity.CENTER);
@@ -379,18 +366,35 @@ public class Update {
         progressDlg = Ui.presentCard(a, col, false);
     }
 
-    /** 下载中但看不到进度弹窗（用户切了页面 / 弹窗被系统收走）时，把它重新拉起来 */
+    /**
+     * 下载中但看不到进度弹窗（用户切了页面 / 弹窗被系统收走）时，把它重新拉起来。
+     * 判定条件里**必须带上 progressHost**：弹窗是挂在某个页面的窗口上的，用户从「关于与更新」页
+     * 退回设置列表页，那个页面的窗口已经不在前面，可 `isShowing()` 还是 true ——
+     * 结果就是「下载在跑、屏幕上什么都没有」（用户 2026-09-18「更新没有进度条」的其中一条路）。
+     */
     public static void showProgress(Activity a) {
-        if (!busy || cancelHook == null) return;
+        if (!busy || cancelHook == null || uiBroken) return;
         if (progressDlg != null && progressHost == a && progressDlg.isShowing()) return;
-        Info info = new Info();
-        info.name = myName(a);
-        presentProgress(a, info);
+        try {
+            Info info = new Info();
+            info.name = progressName == null || progressName.length() == 0 ? myName(a) : progressName;
+            presentProgress(a, info);
+        } catch (Throwable t) {
+            // 弹窗挂不上（页面正在销毁之类）就算了，别把 App 带走：下载照常继续。
+            // 置 uiBroken，免得轮询每 400ms 又试一次、一路建一堆废弹窗。
+            progressDlg = null;
+            uiBroken = true;
+        }
     }
 
     private static void dismissProgress() {
+        try { if (followView != null && followHook != null) followView.removeCallbacks(followHook); }
+        catch (Throwable ignored) {}
+        followHook = null;
+        followView = null;
         try { if (progressDlg != null) progressDlg.dismiss(); } catch (Throwable ignored) {}
         progressDlg = null;
+        progressHost = null;               // 别把 Activity 攥在静态字段里（关窗之后就用不到了）
     }
 
     /**
@@ -407,11 +411,14 @@ public class Update {
         for (int attempt = 0; attempt < 2 && !cancel[0]; attempt++) {
             try {
                 if (attempt > 0) {                       // 重试前把进度条拉回起点，别让它停在上一轮的位置
+                    stage = DlProg.CONNECT;
                     pct = 0;
                     line = a.getString(R.string.update_downloading);
                 }
                 fetch(a, info, f, cancel);
                 if (cancel[0]) { finishQuietly(f); return; }
+                stage = DlProg.INSTALL;                  // 校验过了：弹窗改说「准备安装」，别一声不响地消失
+                line = a.getString(R.string.update_installing);
                 busy = false;
                 cancelHook = null;
                 a.runOnUiThread(new Runnable() {
@@ -421,7 +428,9 @@ public class Update {
                     }
                 });
                 return;
-            } catch (Exception e) {
+            } catch (Throwable e) {
+                // Throwable 而不是 Exception：漏出去的话 busy 会永远停在 true，
+                // 之后每次点「立即更新」都只会重挂一个空弹窗 —— 看着就是「没有进度条」。
                 if (cancel[0]) { finishQuietly(f); return; }
                 err = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
             }
@@ -443,6 +452,7 @@ public class Update {
         busy = false;
         cancelHook = null;
         pct = -1;
+        stage = DlProg.CONNECT;
         line = "";
         try { if (f != null && f.exists()) f.delete(); } catch (Throwable ignored) {}
     }
@@ -465,30 +475,29 @@ public class Update {
             long got = 0;
             int n;
             int lastPct = -1;
+            stage = DlProg.DOWNLOAD;                     // 拿到第一个字节就算「下载中」
             while ((n = in.read(buf)) > 0) {
                 if (cancel[0]) break;
                 out.write(buf, 0, n);
                 got += n;
-                // 注意：局部变量别叫 pct —— pct 是全局进度字段（同名会把自己的赋值改成写局部）
-                final int curPct = total > 0 ? (int) (got * 100 / total)
-                        : (int) Math.min(99, got / 51200);
+                // 百分比与状态行都走 DlProg（纯 java，DlProgTest 有断言）：
+                // 没给 Content-Length 时按已下量估算，最多 99% —— 不会再「一直停在 0%」。
+                final int curPct = DlProg.pct(got, total);
                 if (curPct != lastPct) {
                     lastPct = curPct;
-                    final String kb = String.format("%.1f MB / %.1f MB",
-                            got / 1048576.0, Math.max(0, total) / 1048576.0);
-                    final long fgot = got;
                     final long t0 = System.currentTimeMillis() - startedAt;
-                    final String speed = t0 > 600
-                            ? String.format(" · %.1f MB/s", fgot / 1048576.0 / (t0 / 1000.0)) : "";
-                    final String text = a.getString(R.string.update_progress, curPct) + "   " + kb + speed;
-                    pct = curPct;                      // 全局进度（进度弹窗每 300ms 读它）
-                    line = text;
+                    pct = curPct;                                  // 全局进度（进度弹窗每 300ms 读它）
+                    line = DlProg.line(a.getString(R.string.update_progress, curPct), got, total, t0);
                 }
             }
             out.flush();
             out.close();
             in.close();
             if (cancel[0]) return;
+            // 校验阶段：条子拉满、文案换掉，用户看得见「下完了、正在检查」这一步（不是凭空消失）
+            stage = DlProg.VERIFY;
+            pct = 100;
+            line = a.getString(R.string.update_verifying);
             if (total > 0 && got != total) throw new Exception("下载不完整（" + got + "/" + total + " 字节）");
             if (!looksLikeApk(f)) throw new Exception("文件不完整，缺少安装清单");
         } finally {
@@ -560,7 +569,11 @@ public class Update {
                 if (wcb != null) wcb.onTick(pct, line);
                 // 下载在跑、弹窗却不在眼前（用户换了页面 / 弹窗被系统收走）→ 自动重新挂出来。
                 // 这也是「进度条坏了」的一类表现：不是没下载，而是根本没人显示它。
-                if (busy && !act.isFinishing() && (progressDlg == null || !progressDlg.isShowing())) {
+                // ⚠️ 必须比 progressHost：弹窗是挂在创建它那个页面的窗口上的，用户退回上一页时
+                //    那个窗口已经不在前面，而 isShowing() 依旧返回 true —— 光看 isShowing 就会
+                //    以为「已经显示着了」，用户屏幕上其实什么都没有。
+                if (busy && !act.isFinishing()
+                        && (progressDlg == null || progressHost != act || !progressDlg.isShowing())) {
                     showProgress(act);
                 }
                 if (tick++ % 150 == 0 && !busy) silentCheck(act);     // 150 × 400ms = 60 秒
