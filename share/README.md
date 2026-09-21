@@ -19,6 +19,10 @@ https://zhzx2026.github.io/wordsprint/share/index.html?d=<payload>
 **开启方式（只需一次，且必须是仓库所有者点）**：仓库 `Settings` → `Pages` → Source = *Deploy from a branch*
 → Branch = **dev**、目录 = **/ (root)** → Save。
 
+> 规则与「什么时候该从 dev 切到 main、怎么切」见 [BRANCHING.md](../BRANCHING.md) §4（分支分工的唯一权威）。
+> 一句话：测试期挂在 `dev`（每次构建自动刷新），战绩页稳定后切到 `main`（只有转正才更新）；
+> 真身永远只在源码分支（`main` / `arena/**`）的 `share/index.html`，`dev` 上那份是副本。
+
 - 为什么不用 Actions 发布：实测 `GITHUB_TOKEN` 没有创建 Pages 站点的权限
   （`Resource not accessible by integration`），所以 CI 里没法代劳；分支方式反而更省事。
 - 开完就能用：dev 分支本来就由 `publish_dev.sh` 在每次构建时刷新（含 `share/index.html`

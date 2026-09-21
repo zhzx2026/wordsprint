@@ -15,6 +15,11 @@
 
 ## 🧩 多分支并行守则（用户 2026-09-18 定版，与发版铁律同级）
 
+**分支分工的权威说明是 [BRANCHING.md](BRANCHING.md)**（谁写哪个分支、Pages 托管在哪、多会话怎么互不打架）。
+一句话：**`main` = 正式线（只放 stable `X.0`，只有它能发 tag / Release）；`dev` = 产物通道（孤儿分支，只有 CI 能写，
+只放 apk / update.json / `channels/<id>/`）；`arena/<id>-wordsprint` = 工作分支（代码只在这里改）。**
+开工先跑 `bash scripts/branch_audit.sh` 看自己在哪条线上。
+
 多条 Arena 会话分支（`arena/<id>-wordsprint`）并行时，规则全文见 `VERSIONING.md` §8，要点：
 
 - **版本号晚绑定**：开发期不动 manifest；发包实测前 / 转正前先 `git fetch && git rebase origin/main` 再 `version.sh bump-dev`。撞号由 staging CI 的 `check-unique` 门禁拦截，不用人肉记。
@@ -33,6 +38,7 @@
 ## 目录速览（就是仓库根，别套 vocab-apk/ 这层目录）
 ```
 wordsprint/
+  BRANCHING.md               分支分工（main / dev / arena 各写什么）+ Pages 托管 + 多会话并行机制
   AndroidManifest.xml        版本号的唯一来源（build.sh 从这里读 versionName/Code）
   build.sh                   aapt2→javac→d8→zipalign→apksigner；认 $SDK_ROOT/$JDK_HOME，兜底 ./tools 和 /var/tmp
   src/com/aidemo/wordsprint/ 全部 Java 源码（无依赖库，libs/ 只有 zxing-core.jar）
@@ -93,7 +99,8 @@ git add -A && git commit -m "dev vX.Y：……"
 bash scripts/staging_build.sh           # 推当前分支 → staging.yml：版本门禁 + run_tests.sh + 真钥匙构建
 #   产物：① Actions Artifacts 里的 wordsprint-staging-vX.Y（zip，解压得 apk）
 #         ② 孤儿分支 dev：wordsprint.apk + update.json（+ share/index.html，Pages 也从这里托管）
-#   手机装：设置 →「关于与更新」→ 更新源填 https://raw.githubusercontent.com/zhzx2026/wordsprint/dev → 检查 → 立即更新
+#   手机装：设置 →「关于与更新」→ 更新源填 https://raw.githubusercontent.com/zhzx2026/wordsprint/dev/channels/<本分支id> → 检查 → 立即更新
+#           （多会话并行时**别填根地址** /dev：它=最近一次构建，会被任何分支刷新；见 BRANCHING.md §3）
 #   撤销 dev 通道：git push origin --delete dev
 # 本机有工具链 + keystore 时可以一条龙：bash scripts/push_release.sh "本次改动说明"（bump→build→commit，同样不 tag 不 push）
 ```
@@ -216,7 +223,19 @@ gh api "/repos/zhzx2026/wordsprint/git/blobs/$SHA" -H "Accept: application/vnd.g
     ⚠️ 还有个前提要跟用户说清楚：OTA 过程中的进度条是**手机上当前这个版本**画的，
     修好的进度条要等装上这一版**之后**的那次更新才看得到。
 
-## 当前状态（2026-09-18 第九次更新 · 本线最新）
+## 当前状态（2026-09-21 第十次更新 · 本线最新）
+- 🆕 **分支分工澄清（`arena/01a0c46d-wordsprint`）**：新增 **[BRANCHING.md](BRANCHING.md)** 作为「谁写哪个分支」的唯一权威
+  （main / dev / arena 的分工、文件写入矩阵、**Pages 战绩页托管分工**、手机两个更新源、多会话七道机制 + 红线）；
+  `publish_dev.sh` 加**产物白名单门禁**（dev 上多塞非产物文件 → 当场失败）；新增只读体检脚本 `scripts/branch_audit.sh`。
+  详细过程见 `docs/logs/arena01a0c46d.md`。**App 代码零改动**（所以没有 bump 版本、没出测试包）。
+- ⚠️ **体检发现（待用户拍板收口）**：`main` @ 5f29f20 上是 **v5.1 / code 42（dev 号）** ——
+  PR #10 合并时没走 `promote`，而最近 Release 还是 **v5.0（code 41）**，即 **main 领先线上 Release 一版、手机收不到**。
+  三个选项（推荐第 1 个）见 BRANCHING.md §7：① `version.sh promote` → **v6.0（code 43）** → 合 PR 发布；
+  ② 暂不发布，等下一轮一起转正；③ 回退 main（不推荐）。**下次接手前先看这条。**
+- ⚠️ 另一处：App 内置的 dev 更新源是**根地址**（`…/dev/update.json`），多条会话并行时会被别的分支构建刷新；
+  装机实测要手填本分支坑位 `…/dev/channels/<id>/`（BRANCHING.md §3）。
+
+## 当前状态（2026-09-18 第九次更新）
 - 🆕 **dev v5.1（code 42）= 更新进度条重做**：用户 2026-09-18「更新没有进度条」（第四次）。
   改动见坑 16：`UpdateBar`（自绘，不再用 ProgressBar+drawable）+ `DlProg`（纯 java 算术/配色）
   + `DlProgTest`（14 个 JVM 测试里的新成员，1026 条断言）；弹窗加「校验安装包 / 准备安装」两个阶段；
@@ -306,8 +325,9 @@ gh api "/repos/zhzx2026/wordsprint/git/blobs/$SHA" -H "Accept: application/vnd.g
   ```
   CI 跑 `scripts/run_tests.sh`（主机测试）→ `build.sh`（真钥匙签名）→ ① artifact `wordsprint-staging-vX.Y.Z`
   （zip，解压出 apk）② **孤儿分支 `dev`**：`wordsprint.apk` + `update.json`。
-  手机实测最省事的一条：设置 → 更新源填 `https://raw.githubusercontent.com/zhzx2026/wordsprint/dev`
-  → 检查 → 立即更新（同签名覆盖安装，进度不丢）。**这仍不是转正**：不建 tag、不建 Release，
+  手机实测最省事的一条：设置 → 更新源填**本分支坑位**
+  `https://raw.githubusercontent.com/zhzx2026/wordsprint/dev/channels/<本分支id>`（`bash scripts/branch_id.sh` 取 id）
+  → 检查 → 立即更新（同签名覆盖安装，进度不丢）。并行会话多时别填根地址 `/dev`，它会被任何分支刷新（BRANCHING.md §3）。**这仍不是转正**：不建 tag、不建 Release，
   手机内置源还是 releases/latest，别人不会收到这版。撤销：`git push origin --delete dev`。
   **CI 日志怎么读**（沙箱看不到 Actions 日志页）：staging.yml 无论成败都把 `run_tests.sh`+`build.sh` 全文
   写进自建 check-run `ci-diagnostics`，另外把 `error:` 前几行转成 annotations：

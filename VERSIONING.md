@@ -2,6 +2,7 @@
 
 > 一句话：**dev 版 X.Y（Y≥1）做迭代，每轮 +0.1；用户确认后转正为 stable (X+1).0（主版本 +1）；下一轮 dev 从新主版本的 `.1` 继续（2.0 之后是 2.1、2.2…）。**
 > 上述版本号更新、内容迭代与版本转正操作，均由 arena agent 在内部自动完成（本文件 + `scripts/version.sh` 即执行器）。
+> **分支分工**（谁写 `main`、谁写 `dev`、Pages 挂哪、多会话如何并行）另见 [BRANCHING.md](BRANCHING.md)。
 
 ## 1. 版本号规则
 
@@ -98,6 +99,10 @@ bash scripts/staging_build.sh      # 出测试包（不变）
   另有一个**误用 tag `main` 建的 Release**（2026-09-13），已不是 `latest`，但仍挂在 Releases 列表里。
 
 ## 8. 多 Arena 分支并行（2026-09-18 增补：防撞号 & 测试便利）
+
+> **分支各自的分工（main / dev / arena 各写什么、Pages 托管在哪）见 [BRANCHING.md](BRANCHING.md)** ——
+> 本节只管「版本号怎么在多分支之间不撞车」。开工先跑 `bash scripts/branch_audit.sh`（只读体检）。
+
 
 > 一句话：**版本号晚绑定 —— 分支开发期不动 manifest，发包实测前 / 合并转正前先 rebase main 再 `bump-dev`；撞没撞号由 CI 门禁说了算。**
 

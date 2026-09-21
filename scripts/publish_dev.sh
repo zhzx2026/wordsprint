@@ -8,6 +8,10 @@
 #
 # ⚠️ 这不是发版：不建 tag、不建 Release、不碰 main，OTA 也不会自动推给别人。
 # 想撤掉整个通道：  git push origin --delete dev
+#
+# 产物白名单（BRANCHING.md §1/§2）：dev 是**产物分支**，不是代码分支 —— 只允许
+#   wordsprint.apk / update.json / channels/<分支id>/{apk,update.json} / share/index.html /
+#   res/font/wp_word.ttf / README.md；提交前有门禁断言，多塞任何文件都会当场失败。
 set -e
 cd "$(dirname "$0")/.."
 export LANG=C.UTF-8 LC_ALL=C.UTF-8
@@ -81,6 +85,17 @@ PY
     echo '撤销整个通道： git push origin --delete dev；某分支已合并可手动删掉它的 channels/<id>/ 目录。'
   } > README.md
   git add -A
+  # 产物白名单门禁（BRANCHING.md §1/§2）：dev 是**产物分支**，不是代码分支 ——
+  # 只允许 apk / update.json / channels/<id>/ / share/index.html / res/font/wp_word.ttf / README.md。
+  # 谁以后往这里多塞东西（源码、文档、脚本…），这里当场拦下，避免 dev 变成"第二个 main"。
+  BAD=$(git diff --cached --name-status | awk '$1 != "D" {print $NF}' \
+        | grep -Ev '^(README\.md|wordsprint\.apk|update\.json|share/index\.html|res/font/wp_word\.ttf|channels/[^/]+/(wordsprint\.apk|update\.json))$' || true)
+  if [ -n "$BAD" ]; then
+    echo "!! 产物白名单门禁未通过：dev 分支只许放构建产物（BRANCHING.md §1/§2），以下文件不该出现在这里："
+    printf '     %s\n' $BAD
+    echo "   要改这些内容请回到源码分支（main / arena/**），别改 dev 上的副本。"
+    exit 1
+  fi
   git commit -qm "dev channel v$VER (code $VC) [$BID]"
   git push -qf origin HEAD:refs/heads/dev
 )

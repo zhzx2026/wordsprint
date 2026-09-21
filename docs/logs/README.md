@@ -15,4 +15,5 @@ docs/logs/arena<id>.md     ← 如 arena01a0b2c2.md
 
 | 分支 id | 状态 | 一句话 |
 |---|---|---|
-| arena01a0b2c2 | 进行中 | 多分支并行防撞号 + 测试便利机制（本仓库引入 §8 的这次） |
+| arena01a0b2c2 | 已合并（PR #10） | 多分支并行防撞号 + 测试便利机制（本仓库引入 §8 的这次） |
+| arena01a0c46d | 进行中 | dev / main 分工澄清：新增 `BRANCHING.md`（含 Pages 托管分工）+ `publish_dev.sh` 产物白名单门禁 + `scripts/branch_audit.sh` 体检 |

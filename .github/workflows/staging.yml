@@ -172,6 +172,7 @@ jobs:
 
 # 战绩页（share/index.html）不走 Actions 发布，而是用 Pages 的「Deploy from a branch」：
 # 仓库 Settings → Pages → Source = Deploy from a branch → dev → /(root)。
+# （为什么挂在 dev、什么时候切到 main：见 BRANCHING.md §4；真身永远只在源码分支的 share/index.html。）
 # 原因：GITHUB_TOKEN 没有创建 Pages 站点的权限（实测 Resource not accessible by integration），
 #      只有仓库所有者点一次才行；而 dev 分支本来每次构建都会被 publish_dev.sh 刷新（含 share/），
 #      所以开一次之后页面就自动跟着每次构建更新。
