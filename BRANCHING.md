@@ -202,7 +202,7 @@ gh api "/repos/$REPO/check-runs/$ID" --jq .output.summary
 |---|---|
 | `main` @ `5f29f20`（PR #10 合并） | ⚠️ **manifest = 5.1 / code 42（dev 号）**，README 写「当前版本：v5.1（dev）」—— 合并时没走 `promote`，main 上留了一个**未转正的 dev 版本** |
 | 最近 Release | `v5.0`（code 41，2026-09-17）。手机 OTA 拿到的还是 v5.0，**比 main 落后一版** |
-| `dev` 分支 | 坑位 `channels/arena01a0b2c2/` = v5.1 / code 42；根 `update.json` 也是 v5.1 / code 42 |
+| `dev` 分支 | 坑位 `channels/arena01a0b2c2/`（合并前那条会话留下的，v5.1 / code 42）与 `channels/arena01a0c46d/`（本会话 = 文档+门禁这一轮，同号 42，App 代码与前者相同）；根 `update.json` = v5.1 / code 42 |
 | Pages | 来源 = `dev` / `/`，地址 `https://zhzx2026.github.io/wordsprint/`，状态 built |
 | 其它分支 | 远端只有 `main`、`dev`（工作分支合并后都已删除） |
 
