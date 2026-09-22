@@ -52,19 +52,13 @@ main)
     || bad "main 上是 $CH 号 v$VER：main 只允许 stable X.0（dev 号应先 promote 成 X.0 再合并，见 BRANCHING.md §5.3 第 5 条 / §7）"
   ;;
 dev)
-  printf '【角色】dev = 产物通道（孤儿分支）：只许放构建产物，源码一个文件都不该有\n'
-  BAD="$(git ls-files 2>/dev/null | grep -Ev '^(README\.md|wordsprint\.apk|update\.json|share/index\.html|res/font/wp_word\.ttf|channels/[^/]+/(wordsprint\.apk|update\.json))$' || true)"
-  if [ -n "$BAD" ]; then
-    bad "以下文件不属于产物通道（应删掉，真身在 main / arena 分支）："
-    printf '      %s\n' $BAD
-  else
-    ok "内容符合产物白名单（apk / update.json / channels/<id>/ / share / 字体 / README）"
-  fi
-  warnf "这是 CI 的产物区（publish_dev.sh 每次 force push 重写）：不要手动改这里任何文件"
+  bad "dev 聚合分支已于 2026-09-22 删除（用户定的：测试包聚合改走预发布 Release ci，不再养分支）。"
+  echo "  现在的测试通道：Release \`ci\` 的资产（update-<分支id>.json）；App「分支」档直读 GitHub /branches。"
+  echo "  若你手里还有它：git push origin --delete dev，别再用 publish_dev.sh 往回养。"
   ;;
 arena|staging)
   printf '【角色】%s = 工作分支：代码/文档都在这里改；不推 main、不打 tag\n' "$BR"
-  ok "分支名合规范（分支id $BID 会进 artifact 名、dev 坑位、APK 构建标识）"
+  ok "分支名合规范（分支id $BID 会进 artifact 名、ci 资产名、APK 构建标识）"
   TAGS="$(git tag --points-at HEAD 2>/dev/null | tr '\n' ' ' || true)"
   [ -n "$TAGS" ] && bad "本分支的提交上已经有 tag：$TAGS —— tag 只许打给 main 上的 stable（先 promote 转正）" \
                  || ok "本分支没有 tag（正确：dev 版本永远没有 tag）"
@@ -112,7 +106,7 @@ if command -v gh >/dev/null 2>&1 && [ -n "$REPO" ]; then
     while read -r b; do
       [ -n "$b" ] || continue
       case "$b" in
-        main|dev) printf '  · %-34s %s\n' "$b" "$([ "$b" = main ] && echo '正式线（stable / tag / Release）' || echo '产物通道（apk + update.json + 坑位）')" ;;
+        main) printf '  · %-34s %s\n' "$b" '正式线（stable / tag / Release）' ;;
         arena/*|staging/*)
           v="$(gh api "/repos/$REPO/contents/AndroidManifest.xml?ref=$b" --jq .content 2>/dev/null \
                | base64 -d 2>/dev/null | grep -oE 'versionName="[^"]*"|versionCode="[0-9]*"' \
@@ -136,9 +130,9 @@ fi
 printf '\n【下一步能干什么】\n'
 case "$ROLE" in
   main)  printf '  · main 只接收转正 PR；不要在 main 上直接改代码\n' ;;
-  dev)   printf '  · 整条撤销：git push origin --delete dev；某分支坑位不要了：删 channels/<id>/\n' ;;
+  dev)   printf '  · dev 聚合分支已退役：测试通道 = 预发布 Release ci 的资产；撤坑位 gh release delete-asset ci update-<id>.json -y\n' ;;
   *)     printf '  · 出装机测试包：bash scripts/version.sh bump-dev && bash scripts/staging_build.sh\n'
-         printf '  · 手机更新源填本分支坑位：https://raw.githubusercontent.com/%s/dev/channels/%s\n' "${REPO:-<repo>}" "$BID"
+         printf '  · 装机实测：App 更新源选「分支」锁 %s（App 直连 GitHub，无需手填地址）\n' "$BID"
          printf '  · 用户确认转正：bash scripts/version.sh promote → 开 PR 合进 main（合并即发布）\n' ;;
 esac
 printf '  · 规则全文：BRANCHING.md §1 分支分工 · §4 Pages · §5 多会话并行\n\n'

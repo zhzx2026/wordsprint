@@ -278,7 +278,7 @@ public class SettingsSubActivity extends Activity {
                 Update.channelName(this, pr.updateChannel())));
     }
 
-    /** 「分支」坑位行：选中第 3 档才显示；先用上次拉到的名单画，再异步刷新 */
+    /** 「分支」选择行：选中第 3 档才显示；先按上次的结果画，再异步直连 GitHub 刷新 */
     private void syncBranchRow() {
         if (brScroll == null) return;
         if (pr.updateChannel() != UpCh.BRANCH) {
@@ -286,19 +286,19 @@ public class SettingsSubActivity extends Activity {
             return;
         }
         brScroll.setVisibility(View.VISIBLE);
-        renderBranchRow(Update.lastSlots(), null);
-        Update.fetchSlotsAsync(this, new Update.SlotsCb() {
-            @Override public void onRes(java.util.List<String> slots, String err) {
+        renderBranchRow(Update.lastBranches(), Update.lastBuilt(), null);   // 先照上次的画（没有就显示「正在读取」）
+        Update.fetchBranchesAsync(this, new Update.BranchCb() {
+            @Override public void onRes(java.util.List<String> ids, java.util.List<String> built, String err) {
                 if (pr.updateChannel() != UpCh.BRANCH) return;   // 请求回来时用户已经切走
-                renderBranchRow(slots, err);
+                renderBranchRow(ids, built, err);
             }
         });
     }
 
-    private void renderBranchRow(java.util.List<String> slots, String err) {
+    private void renderBranchRow(java.util.List<String> ids, java.util.List<String> built, String err) {
         if (brRow == null) return;
         brRow.removeAllViews();
-        if (slots == null || slots.isEmpty()) {
+        if (ids == null || ids.isEmpty()) {
             TextView hint = new TextView(this);
             hint.setText(err != null ? getString(R.string.update_branch_list_fail, err)
                     : getString(R.string.update_branch_list_loading));
@@ -310,9 +310,10 @@ public class SettingsSubActivity extends Activity {
             hint.setLayoutParams(lp);
             brRow.addView(hint);
         } else {
+            java.util.Set<String> has = new java.util.HashSet<String>(built == null ? java.util.Collections.<String>emptyList() : built);
             String sel = pr.upBranch();
-            for (final String id : slots) {
-                TextView tv = Ui.chip(this, id, id.equals(sel));
+            for (final String id : ids) {
+                TextView tv = Ui.chip(this, has.contains(id) ? id : id + "·无包", id.equals(sel));
                 tv.setOnClickListener(new View.OnClickListener() {
                     @Override public void onClick(View v) {
                         pr.setUpBranch(id);
@@ -322,18 +323,17 @@ public class SettingsSubActivity extends Activity {
                 });
                 brRow.addView(tv);
             }
-            // 存的坑位不在名单里（分支合并后目录被删）也不清：状态行照实显示它，
-            // 用户要么改选、要么该分支重新构建出包
+            // 存的坑位不在清单里（分支已合并删除）也不清：状态行照实显示它，检查会明说 404
         }
         TextView rf = Ui.chip(this, getString(R.string.update_branch_refresh), false);
         rf.setTag("rf");                           // 选中态轮播时跳过它
         rf.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
-                renderBranchRow(null, null);       // 先变回「正在获取」，失败原因会写在这行
-                Update.fetchSlotsAsync(SettingsSubActivity.this, new Update.SlotsCb() {
-                    @Override public void onRes(java.util.List<String> slots, String err) {
+                renderBranchRow(null, null, null); // 先变回「正在读取」，失败原因会写在这行
+                Update.fetchBranchesAsync(SettingsSubActivity.this, new Update.BranchCb() {
+                    @Override public void onRes(java.util.List<String> ids, java.util.List<String> built, String err) {
                         if (pr.updateChannel() != UpCh.BRANCH) return;
-                        renderBranchRow(slots, err);
+                        renderBranchRow(ids, built, err);
                     }
                 });
             }

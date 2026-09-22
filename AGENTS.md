@@ -12,10 +12,10 @@
    也就是手机「发现新版本」弹窗里那段字。历史文案存档在 [CHANGELOG.md](CHANGELOG.md)，发版前先把上一版挪过去。
 3. **改完必跑 `bash scripts/run_tests.sh`**（本地与 CI 同一条命令，直接编译发版用的那份 `src/`）；
    没有 JDK 时先跑 `python3 scripts/refcheck.py` 粗筛。沙箱里没有工具链也没有签名钥匙 → 装机包一律由 CI 出
-   （`bash scripts/staging_build.sh`，只上传 artifact + 推 `dev` 通道，不打 tag、不发 Release）。
+   （`bash scripts/staging_build.sh`，只上传 artifact + 预发布 Release `ci` 资产，不打正式 tag、不发正式 Release）。
 4. **分支分工见 [BRANCHING.md](BRANCHING.md)**（2026-09-21 新增，唯一权威）：
-   `main` = 正式线（只放 stable `X.0`，只有它能发 tag / Release）；`dev` = **产物通道**（孤儿分支，
-   只有 CI 能写，只有 apk / update.json / `channels/<id>/` 这类产物）；`arena/<id>-wordsprint` = 工作分支（代码只在这里改）。
+   `main` = 正式线（只放 stable `X.0`，只有它能发 tag / Release）；测试包聚合 = **预发布 Release `ci`**（不是分支，
+   只有 CI 能写资产：根 `update.json`/`wordsprint.apk` + 各分支 `update-<id>.json`/`wordsprint-<id>.apk`）；`arena/<id>-wordsprint` = 工作分支（代码只在这里改）。
    开工第一件事可以跑 `bash scripts/branch_audit.sh` 看自己在哪条线上。
 
 文档地图：[README.md](README.md) 项目与构建 · [VERSIONING.md](VERSIONING.md) 版本与转正规则 ·

@@ -4,18 +4,22 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 更新源第 3 档「分支」通道的纯逻辑（主机可单测，不许 import android.*）。
+ * 更新通道的纯逻辑（主机可单测，不许 import android.*）。
  *
- * 背景（用户 2026-09-22）：更新源原来只有 stable / dev 两档 —— stable 跟着正式 Release 走，
- * dev 根地址永远是「最近一次构建」，多条会话并行时谁后构建谁覆盖；dev 通道上虽然一直有
- * 每分支独立的坑位（channels/&lt;分支id&gt;/，见 BRANCHING.md §3），但 App 里没有选择入口，
- * 「想单独测某条分支」根本没地方点。本类把第 3 档的纯逻辑收在这里：
- * 通道号清洗 · 坑位 id 清洗（要拼进下载 URL）· 坑位直链拼装 · 坑位列表解析。
- * 界面在 SettingsSubActivity（关于与更新页），取数在 Update.fetchSlotsAsync。
+ * 2026-09-22 起不再有 dev 聚合分支（用户：「dev 分支就是一个聚合，不用在最外面搞一个」）——
+ * App 直连 GitHub：
+ *   stable = `releases/latest`（只有转正 Release）；
+ *   dev    = 预发布 Release `ci` 的根资产（最近一次构建，任何分支都会刷新）；
+ *   分支   = 同一个 `ci` 预发布里每分支自己的资产 `update-<分支id>.json` / `wordsprint-<分支id>.apk`，
+ *            分支清单直接读 api.github.com 的 /branches（真·看分支，新分支推上去立刻能选）。
+ * Release 资产走 github.com 直链（302 到对象存储），不吃 api 配额；预发布永远不会变成 `latest`，
+ * 所以 stable OTA 不受任何影响。
+ *
+ * 坑位 id / 分支名都会拼进 URL 或拿去匹配资产名，所以清洗规则钉死在这里并被主机测试盯住。
  */
 public final class UpCh {
 
-    /** 更新通道：0 = stable（正式版 Release）· 1 = dev（最近构建）· 2 = branch（指定分支坑位） */
+    /** 更新通道：0 = stable（正式版 Release）· 1 = dev（ci 预发布的最近构建）· 2 = branch（指定分支） */
     public static final int STABLE = 0, DEV = 1, BRANCH = 2;
 
     private UpCh() {}
@@ -25,8 +29,7 @@ public final class UpCh {
 
     /**
      * 坑位 id 清洗：只保留 [A-Za-z0-9-]，最长 48，其余字符直接剔除。
-     * 坑位 id 会被拼进下载 URL（…/channels/&lt;id&gt;/update.json），宁可剔成怪名字
-     * 也不能让「..」「/」这类字符把路径带偏。
+     * id 会被拼进下载 URL / 资产名匹配，宁可剔成怪名字也不能让「..」「/」把路径带偏。
      */
     public static String sanitizeSlot(String s) {
         if (s == null) return "";
@@ -40,43 +43,81 @@ public final class UpCh {
     }
 
     /**
-     * dev 根地址 → 某个坑位的 update.json 直链。
-     *
-     * @param devSrc 内置 dev 源（…/dev 或 …/dev/update.json 两种写法都认）
-     * @param slot   坑位 id（会先过 {@link #sanitizeSlot}）
-     * @return 直链；devSrc 或 slot 为空时返回空串（调用方按「没配置」处理）
+     * 分支全名 → 短 id（和 scripts/branch_id.sh 同一套规则，App 与 CI 资产名必须对得上）：
+     *   arena/01a0c983-wordsprint → arena01a0c983 · staging/foo → staging-foo · main → main
      */
-    public static String slotUrl(String devSrc, String slot) {
-        String id = sanitizeSlot(slot);
-        String base = devSrc == null ? "" : devSrc.trim();
-        if (id.isEmpty() || base.isEmpty()) return "";
-        if (base.toLowerCase().endsWith(".json")) base = base.substring(0, base.lastIndexOf('/'));
+    public static String branchId(String full) {
+        if (full == null) return "";
+        String s = full.trim();
+        int slash = s.indexOf('/');
+        if (slash >= 0) {
+            String head = s.substring(0, slash), tail = s.substring(slash + 1);
+            if (head.equals("arena")) {                       // arena/<id>-wordsprint → arena<id>
+                int dash = tail.indexOf('-');
+                return "arena" + sanitizeSlot(dash < 0 ? tail : tail.substring(0, dash));
+            }
+            s = head + "-" + tail;                            // 其余：斜杠换减号
+        }
+        return sanitizeSlot(s.replace('_', '-'));
+    }
+
+    /** 分支坑位的 update.json 直链（GitHub Release `ci` 的资产）：`<base>/update-<id>.json` */
+    public static String branchUpdateUrl(String ciBase, String id) {
+        String slot = sanitizeSlot(id);
+        String base = ciBase == null ? "" : ciBase.trim();
+        if (slot.isEmpty() || base.isEmpty()) return "";
         while (base.endsWith("/")) base = base.substring(0, base.length() - 1);
-        return base + "/channels/" + id + "/update.json";
+        return base + "/update-" + slot + ".json";
     }
 
     /**
-     * 从 update.json 文本里抠出 {@code "channels":["a","b"]}（publish_dev.sh 每次构建
-     * 都会把全部坑位 id 写进 dev 根 update.json）。手抠而不是 org.json：
-     * 主机 JVM 没有 android 的 org.json，这条逻辑要能在主机测试里跑。
-     * 只认双引号字符串；key 不存在 / 数组为空 / 截断都返回已抠到的部分（空 list 合法）。
+     * 从 GitHub API 的 JSON 里抠出某个字符串字段的全部值（手抠：主机 JVM 没有 org.json，
+     * 这条逻辑要能在主机测试里跑）。只认双引号、按出现顺序返回；截断/缺 key 返回已抠到的部分。
+     * 用于 /branches 的 `"name"` 和 Release 的 assets `"name"`。
      */
-    public static List<String> parseChannels(String json) {
+    public static List<String> extractStringValues(String json, String key) {
         List<String> out = new ArrayList<String>();
-        if (json == null) return out;
-        int k = json.indexOf("\"channels\"");
-        if (k < 0) return out;
-        int i = json.indexOf('[', k + "\"channels\"".length());
-        if (i < 0) return out;
-        StringBuilder cur = null;
-        for (int e = i + 1; e < json.length(); e++) {
-            char ch = json.charAt(e);
-            if (cur != null) {
-                if (ch == '\\') { e++; continue; }   // 坑位 id 是 [A-Za-z0-9-]，遇转义跳过即可
-                if (ch == '"') { out.add(cur.toString()); cur = null; }
-                else cur.append(ch);
-            } else if (ch == '"') cur = new StringBuilder();
-            else if (ch == ']') break;
+        if (json == null || key == null || key.isEmpty()) return out;
+        String needle = "\"" + key + "\"";
+        int from = 0;
+        while (true) {
+            int k = json.indexOf(needle, from);
+            if (k < 0) break;
+            int colon = json.indexOf(':', k + needle.length());
+            int nextKey = json.indexOf(needle, k + needle.length());
+            if (colon < 0 || (nextKey >= 0 && nextKey < colon)) { from = k + needle.length(); continue; }
+            int i = colon + 1;
+            while (i < json.length() && json.charAt(i) != '"' && json.charAt(i) != '}' && json.charAt(i) != ']') i++;
+            if (i >= json.length() || json.charAt(i) != '"') { from = k + needle.length(); continue; }
+            StringBuilder cur = new StringBuilder();
+            int e = i + 1;
+            while (e < json.length()) {
+                char ch = json.charAt(e);
+                if (ch == '\\') { e += 2; continue; }         // 值里出现转义：跳过转义符，按原文收
+                if (ch == '"') break;
+                cur.append(ch);
+                e++;
+            }
+            out.add(cur.toString());
+            from = e + 1;
+        }
+        return out;
+    }
+
+    /** /branches 的 JSON → 全部分支名（顺序保持 API 原样） */
+    public static List<String> parseBranchNames(String json) { return extractStringValues(json, "name"); }
+
+    /** Release `ci` 的 assets JSON → 资产名列表 */
+    public static List<String> parseAssetNames(String json) { return extractStringValues(json, "name"); }
+
+    /** 资产名里挑出「有测试包的分支 id」：`update-<id>.json` → `<id>`（根资产 update.json 不算坑位） */
+    public static List<String> builtIds(List<String> assetNames) {
+        List<String> out = new ArrayList<String>();
+        if (assetNames == null) return out;
+        for (String n : assetNames) {
+            if (n == null || !n.startsWith("update-") || !n.endsWith(".json")) continue;
+            String id = n.substring("update-".length(), n.length() - ".json".length());
+            if (!id.isEmpty() && !out.contains(id)) out.add(id);
         }
         return out;
     }

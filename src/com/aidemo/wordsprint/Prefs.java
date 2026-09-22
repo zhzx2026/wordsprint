@@ -33,7 +33,7 @@ public class Prefs {
     public static final String K_GOAL_MODE = "g_goal_mode";
     public static final String K_UP_URL = "u_url", K_UP_CH = "u_ch", K_UP_AUTO = "u_auto",
             K_UP_LAST = "u_last", K_UP_SEEN = "u_seen";
-    /** 「分支」通道选中的坑位 id（dev 通道 channels/<分支id>/，见 BRANCHING.md §3） */
+    /** 「分支」通道选中的坑位 id（预发布 Release ci 的 update-<id>.json，见 BRANCHING.md §3） */
     public static final String K_UP_BR = "u_br";
     public static final String K_PROFILES = "p_profiles", K_ACTIVE = "p_active";
     /** 手势提示（首次进刷词页显示一行提示） */
@@ -46,7 +46,7 @@ public class Prefs {
     public static final int SCALE_AUTO = 1;
 
     /**
-     * 0 正式版（Release）· 1 开发版（dev 分支根）· 2 分支坑位（dev/channels/&lt;id&gt;/）
+     * 0 正式版（Release）· 1 开发版（ci 预发布根资产）· 2 分支坑位（update-&lt;id&gt;.json）
      */
     public int updateChannel() {
         if (p.contains(K_UP_CH)) return UpCh.sanitize(p.getInt(K_UP_CH, 0));

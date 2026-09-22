@@ -121,14 +121,17 @@
     <string name="update_src_stable">stable</string>
     <string name="update_src_dev">dev</string>
     <string name="update_src_branch">分支</string>
-    <string name="update_src_hint">stable = 正式版；dev = 最近构建；分支 = 指定分支的独立坑位</string>
+    <string name="update_src_hint">stable = 正式版；dev = 最近构建；分支 = 各分支自己的测试包</string>
     <string name="update_branch_refresh">刷新</string>
-    <string name="update_branch_list_loading">正在获取分支列表…</string>
-    <string name="update_branch_list_empty">dev 通道上还没有任何分支坑位</string>
-    <string name="update_branch_list_fail">获取分支列表失败（%1$s），点「刷新」重试</string>
-    <string name="update_branch_none">还没选分支坑位（先在「分支」一栏选一条）</string>
+    <string name="update_branch_list_loading">正在连接 GitHub 读取分支…</string>
+    <string name="update_branch_list_empty">仓库里还没有可测的工作分支</string>
+    <string name="update_branch_list_fail">读取分支失败（%1$s），点「刷新」重试</string>
+    <string name="update_branch_none">还没选分支（先在「分支」一栏点一条）</string>
+    <string name="update_branch_empty">该分支还没有测试包（先跑一次 staging 构建）</string>
     <string name="update_default_src" translatable="false">https://github.com/zhzx2026/wordsprint/releases/latest/download/update.json</string>
-    <string name="update_dev_src" translatable="false">https://raw.githubusercontent.com/zhzx2026/wordsprint/dev/update.json</string>
+    <string name="update_ci_base" translatable="false">https://github.com/zhzx2026/wordsprint/releases/download/ci</string>
+    <string name="update_dev_src" translatable="false">https://github.com/zhzx2026/wordsprint/releases/download/ci/update.json</string>
+    <string name="update_repo_api" translatable="false">https://api.github.com/repos/zhzx2026/wordsprint</string>
     <string name="update_check">检查</string>
     <string name="update_checking">正在检查…</string>
     <string name="update_checking_ch">正在检查（%1$s 通道）…</string>

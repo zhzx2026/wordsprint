@@ -140,10 +140,11 @@ public class Update {
         try {
             String raw;
             if (channel == UpCh.BRANCH) {
-                // 分支坑位：dev 根地址换算成 channels/<id>/update.json（用户 2026-09-22「其他分支怎么分别测试」）
+                // 分支坑位：GitHub 预发布 Release `ci` 里该分支自己的 update-<id>.json
+                //（用户 2026-09-22「apk 直接连 github 看分支」；dev 聚合分支已删）
                 String slot = Prefs.of(c).upBranch();
                 if (slot.isEmpty()) { r.err = c.getString(R.string.update_branch_none); return r; }
-                raw = UpCh.slotUrl(c.getString(R.string.update_dev_src), slot);
+                raw = UpCh.branchUpdateUrl(c.getString(R.string.update_ci_base), slot);
             } else {
                 raw = (channel == UpCh.DEV
                         ? c.getString(R.string.update_dev_src)
@@ -171,6 +172,10 @@ public class Update {
             return r;
         } catch (Throwable t) {
             r.err = t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage();
+            // 分支 404 = 那条分支还没出过测试包，照实说人话，别甩一个「HTTP 404」
+            if (UpCh.BRANCH == channel && "HTTP 404".equals(r.err)) {
+                r.err = c.getString(R.string.update_branch_empty);
+            }
             return r;
         }
     }
@@ -197,38 +202,57 @@ public class Update {
         } finally { conn.disconnect(); }
     }
 
-    // ---------- 分支坑位列表（「分支」通道的选择行） ----------
+    // ---------- 分支清单（「分支」通道的选择行：直连 GitHub 看 branches） ----------
 
-    public interface SlotsCb { void onRes(java.util.List<String> slots, String err); }
+    public interface BranchCb { void onRes(java.util.List<String> ids, java.util.List<String> built, String err); }
 
-    private static volatile java.util.List<String> lastSlots;   // 最近一次成功拉到的坑位列表（行先照它画，请求慢慢来）
+    private static volatile java.util.List<String> lastBranches;   // 最近一次成功拉到的分支 id
+    private static volatile java.util.List<String> lastBuilt;      // 其中哪些有测试包（ci 预发布里有资产）
 
-    public static java.util.List<String> lastSlots() { return lastSlots; }
+    public static java.util.List<String> lastBranches() { return lastBranches; }
+    public static java.util.List<String> lastBuilt() { return lastBuilt; }
 
     /**
-     * 拉「分支坑位」名单：读 dev 根 update.json 里的 channels 数组（publish_dev.sh 每次构建都会
-     * 用 dev 上现存坑位重写它）。列表为空/失败都照实回调，界面显示原因 —— 不静默。
+     * 拉「分支」清单：分支列表直读 api.github.com 的 /branches（用户 2026-09-22「apk 直接连
+     * github 看分支」—— 不再依赖 dev 聚合分支，新工作分支推上去立刻能选）；
+     * 每条分支有没有测试包，看预发布 Release `ci` 的资产名里有没有 update-&lt;id&gt;.json。
+     * 失败时回落到上次结果（照旧显示），err 一并回调给界面 —— 不静默。
      */
-    public static void fetchSlotsAsync(final Activity a, final SlotsCb cb) {
+    public static void fetchBranchesAsync(final Activity a, final BranchCb cb) {
         new Thread(new Runnable() {
             @Override public void run() {
-                java.util.List<String> slots = null;
+                java.util.List<String> ids = null;
+                java.util.List<String> built = null;
                 String err = null;
                 try {
-                    String base = a.getString(R.string.update_dev_src).trim();
-                    if (base.toLowerCase().endsWith(".json")) base = base.substring(0, base.lastIndexOf('/'));
-                    while (base.endsWith("/")) base = base.substring(0, base.length() - 1);
-                    slots = UpCh.parseChannels(httpGet(base + "/update.json"));
-                    if (slots.isEmpty()) err = a.getString(R.string.update_branch_list_empty);
+                    String api = a.getString(R.string.update_repo_api).trim();
+                    while (api.endsWith("/")) api = api.substring(0, api.length() - 1);
+                    java.util.List<String> names = UpCh.parseBranchNames(httpGet(api + "/branches?per_page=100"));
+                    ids = new java.util.ArrayList<String>();
+                    for (String n : names) {
+                        if (!(n.startsWith("arena/") || n.startsWith("staging/") || n.equals("dev-build"))) continue;
+                        String id = UpCh.branchId(n);
+                        if (!id.isEmpty() && !ids.contains(id)) ids.add(id);
+                    }
+                    try {   // ci 预发布还没有（一次构建都没跑过）不算失败：清单照给，只是全都没包
+                        built = UpCh.builtIds(UpCh.parseAssetNames(httpGet(api + "/releases/tags/ci")));
+                    } catch (Throwable ignored) { built = new java.util.ArrayList<String>(); }
+                    if (ids.isEmpty()) err = a.getString(R.string.update_branch_list_empty);
                 } catch (Throwable t) {
                     err = t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage();
                 }
-                if (slots != null && !slots.isEmpty()) lastSlots = slots;
-                else if (lastSlots != null && slots != null) slots = lastSlots;   // 这回没拉到，先亮上次的
-                final java.util.List<String> ok = slots == null ? new java.util.ArrayList<String>() : slots;
+                if (ids != null && !ids.isEmpty()) {
+                    lastBranches = ids;
+                    lastBuilt = built == null ? new java.util.ArrayList<String>() : built;
+                } else {                     // 这回没拉到：亮上次的，别把选择行清空
+                    if (lastBranches != null) ids = lastBranches;
+                    if (lastBuilt != null && built == null) built = lastBuilt;
+                }
+                final java.util.List<String> okIds = ids == null ? new java.util.ArrayList<String>() : ids;
+                final java.util.List<String> okBuilt = built == null ? new java.util.ArrayList<String>() : built;
                 final String e = err;
                 a.runOnUiThread(new Runnable() {
-                    @Override public void run() { cb.onRes(ok, e); }
+                    @Override public void run() { cb.onRes(okIds, okBuilt, e); }
                 });
             }
         }).start();

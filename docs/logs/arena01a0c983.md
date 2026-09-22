@@ -38,3 +38,35 @@
   - `android.jar`（API 34）：`Sable/android-platforms` 经 contents API raw 拿到了（26MB，没截断，原因未深究）。
 - 验证：`run_tests.sh` 的复制清单 + 同一文件列表用 ecj 编译 → 15 个测试全过（含新 UpChTest）；
   `src/` 全量 + 生成 R stub 对 `android-34.jar` 用 ecj 编译 0 error（真 R 由 CI 的 aapt2 生成，布局/资源链接以 CI 为准）。
+
+
+---
+
+# 第二轮（同日）：通道彻底重做 —— 删 dev 聚合分支，App 直连 GitHub 看分支
+
+- 用户：「直接删除dev好了，apk直接连接github 看分支 page要有各个分支的版本 分享什么由更新源决定，
+  要求ai每次更新写清楚内容而且，然后dev分支就是一个聚合 不用在最外面搞一个」
+- 逐条落地（dev v6.2 / code 45）：
+  1. **dev 孤儿分支删除**（本轮 CI 绿之后 `git push origin --delete dev` 执行，过程记录见上）。
+     分支列表从此只有 main + 工作分支。
+  2. **测试包聚合改走预发布 Release `ci`**（不是分支、`releases/latest` 永远跳过）：
+     新脚本 `scripts/publish_ci.sh` 替代退役的 `publish_dev.sh` —— 根资产（最近一次构建）+
+     `update-<分支id>.json` / `wordsprint-<分支id>.apk`（各分支坑位，互不覆盖），
+     Release 正文每次构建自动重写成「分支 × 版本」索引表。
+  3. **App「分支」档直连 GitHub**：`UpCh` 重写（branchId 与 `branch_id.sh` 同规则 / 直链拼装 /
+     手抠 JSON 字段抽取），`Update.fetchBranchesAsync` 读 `api.github.com /branches`（新分支立刻可选）+
+     `/releases/tags/ci` 资产名判断哪条有包（没包的标「·无包」）；`fetch()` 404 说人话
+     （「该分支还没有测试包」），不再甩「HTTP 404」。
+  4. **Pages 切到 main**（`gh api -X PUT /pages` 改 source，agent 实测有权限）；
+     `share/index.html` 底部新增「App 版本一览」卡片：JS 直读 GitHub API 渲染正式版 + 各分支版本/code/说明。
+  5. **每次更新写清楚内容**：`publish_ci.sh` 直接取 `RELEASE_NOTES.md` 正文当 notes，
+     正文 <40 字直接失败（VERSIONING §7 铁律 8）—— 弹窗里那段字永远 = 这一包真实改动。
+  6. 分享链接与通道解耦：战绩页只有一份（Pages@main），所有通道二维码同址；
+     「什么包发给谁」完全由更新源三档决定（BRANCHING §3 重写）。
+- 文档：BRANCHING（头部/§0/§1/§2/§3/§4/§4.1/§5/§6/§7/§8/§9/§10）、VERSIONING（§3/§5/§7/§8.1/§8.2）、
+  AGENT（当前状态/坑 10.5/发版速查/排障）、AGENTS、scripts/README、README、share/README 全部去 dev 化；
+  `branch_audit.sh` 的 dev 段改成「已退役」提示；`version.sh max_code` 去掉 dev 通道扫描。
+- 测试：`UpChTest` 重写（22 checks）+ 全量 host tests PASS；`src/` 对 android-34.jar 全量 typecheck 0 error；
+  `share_page_test.js` PASS（新卡片 JS 独立于解码逻辑）。
+- ⚠️ 过渡期代价：v6.1（code 44）内置 dev 源指向被删的 dev 分支 —— 装了它的手机要手动装一次
+  v6.2 artifact，之后应用内更新恢复。v6.0- 不受影响。

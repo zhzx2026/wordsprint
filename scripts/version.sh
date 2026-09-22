@@ -38,7 +38,7 @@ channel_of() {
   esac
 }
 
-# 三方最大 code（AGENT.md 坑11）：本地 / dev 通道 update.json / main 的 manifest。
+# 三方最大 code（AGENT.md 坑11）：本地 / main 的 manifest（dev 聚合分支 2026-09-22 起退役，无通道号可扫）。
 # v2（VERSIONING.md §8）：arena/** 分支的 manifest code 也纳入 —— 多分支并行时 bump 自动避开别人领过的号。
 # gh 或网络不可用时静默退回本地值（由调用方保证已是最新）。
 max_code() {
@@ -46,8 +46,6 @@ max_code() {
   if command -v gh >/dev/null 2>&1; then
     repo="$(git remote get-url origin 2>/dev/null | sed -E 's#(https://|git@)(github\.com[:/])##; s#\.git$##')" || repo=""
     if [ -n "$repo" ]; then
-      d="$(gh api "/repos/$repo/contents/update.json?ref=dev" --jq .content 2>/dev/null | base64 -d 2>/dev/null | grep -oE '"versionCode": *[0-9]+' | grep -oE '[0-9]+' | head -1)" || d=""
-      case "$d" in ''|*[!0-9]*) ;; *) if [ "$d" -gt "$m" ]; then m="$d"; fi ;; esac
       mm="$(gh api "/repos/$repo/contents/AndroidManifest.xml?ref=main" --jq .content 2>/dev/null | base64 -d 2>/dev/null | grep -oE 'versionCode="[0-9]*"' | sed 's/[^0-9]//g' | head -1)" || mm=""
       case "$mm" in ''|*[!0-9]*) ;; *) if [ "$mm" -gt "$m" ]; then m="$mm"; fi ;; esac
       # 别的 arena 分支领过的 code 也算数（它们可能还没合并）
