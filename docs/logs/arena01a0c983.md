@@ -70,3 +70,14 @@
   `share_page_test.js` PASS（新卡片 JS 独立于解码逻辑）。
 - ⚠️ 过渡期代价：v6.1（code 44）内置 dev 源指向被删的 dev 分支 —— 装了它的手机要手动装一次
   v6.2 artifact，之后应用内更新恢复。v6.0- 不受影响。
+
+## 执行结果（同日续记）
+
+- **Pages 已切 main**：助手 API 尝试 PUT /pages 得 403（integration 权限，与文档记载一致）→
+  用户在浏览器 Settings → Pages 自己切成 main / (root)，Pages build 状态 built，战绩页恢复服务
+  （托管内容 = main 的 share/index.html，「App 版本一览」卡片随本轮转正合并上线，数据本身实时）。
+- **dev 分支已删除**（`git push origin --delete dev`）。终态核对：
+  分支列表 = main + 两条工作分支；Release `ci` = prerelease、4 项资产；
+  `releases/latest` = v6.0（预发布没有抢位，stable OTA 无感）。
+- 遗留给用户的一次性动作：装过 v6.1（code 44）的手机手动装一次 v6.2 artifact
+  （`wordsprint-staging-v6.2-arena01a0c983-r<run>`），此后应用内更新恢复正常。
