@@ -150,7 +150,7 @@ jobs:
 
       # 测试通道：同一份包传到预发布 Release `ci` 的资产（不是分支！2026-09-22 起不再有 dev 聚合分支）。
       # App「分支」通道直读 api.github.com 的 /branches 选分支，按分支取 update-<id>.json；
-      # App「dev」= 根资产（最近一次构建）。双装包不发通道：包名带后缀，应用内更新本来就装不了。
+      # 根资产 = 最近一次构建（仅直链兼容，App 已无入口）。双装包不发通道：包名带后缀，应用内更新本来就装不了。
       - name: Publish ci 通道（预发布 Release 资产 + 版本索引）
         if: github.event.inputs.side_by_side != 'true'
         env:
@@ -165,7 +165,7 @@ jobs:
             echo
             echo "坑位直链：\`https://github.com/${{ github.repository }}/releases/download/ci/update-${{ steps.meta.outputs.bid }}.json\`"
             echo
-            echo "> 「dev」档 = 最近一次构建（任何分支都会刷新）；锁定本分支请用「分支」档。各分支版本索引见 [Release ci](https://github.com/${{ github.repository }}/releases/tag/ci)。"
+            echo "> 根资产（update.json / wordsprint.apk）= 最近一次构建，会被任何分支刷新；锁定本分支请用 App 的「分支」档。各分支版本索引见 [Release ci](https://github.com/${{ github.repository }}/releases/tag/ci)。"
           } >> "$GITHUB_STEP_SUMMARY"
 
 # 战绩页（share/index.html）不走 Actions 发布，而是用 Pages 的「Deploy from a branch」：

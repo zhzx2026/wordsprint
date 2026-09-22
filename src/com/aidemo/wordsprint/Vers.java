@@ -31,14 +31,16 @@ public final class Vers {
     }
 
     /**
-     * 该用哪个更新通道：0 = stable（正式版 Release）· 1 = dev（dev 分支）。
+     * 该用哪个更新通道：0 = stable（正式版 Release）· 2 = branch（指定分支的测试包）。
+     * 旧编号 1 = dev（最近构建聚合档）已随 dev 聚合分支一起退役（用户 2026-09-22「安装界面 dev 还在」），
+     * 存量值一律迁到「分支」—— 测试包只认分支。
      *
      * @param installedName 本机安装包的 versionName
      * @param explicit      用户在设置页显式选过的通道；null = 没选过（或老版本留下的是地址）
      */
     public static int channel(String installedName, Integer explicit) {
-        if (explicit != null) return explicit == 1 ? 1 : 0;
-        return isDevName(installedName) ? 1 : 0;      // 装的是 dev 包就盯 dev，别再拿 2.0 比
+        if (explicit != null) return explicit == 0 ? 0 : UpCh.BRANCH;   // 显式选过就听他的（旧 1=dev → 分支）
+        return isDevName(installedName) ? UpCh.BRANCH : 0;              // 装的是测试包（X.Y）默认盯分支，别拿正式版比
     }
 
     private static boolean digits(String s) {

@@ -81,3 +81,19 @@
   `releases/latest` = v6.0（预发布没有抢位，stable OTA 无感）。
 - 遗留给用户的一次性动作：装过 v6.1（code 44）的手机手动装一次 v6.2 artifact
   （`wordsprint-staging-v6.2-arena01a0c983-r<run>`），此后应用内更新恢复正常。
+
+---
+
+# 第三轮（同日）：「安装界面 dev 还在」→ App 更新源收敛两档
+
+- 用户：「安装界面dev还在」—— v6.2 只删了服务器上的 dev 分支，App 更新源里还留着「dev」档。
+- 修复（dev v6.3 / code 46）：
+  1. 更新源 chips 只剩 **stable / 分支**；`update_src_dev` / `update_found_dev` / `update_dev_src` 字符串删除；
+  2. `UpCh.DEV` 常量删除，`sanitize` 除分支外一律归 stable；
+  3. `Prefs.updateChannel()`：存量显式值 1（旧 dev 档）→ 迁到「分支」；老地址含 /dev 同理；
+  4. `Vers.channel`：默认通道 = 测试包(X.Y) → 分支(2)，正式包 → stable；显式 1 → 分支（VersTest 15 checks）；
+  5. 删「stable 上顺带偷看 dev」补丁（`checkRes`）与 `viaDev` —— 显式选择就该被尊重，不再偷换源；
+  6. ci 根资产保留（直链兼容 + v6.2 旧机过渡），App 无入口；publish_ci.sh 与 staging 摘要文案同步。
+- 过渡路径（无需人工干预）：v6.2 手机的默认通道指向 ci 根 update.json → CI 发布 v6.3 根资产后
+  自动弹「发现新版本 6.3」→ 更新后通道号自动迁移。
+- 验证：全量 host tests PASS；android-34 typecheck 0 error。

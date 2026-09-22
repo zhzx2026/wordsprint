@@ -16,8 +16,8 @@
 
    arena/<id>-wordsprint ──push──▶ staging.yml ─┬─▶ Actions Artifacts（zip，装机实测备用）
       （源码+文档+测试）                        └─▶ 预发布 Release `ci` 的资产（不是分支！v6.2 起）：
-                                                     wordsprint.apk + update.json            ← App 更新源第 2 档「dev」（最近一次构建）
-                                                     update-<分支id>.json + wordsprint-<id>.apk ← App 第 3 档「分支」（该分支自己的包）
+                                                     wordsprint.apk + update.json            ← 根资产：最近一次构建（仅直链兼容，App 已无入口）
+                                                     update-<分支id>.json + wordsprint-<id>.apk ← App 更新源第 2 档「分支」（该分支自己的包）
                                                      正文 = 自动维护的「分支 × 版本」索引表
 
 ② 转正期（用户确认后才做，只做一次）
@@ -70,8 +70,11 @@
 | 档位 | 地址 | 谁在读 | 内容 | 什么时候变 |
 |---|---|---|---|---|
 | **stable（正式 OTA）** | `https://github.com/zhzx2026/wordsprint/releases/latest/download/update.json`（App 内置，`R.string.update_default_src`） | 所有正式版 App，进首页自动查一次 + 前台每 60 秒查一次 | 最近一次**转正**的 Release | 只在转正时前进 |
-| **dev（最近构建）** | `https://github.com/zhzx2026/wordsprint/releases/download/ci/update.json`（App 内置，`R.string.update_dev_src`） | 装的是 dev 包（`X.Y`）的 App 默认盯它；或用户手动选它 | 预发布 `ci` 的**根资产** = 最近一次构建（**任何**分支都会刷新它） | 每次 staging 构建 |
-| **分支（第 3 档）** | 选中的分支 = `https://github.com/zhzx2026/wordsprint/releases/download/ci/update-<分支id>.json`（App 内直接选，**不用手填**） | 想单独盯某条分支的人：设置 → 关于与更新 → 更新源 →「分支」 | 该分支自己的 `update-<id>.json` / `wordsprint-<id>.apk` | 只有该分支自己刷新 |
+| **分支（第 2 档）** | 选中的分支 = `https://github.com/zhzx2026/wordsprint/releases/download/ci/update-<分支id>.json`（App 内直接选，**不用手填**） | 装的是测试包（`X.Y`）的 App 默认盯它（分支没选时报「还没选分支」）；想单独盯某条分支的人：设置 → 关于与更新 → 更新源 →「分支」 | 该分支自己的 `update-<id>.json` / `wordsprint-<id>.apk` | 只有该分支自己刷新 |
+
+> **App 只有这两档**（用户 2026-09-22「安装界面 dev 还在」→ dev 档整个退役）。
+> ci 的**根资产**（`update.json` / `wordsprint.apk` = 最近一次构建）还在服务器上，但只作直链兼容
+> （旧手机升级过渡用一次），App 不再有它的入口 —— 聚合不出现在任何「最外面」。
 
 - **分支清单直连 GitHub**：App 选「分支」时读 `api.github.com/repos/zhzx2026/wordsprint/branches`
   （`Update.fetchBranchesAsync`），过滤出工作分支（`arena/**`、`staging/**`、`dev-build`）渲染选择行；
@@ -195,7 +198,7 @@ gh api "/repos/$REPO/check-runs/$ID" --jq .output.summary
 
 ### 可选改进（等用户点头再动 App 代码）
 
-- ~~dev 内置源按分支走~~：**已随 2026-09-22 通道重做解决** —— 第 3 档「分支」在 App 里直连 GitHub 选分支、锁坑位，
+- ~~dev 内置源按分支走~~：**已随 2026-09-22 通道重做解决** —— 「分支」档在 App 里直连 GitHub 选分支、锁坑位，
   多会话并行不再互相覆盖（不再需要把坑位地址编进包里的方案）。
 
 ---
@@ -221,8 +224,8 @@ gh api "/repos/$REPO/check-runs/$ID" --jq .output.summary
 - 所以装机实测的正确姿势：**每轮改动都跑一次 staging 构建**，再在手机上「检查更新」。
 - 判断「有没有新版」只看 `update.json` 里的 `versionCode` 是否**严格大于**本机 code（显示名不参与），
   所以同一轮里反复构建不会重复弹窗，换了新号才会。
-- **锁定分支**：dev 根资产是「最近一次构建」、**任何分支都会刷新它** → 多会话并行时，更新源务必选
-  **第 3 档「分支」锁本分支坑位**（App 直连 GitHub 选，见 §3），否则「装 A 分支的包、拿到 B 分支的包」。
+- **锁定分支**：根资产是「最近一次构建」、**任何分支都会刷新它** → 多会话并行时，更新源务必在
+  「分支」档锁本分支（App 直连 GitHub 选，见 §3），否则「装 A 分支的包、拿到 B 分支的包」。
 - 撤某分支坑位：`gh release delete-asset ci update-<id>.json -y`（apk 资产同理）；
   整条撤：`gh release delete ci -y && git push origin --delete ci`（下次构建自动重建）。
 

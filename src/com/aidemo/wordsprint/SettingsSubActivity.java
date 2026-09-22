@@ -217,10 +217,9 @@ public class SettingsSubActivity extends Activity {
     private LinearLayout brRow;
 
     private void buildAbout() {
-        // 更新通道：stable / dev / 分支 —— 第 3 档把 dev 通道上的分支坑位搬进 App（用户
-        // 2026-09-22「更新只有两个选项，其他分支怎么分别测试」），不再需要手填地址。
-        String[] srcNames = {getString(R.string.update_src_stable), getString(R.string.update_src_dev),
-                getString(R.string.update_src_branch)};
+        // 更新通道：stable / 分支 两档（用户 2026-09-22「安装界面 dev 还在」→ dev 档退役，
+        // 测试包一律按分支锁定；App 直连 GitHub 看分支，不用手填地址）。
+        String[] srcNames = {getString(R.string.update_src_stable), getString(R.string.update_src_branch)};
         brScroll = (android.view.ViewGroup) findViewById(R.id.brScroll);
         brRow = (LinearLayout) findViewById(R.id.brChips);
         Ui.fillRowEqual((LinearLayout) findViewById(R.id.srcChips), srcNames, pr.updateChannel(), new Ui.ChipTap() {
@@ -259,11 +258,8 @@ public class SettingsSubActivity extends Activity {
                                     Update.myName(SettingsSubActivity.this), Update.myCode(SettingsSubActivity.this)));
                             return;
                         }
-                        state.setText(r.viaDev
-                                ? getString(R.string.update_found_dev, r.server.name,
-                                            Update.myName(SettingsSubActivity.this))
-                                : getString(R.string.update_found_v, r.server.name,
-                                            Update.myName(SettingsSubActivity.this)));
+                        state.setText(getString(R.string.update_found_v, r.server.name,
+                                Update.myName(SettingsSubActivity.this)));
                         Update.showFound(SettingsSubActivity.this, r.server);
                     }
                 });

@@ -78,7 +78,8 @@ gh release upload ci -R "$REPO" --clobber \
 # ── 4) 重写 Release 正文 = 各分支坑位的版本索引（「Releases 页也能看到各分支版本」）──
 {
   echo "> 本 Release 是**测试包聚合位**（prerelease，stable OTA 永远跳过它）。"
-  echo "> 手机 App：设置 → 关于与更新 → 更新源 →「分支」→ 选一条即可锁定该分支的测试包；「dev」= 下面最近一次构建。"
+  echo "> 手机 App：设置 → 关于与更新 → 更新源 →「分支」→ 选一条即可锁定该分支的测试包（App 直连 GitHub 看分支）。"
+  echo "> 根资产 update.json / wordsprint.apk = 最近一次构建（任何分支构建都会刷新，仅作直链兼容，App 已无此入口）。"
   echo "> 表格由 publish_ci.sh 每次构建自动重写。撤某分支坑位：\`gh release delete-asset ci update-<分支id>.json -y\`"
   echo
   echo "| 分支坑位 | 版本 | code | 资产更新时间(UTC) | 说明 |"

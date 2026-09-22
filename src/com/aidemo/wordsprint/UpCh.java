@@ -7,11 +7,12 @@ import java.util.List;
  * 更新通道的纯逻辑（主机可单测，不许 import android.*）。
  *
  * 2026-09-22 起不再有 dev 聚合分支（用户：「dev 分支就是一个聚合，不用在最外面搞一个」）——
- * App 直连 GitHub：
+ * App 直连 GitHub；用户随后指出「安装界面 dev 还在」→ **App 里只剩两档：stable / 分支**：
  *   stable = `releases/latest`（只有转正 Release）；
- *   dev    = 预发布 Release `ci` 的根资产（最近一次构建，任何分支都会刷新）；
- *   分支   = 同一个 `ci` 预发布里每分支自己的资产 `update-<分支id>.json` / `wordsprint-<分支id>.apk`，
+ *   分支   = 预发布 Release `ci` 里每分支自己的资产 `update-<分支id>.json` / `wordsprint-<分支id>.apk`，
  *            分支清单直接读 api.github.com 的 /branches（真·看分支，新分支推上去立刻能选）。
+ * 服务器上仍保留 ci 的**根资产**（最近一次构建，任何分支构建都会刷新），但只作直链兼容，
+ * App 不再给它入口 —— 聚合不出现在任何「最外面」。
  * Release 资产走 github.com 直链（302 到对象存储），不吃 api 配额；预发布永远不会变成 `latest`，
  * 所以 stable OTA 不受任何影响。
  *
@@ -19,13 +20,13 @@ import java.util.List;
  */
 public final class UpCh {
 
-    /** 更新通道：0 = stable（正式版 Release）· 1 = dev（ci 预发布的最近构建）· 2 = branch（指定分支） */
-    public static final int STABLE = 0, DEV = 1, BRANCH = 2;
+    /** 更新通道：0 = stable（正式版 Release）· 2 = branch（指定分支；1 是旧「dev」档的编号，已退役，见 Prefs 迁移） */
+    public static final int STABLE = 0, BRANCH = 2;
 
     private UpCh() {}
 
-    /** 通道号兜底：0/1/2 之外（老版本写入的脏数据）一律当 stable，保守不吃亏 */
-    public static int sanitize(int ch) { return (ch == DEV || ch == BRANCH) ? ch : STABLE; }
+    /** 通道号兜底：除「分支」外（旧 1=dev、越界脏数据）一律当 stable，保守不吃亏 */
+    public static int sanitize(int ch) { return ch == BRANCH ? ch : STABLE; }
 
     /**
      * 坑位 id 清洗：只保留 [A-Za-z0-9-]，最长 48，其余字符直接剔除。

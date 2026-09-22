@@ -46,14 +46,19 @@ public class Prefs {
     public static final int SCALE_AUTO = 1;
 
     /**
-     * 0 正式版（Release）· 1 开发版（ci 预发布根资产）· 2 分支坑位（update-&lt;id&gt;.json）
+     * 0 正式版（Release）· 2 分支（ci 预发布的 update-&lt;id&gt;.json）。
+     * 只有两档（用户 2026-09-22「安装界面 dev 还在」→ dev 档整个退役）；
+     * 存量值 1（旧 dev 档）迁到「分支」，老版本手填的 dev 地址同理。
      */
     public int updateChannel() {
-        if (p.contains(K_UP_CH)) return UpCh.sanitize(p.getInt(K_UP_CH, 0));
+        if (p.contains(K_UP_CH)) {
+            int v = p.getInt(K_UP_CH, 0);
+            return v == 1 ? UpCh.BRANCH : UpCh.sanitize(v);         // 旧「dev」→「分支」（测试包只认分支）
+        }
         String old = p.getString(ns(K_UP_URL), "");                 // 老版本手填过地址的
-        if (old != null && old.contains("/dev")) return 1;
-        // 没显式选过通道：装的是 dev 包就盯 dev 通道。
-        // （否则刚装完 dev 包的人点「检查更新」，查到的是 Release 上的 2.0 —— 永远「已经是最新版本」）
+        if (old != null && old.contains("/dev")) return UpCh.BRANCH;
+        // 没显式选过通道：装的是测试包（X.Y）就默认盯「分支」。
+        // （否则刚装完测试包的人点「检查更新」，查到的是正式版 —— 永远「已经是最新版本」）
         return Vers.channel(installedName(), null);
     }
 

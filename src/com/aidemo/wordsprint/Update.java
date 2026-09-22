@@ -43,10 +43,9 @@ public class Update {
     public static class Res {
         public Info server;          // 服务器上的版本（查到了才非空；可能比本机旧）
         public boolean newer;        // 服务器版本是不是比本机新
-        public int channel;          // 0 = stable（正式版）· 1 = dev（dev 分支）
+        public int channel;          // 0 = stable（正式版）· 2 = branch（指定分支）
         public String url = "";      // 实际请求的地址
         public String err;           // 失败原因（null = 请求成功）
-        public boolean viaDev;       // 结果取自 dev 通道（正式版通道比它旧时会发生）
     }
 
     public interface Cb2 { void onRes(Res r); }
@@ -57,7 +56,7 @@ public class Update {
             String b = c.getString(R.string.update_src_branch);
             return id.isEmpty() ? b : b + "·" + id;
         }
-        return ch == UpCh.DEV ? c.getString(R.string.update_src_dev) : c.getString(R.string.update_src_stable);
+        return c.getString(R.string.update_src_stable);
     }
 
     private static Info pending;   // 等待用户授予安装权限后继续
@@ -105,12 +104,12 @@ public class Update {
     }
 
     /**
-     * 完整检查：请求 update.json，把服务器版本与本机版本比一比。
+     * 完整检查：请求当前通道的 update.json，把服务器版本与本机版本比一比。
      * 不抛异常 —— 失败原因放在 {@link Res#err}，界面可以照实显示（HTTP 码 / 连不上 / 没配置）。
      *
-     * 装的是开发版包（版本号 X.Y）时，会**顺带看一眼 dev 通道**：正式版通道只在转正时才前进，
-     * 平时永远停在旧版本上，只看它就会出现「明明有新包却显示已是最新版本」
-     * （用户 2026-09-15 装机实测遇到的正是这个）。dev 上的包更新就用它，并在界面标明来源。
+     * 装的是测试包（版本号 X.Y）时默认盯「分支」通道（用户 2026-09-15 装机实测：
+     * 测试包盯正式源永远「已经是最新版本」）；dev 聚合档已退役（2026-09-22「安装界面 dev 还在」），
+     * 显式选了 stable 就完全按 stable 来，不再替用户偷看别的源。
      */
     public static Res checkRes(Context c) {
         if (BuildInfo.SBS) {          // 同机双装包（包名带后缀）：应用内更新的 APK 是正式包名，装不上只会白报错
@@ -118,19 +117,7 @@ public class Update {
             r.err = "同机双装测试包不支持应用内更新，请从 GitHub Actions 的 staging artifact 手动下载安装";
             return r;
         }
-        Res r = fetch(c, Prefs.of(c).updateChannel());
-        if (r.channel == 0 && Vers.isDevName(myName(c))) {
-            Res d = fetch(c, 1);
-            int base = r.server == null ? myCode(c) : Math.max(r.server.code, myCode(c));
-            if (d.server != null && d.server.code > base) {
-                r.server = d.server;
-                r.newer = d.server.code > myCode(c);
-                r.viaDev = true;
-                r.url = d.url;
-                r.err = null;
-            }
-        }
-        return r;
+        return fetch(c, Prefs.of(c).updateChannel());
     }
 
     /** 只查一个通道 */
@@ -141,14 +128,12 @@ public class Update {
             String raw;
             if (channel == UpCh.BRANCH) {
                 // 分支坑位：GitHub 预发布 Release `ci` 里该分支自己的 update-<id>.json
-                //（用户 2026-09-22「apk 直接连 github 看分支」；dev 聚合分支已删）
+                //（用户 2026-09-22「apk 直接连 github 看分支」；dev 聚合分支与 dev 档都已删）
                 String slot = Prefs.of(c).upBranch();
                 if (slot.isEmpty()) { r.err = c.getString(R.string.update_branch_none); return r; }
                 raw = UpCh.branchUpdateUrl(c.getString(R.string.update_ci_base), slot);
             } else {
-                raw = (channel == UpCh.DEV
-                        ? c.getString(R.string.update_dev_src)
-                        : c.getString(R.string.update_default_src)).trim();
+                raw = c.getString(R.string.update_default_src).trim();
             }
             if (raw.contains("YOUR_GITHUB")) { r.err = "GitHub 源未配置"; return r; }
             if (raw.isEmpty()) { r.err = "未设置更新源地址"; return r; }

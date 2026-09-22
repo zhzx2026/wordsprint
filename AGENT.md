@@ -249,6 +249,12 @@ gh api "/repos/zhzx2026/wordsprint/git/blobs/$SHA" -H "Accept: application/vnd.g
   ⑤ **每次发包 notes 必须写清内容**：`publish_ci.sh` 取 RELEASE_NOTES 正文，<40 字拒发（VERSIONING §7 铁律 8）；
   ⑥ `UpChTest` 重写（22 checks），`publish_dev.sh` 退役。
   ⚠️ 装过 v6.1 的手机 dev 源已死（指向被删分支），需手动装一次 v6.2 artifact。
+- 🆕 **App 更新源收敛两档：stable / 分支（dev v6.3 / code 46）**：用户「安装界面 dev 还在」——
+  v6.2 只删了 dev 分支，App 里还留着「dev」档。这版把档位删干净：chips 只剩 stable / 分支；
+  旧存量（显式选过 dev、老地址含 /dev）在 `Prefs`/`Vers.channel` 里迁到「分支」；
+  测试包（X.Y）默认通道 = 分支（延续 2026-09-15 事故的修法）；删掉「stable 上顺带偷看 dev」的补丁
+  （显式选择就该被尊重）；`UpCh.DEV`/`viaDev`/`update_src_dev`/`update_found_dev`/`update_dev_src` 全部移除。
+  ci 根资产保留（直链兼容 + 旧机过渡），App 无入口。
 
 ## 当前状态（2026-09-21 第十次更新）
 - 🆕 **分支分工澄清 + v6.0 转正（`arena/01a0c46d-wordsprint`，2026-09-21）**：

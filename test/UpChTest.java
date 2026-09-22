@@ -23,8 +23,9 @@ public class UpChTest {
     static void check(boolean c, String what) { if (!c) throw new RuntimeException("FAIL: " + what); checks++; }
 
     public static void main(String[] args) {
-        // 1) 通道号清洗：0/1/2 原样，越界一律当 stable
-        check(UpCh.sanitize(0) == 0 && UpCh.sanitize(1) == 1 && UpCh.sanitize(2) == 2, "0/1/2 原样通过");
+        // 1) 通道号清洗：只有 stable(0) / 分支(2) 两档；旧 1=dev 与越界一律当 stable
+        check(UpCh.sanitize(0) == 0 && UpCh.sanitize(2) == 2, "0/2 原样通过");
+        check(UpCh.sanitize(1) == 0, "旧 1=dev 档兜底为 stable（Prefs 层在它之前迁到分支）");
         check(UpCh.sanitize(3) == 0 && UpCh.sanitize(-1) == 0 && UpCh.sanitize(99) == 0, "越界通道号一律当 stable");
 
         // 2) 坑位 id 清洗：它要拼进 URL / 匹配资产名，路径字符一个都不能留

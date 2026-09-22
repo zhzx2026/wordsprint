@@ -119,9 +119,8 @@
     <string name="update_auto">自动检查更新</string>
     <string name="update_src">更新源</string>
     <string name="update_src_stable">stable</string>
-    <string name="update_src_dev">dev</string>
     <string name="update_src_branch">分支</string>
-    <string name="update_src_hint">stable = 正式版；dev = 最近构建；分支 = 各分支自己的测试包</string>
+    <string name="update_src_hint">stable = 正式版；分支 = 各分支自己的测试包</string>
     <string name="update_branch_refresh">刷新</string>
     <string name="update_branch_list_loading">正在连接 GitHub 读取分支…</string>
     <string name="update_branch_list_empty">仓库里还没有可测的工作分支</string>
@@ -130,13 +129,11 @@
     <string name="update_branch_empty">该分支还没有测试包（先跑一次 staging 构建）</string>
     <string name="update_default_src" translatable="false">https://github.com/zhzx2026/wordsprint/releases/latest/download/update.json</string>
     <string name="update_ci_base" translatable="false">https://github.com/zhzx2026/wordsprint/releases/download/ci</string>
-    <string name="update_dev_src" translatable="false">https://github.com/zhzx2026/wordsprint/releases/download/ci/update.json</string>
     <string name="update_repo_api" translatable="false">https://api.github.com/repos/zhzx2026/wordsprint</string>
     <string name="update_check">检查</string>
     <string name="update_checking">正在检查…</string>
     <string name="update_checking_ch">正在检查（%1$s 通道）…</string>
     <string name="update_cur_ver_ch">当前 v%1$s（code %2$d）· %3$s 通道</string>
-    <string name="update_found_dev">发现新版本 %1$s（dev 通道的测试包 · 当前 %2$s）</string>
     <string name="update_latest_detail">已是最新版本（%1$s 通道 · 服务器 %2$s / code %3$d · 本机 v%4$s / code %5$d）</string>
     <string name="update_latest_now">已是最新版本</string>
     <string name="update_cur_ver">当前 v%1$s（code %2$d）</string>
