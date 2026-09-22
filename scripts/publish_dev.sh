@@ -51,7 +51,10 @@ else REMOTE="https://github.com/$REPO.git"; fi      # 本机跑就用现成的 g
   if [ -f "$OLDPWD/res/font/wp_word.ttf" ]; then
     mkdir -p res/font && cp "$OLDPWD/res/font/wp_word.ttf" res/font/wp_word.ttf
   fi
-  # 两份 update.json：本分支坑位一份（url 指向坑位内 apk），根目录一份（兼容老更新源）
+  # 两份 update.json：本分支坑位一份（url 指向坑位内 apk），根目录一份（兼容老更新源）。
+  # 根目录那份带 channels 数组（全部现存坑位 id）：手机 App 第 3 档「分支」更新源读它
+  # 来渲染坑位选择行 —— 用户在 App 里直接选要测的分支，不用手填地址（v6.1 起）。
+  CHS=$(for d in channels/*/; do [ -d "$d" ] || continue; basename "$d"; done | sort | tr '\n' ' ')
   _OUT=channels/$BID/update.json _VER="$VER" _VC="$VC" _URL="$CHURL/wordsprint.apk" \
     _NOTES="$NOTES（分支 $BID）" python3 - <<'PY'
 import json, os
@@ -61,11 +64,12 @@ d = {"versionCode": int(os.environ["_VC"]), "versionName": os.environ["_VER"],
 json.dump(d, open(os.environ["_OUT"], "w"), ensure_ascii=False, indent=1)
 PY
   _OUT=update.json _VER="$VER" _VC="$VC" _URL="$URLBASE/wordsprint.apk" \
-    _NOTES="$NOTES（最近构建：$BID）" python3 - <<'PY'
+    _NOTES="$NOTES（最近构建：$BID）" _CHS="$CHS" python3 - <<'PY'
 import json, os
 d = {"versionCode": int(os.environ["_VC"]), "versionName": os.environ["_VER"],
      "url": os.environ["_URL"], "notes": os.environ["_NOTES"],
-     "force": False, "channel": "dev"}
+     "force": False, "channel": "dev",
+     "channels": os.environ["_CHS"].split()}
 json.dump(d, open(os.environ["_OUT"], "w"), ensure_ascii=False, indent=1)
 PY
   # README 每次重写（别 append，dev 分支会被增量保留，append 会越长越长）

@@ -20,6 +20,22 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:paddingBottom="12dp"/>
+        <!-- 「分支」通道的坑位选择行：只在第 3 档选中时出现（v6.1，BRANCHING.md §3） -->
+        <HorizontalScrollView
+            android:id="@+id/brScroll"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingBottom="12dp"
+            android:scrollbars="none"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:id="@+id/brChips"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"/>
+        </HorizontalScrollView>
         <View style="@style/SettingDivider"/>
 
         <LinearLayout style="@style/SettingRow">

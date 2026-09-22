@@ -16,8 +16,8 @@
 
    arena/<id>-wordsprint ──push──▶ staging.yml ─┬─▶ Actions Artifacts（zip，装机实测）
       （源码+文档+测试）                        └─▶ 孤儿分支 dev：
-                                                     wordsprint.apk + update.json        ← 手机「更新源」手填：dev 根地址
-                                                     channels/<分支id>/{apk,update.json}  ← 手机「更新源」手填：本分支坑位（推荐）
+                                                     wordsprint.apk + update.json        ← App 更新源第 2 档「dev」（最近一次构建）
+                                                     channels/<分支id>/{apk,update.json}  ← App 更新源第 3 档「分支」直接选坑位（v6.1 起）
                                                      share/index.html + res/font/…        ← GitHub Pages 战绩页（现状从 dev 托管）
 
 ② 转正期（用户确认后才做，只做一次）
@@ -65,16 +65,20 @@
 
 ---
 
-## 3. 手机端的两个更新源（分工）
+## 3. 手机端的三档更新源（分工）
 
-| 通道 | 地址 | 谁在读 | 内容 | 什么时候变 |
+| 档位 | 地址 | 谁在读 | 内容 | 什么时候变 |
 |---|---|---|---|---|
 | **stable（正式 OTA）** | `https://github.com/zhzx2026/wordsprint/releases/latest/download/update.json`（App 内置默认源，`R.string.update_default_src`） | 所有正式版 App，进首页自动查一次 + 前台每 60 秒查一次 | 最近一次**转正**的 Release | 只在转正时前进 |
-| **dev（测试通道）** | `https://raw.githubusercontent.com/zhzx2026/wordsprint/dev/update.json`（App 内置 dev 源，`R.string.update_dev_src`） | 装的是 dev 包（`X.Y`）的 App 会顺带看它；或用户手动把「更新源」填成它 | **最近一次构建**（**任何**分支构建都会刷新它） | 每次 staging 构建 |
-| **dev · 本分支坑位**（装机实测推荐填这个） | `https://raw.githubusercontent.com/zhzx2026/wordsprint/dev/channels/<分支id>/` | 同上（手填覆盖内置） | 该分支最近一次构建 | 只有该分支自己刷新 |
+| **dev（测试通道）** | `https://raw.githubusercontent.com/zhzx2026/wordsprint/dev/update.json`（App 内置 dev 源，`R.string.update_dev_src`） | 装的是 dev 包（`X.Y`）的 App 默认盯它；或用户手动选它 | **最近一次构建**（**任何**分支构建都会刷新它） | 每次 staging 构建 |
+| **分支（第 3 档，v6.1 起）** | 选中的坑位 `https://raw.githubusercontent.com/zhzx2026/wordsprint/dev/channels/<分支id>/update.json`（App 内直接选，**不用手填**） | 想单独盯某条分支的人：设置 → 关于与更新 → 更新源 →「分支」 | 该分支最近一次构建 | 只有该分支自己刷新 |
 
-- **为什么装机实测要填坑位**：多条会话同时跑时，dev 根地址会被**别的分支**的下一次构建刷掉 ——
-  会出现「装的是 A 分支的包，检查更新却拿到 B 分支的包」。`versions/` 分坑位就是为了这个。
+- **「分支」档怎么拿到坑位名单**：`publish_dev.sh` 每次构建都会把 dev 上现存的全部坑位 id 写进
+  **dev 根 update.json 的 `channels` 数组**；App 选「分支」时读它渲染坑位选择行（`Update.fetchSlotsAsync`）。
+  所以名单永远比构建晚一步 —— 新坑位要等**下一次任意构建**才会出现在名单里。
+- **为什么还留着每分支独立坑位**：dev 根地址会被**别的分支**的下一次构建刷掉 ——
+  「装的是 A 分支的包，检查更新却拿到 B 分支的包」。第 3 档锁坑位就是为了这个；
+  v6.1 之前只能手填 URL，现在 App 里点两下就行。
 - 撤销整条 dev 通道：`git push origin --delete dev`；某分支已合并、不再需要它的坑位：删 `channels/<id>/` 目录即可。
 - **`raw.githubusercontent.com` 在 Arena 沙箱里不通（403）**：它是**手机上**填的地址，不是给助手 curl 的。
   助手要看通道内容，用 API：`gh api "/repos/zhzx2026/wordsprint/contents/update.json?ref=dev" --jq .content | base64 -d`。
@@ -269,8 +273,8 @@ gh api "/repos/$REPO/check-runs/$ID" --jq .output.summary
 - 判断「有没有新版」只看 `update.json` 里的 `versionCode` 是否**严格大于**本机 code（显示名不参与），
   所以同一轮里反复构建不会重复弹窗，换了新号才会。
 - **内置源 vs 手填源**：正式包（`X.0`）只看正式源（`releases/latest`）；dev 包（`X.Y`）会**顺带看一眼 dev 根地址**。
-  dev 根地址是「最近一次构建」、**任何分支都会刷新它** → 多会话并行时，手机「更新源」要**手填本分支坑位**，
-  否则可能出现「装 A 分支的包、拿到 B 分支的包」（BRANCHING.md §3）。
+  dev 根地址是「最近一次构建」、**任何分支都会刷新它** → 多会话并行时，App 更新源选**第 3 档「分支」锁本分支坑位**
+  （v6.1 起在 App 里直接选；否则可能出现「装 A 分支的包、拿到 B 分支的包」，BRANCHING.md §3）。
 - 撤销整条 dev 通道：`git push origin --delete dev`；只撤某个坑位：删 `channels/<id>/`。
 
 ### 8.3 测完怎么回退 / 怎么反馈

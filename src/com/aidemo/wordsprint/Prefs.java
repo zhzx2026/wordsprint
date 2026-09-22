@@ -33,6 +33,8 @@ public class Prefs {
     public static final String K_GOAL_MODE = "g_goal_mode";
     public static final String K_UP_URL = "u_url", K_UP_CH = "u_ch", K_UP_AUTO = "u_auto",
             K_UP_LAST = "u_last", K_UP_SEEN = "u_seen";
+    /** 「分支」通道选中的坑位 id（dev 通道 channels/<分支id>/，见 BRANCHING.md §3） */
+    public static final String K_UP_BR = "u_br";
     public static final String K_PROFILES = "p_profiles", K_ACTIVE = "p_active";
     /** 手势提示（首次进刷词页显示一行提示） */
     public static final String K_GES_HINT = "g_ges_hint";
@@ -44,10 +46,10 @@ public class Prefs {
     public static final int SCALE_AUTO = 1;
 
     /**
-     * 0 正式版（Release）· 1 开发版（dev 分支）
+     * 0 正式版（Release）· 1 开发版（dev 分支根）· 2 分支坑位（dev/channels/&lt;id&gt;/）
      */
     public int updateChannel() {
-        if (p.contains(K_UP_CH)) return p.getInt(K_UP_CH, 0) == 1 ? 1 : 0;
+        if (p.contains(K_UP_CH)) return UpCh.sanitize(p.getInt(K_UP_CH, 0));
         String old = p.getString(ns(K_UP_URL), "");                 // 老版本手填过地址的
         if (old != null && old.contains("/dev")) return 1;
         // 没显式选过通道：装的是 dev 包就盯 dev 通道。
@@ -65,7 +67,11 @@ public class Prefs {
         }
     }
 
-    public void setUpdateChannel(int ch) { p.edit().putInt(K_UP_CH, ch == 1 ? 1 : 0).apply(); }
+    public void setUpdateChannel(int ch) { p.edit().putInt(K_UP_CH, UpCh.sanitize(ch)).apply(); }
+
+    /** 「分支」通道当前选的坑位 id（空 = 还没选；读出来先清洗，脏数据进不了 URL） */
+    public String upBranch() { return UpCh.sanitizeSlot(p.getString(ns(K_UP_BR), "")); }
+    public void setUpBranch(String id) { p.edit().putString(ns(K_UP_BR), UpCh.sanitizeSlot(id)).apply(); }
 
     public String str(String key, String def) { return p.getString(ns(key), def); }
     public void set(String key, String v) { p.edit().putString(ns(key), v).apply(); }

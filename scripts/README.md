@@ -22,7 +22,7 @@
 
 | 脚本 | 谁调 | 干什么 |
 |---|---|---|
-| `publish_dev.sh ["说明"]` | `staging.yml` | 把刚构建的 apk + `update.json` + `share/index.html` + `res/font/wp_word.ttf` 推到孤儿分支 `dev`（raw 直链可达，GitHub Pages 也从这里托管战绩页）。**产物白名单门禁**：dev 上多塞任何非产物文件都会当场失败（BRANCHING.md §1/§2）。撤销：`git push origin --delete dev` |
+| `publish_dev.sh ["说明"]` | `staging.yml` | 把刚构建的 apk + `update.json` + `share/index.html` + `res/font/wp_word.ttf` 推到孤儿分支 `dev`（raw 直链可达，GitHub Pages 也从这里托管战绩页）。根 update.json 附带 **`channels` 数组**（dev 上现存全部坑位 id）—— 手机 App 第 3 档「分支」更新源靠它渲染坑位选择行（v6.1 起，BRANCHING.md §3）。**产物白名单门禁**：dev 上多塞任何非产物文件都会当场失败（BRANCHING.md §1/§2）。撤销：`git push origin --delete dev` |
 | `make_release_manifest.sh` | `release.yml` / `auto_release.yml` | 组装 `dist/wordsprint.apk` + `dist/update.json`。**文案优先级：`RELEASE_NOTES` 环境变量 > 仓库根 `RELEASE_NOTES.md` > 最后一条提交标题**，所以 `RELEASE_NOTES.md` 必须只写当前这一版（它会整份变成 Release 正文与手机弹窗里那段字；历史文案存档在 `CHANGELOG.md`） |
 | `setup_tools.sh` | 维护机 / `AGENT.md` | 把 JDK17（temurin）+ Android SDK build-tools 34 + platform 34 下到 `./tools`（已 gitignore）。⚠️ Arena 沙箱出网是白名单制，`api.adoptium.net` / `dl.google.com` 都不通，**沙箱里跑不出来** |
 

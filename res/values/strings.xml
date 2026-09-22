@@ -120,7 +120,13 @@
     <string name="update_src">更新源</string>
     <string name="update_src_stable">stable</string>
     <string name="update_src_dev">dev</string>
-    <string name="update_src_hint">stable = GitHub Release；dev = 开发分支</string>
+    <string name="update_src_branch">分支</string>
+    <string name="update_src_hint">stable = 正式版；dev = 最近构建；分支 = 指定分支的独立坑位</string>
+    <string name="update_branch_refresh">刷新</string>
+    <string name="update_branch_list_loading">正在获取分支列表…</string>
+    <string name="update_branch_list_empty">dev 通道上还没有任何分支坑位</string>
+    <string name="update_branch_list_fail">获取分支列表失败（%1$s），点「刷新」重试</string>
+    <string name="update_branch_none">还没选分支坑位（先在「分支」一栏选一条）</string>
     <string name="update_default_src" translatable="false">https://github.com/zhzx2026/wordsprint/releases/latest/download/update.json</string>
     <string name="update_dev_src" translatable="false">https://raw.githubusercontent.com/zhzx2026/wordsprint/dev/update.json</string>
     <string name="update_check">检查</string>

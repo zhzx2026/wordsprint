@@ -52,7 +52,12 @@ public class Update {
     public interface Cb2 { void onRes(Res r); }
 
     public static String channelName(Context c, int ch) {
-        return ch == 1 ? c.getString(R.string.update_src_dev) : c.getString(R.string.update_src_stable);
+        if (ch == UpCh.BRANCH) {
+            String id = Prefs.of(c).upBranch();
+            String b = c.getString(R.string.update_src_branch);
+            return id.isEmpty() ? b : b + "·" + id;
+        }
+        return ch == UpCh.DEV ? c.getString(R.string.update_src_dev) : c.getString(R.string.update_src_stable);
     }
 
     private static Info pending;   // 等待用户授予安装权限后继续
@@ -133,50 +138,100 @@ public class Update {
         Res r = new Res();
         r.channel = channel;
         try {
-            String raw = channel == 1
-                    ? c.getString(R.string.update_dev_src).trim()
-                    : c.getString(R.string.update_default_src).trim();
+            String raw;
+            if (channel == UpCh.BRANCH) {
+                // 分支坑位：dev 根地址换算成 channels/<id>/update.json（用户 2026-09-22「其他分支怎么分别测试」）
+                String slot = Prefs.of(c).upBranch();
+                if (slot.isEmpty()) { r.err = c.getString(R.string.update_branch_none); return r; }
+                raw = UpCh.slotUrl(c.getString(R.string.update_dev_src), slot);
+            } else {
+                raw = (channel == UpCh.DEV
+                        ? c.getString(R.string.update_dev_src)
+                        : c.getString(R.string.update_default_src)).trim();
+            }
             if (raw.contains("YOUR_GITHUB")) { r.err = "GitHub 源未配置"; return r; }
             if (raw.isEmpty()) { r.err = "未设置更新源地址"; return r; }
             String u = raw.toLowerCase().endsWith(".json") ? raw
                     : raw + (raw.endsWith("/") ? "" : "/") + "update.json";
             r.url = u;
-            HttpURLConnection conn = (HttpURLConnection) new URL(u).openConnection();
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(10000);
-            conn.setInstanceFollowRedirects(true);
-            try {
-                int sc = conn.getResponseCode();
-                if (sc / 100 != 2) { r.err = "HTTP " + sc; return r; }
-                InputStream in = conn.getInputStream();
-                StringBuilder sb = new StringBuilder();
-                byte[] buf = new byte[4096];
-                int n, tot = 0;
-                while ((n = in.read(buf)) > 0 && tot < 256 * 1024) {
-                    sb.append(new String(buf, 0, n, "UTF-8"));
-                    tot += n;
-                }
-                in.close();
-                JSONObject j = new JSONObject(sb.toString());
-                Info i = new Info();
-                i.code = j.optInt("versionCode", 0);
-                i.name = j.optString("versionName", String.valueOf(i.code));
-                String rel = j.optString("url");
-                if (rel.startsWith("http")) i.url = rel;
-                else {
-                    int q = u.lastIndexOf('/');
-                    i.url = u.substring(0, q + 1) + rel;
-                }
-                i.notes = j.optString("notes", "");
-                i.force = j.optBoolean("force", false);
-                r.server = i;
-                r.newer = i.code > myCode(c);
-                return r;
-            } finally { conn.disconnect(); }
+            JSONObject j = new JSONObject(httpGet(u));
+            Info i = new Info();
+            i.code = j.optInt("versionCode", 0);
+            i.name = j.optString("versionName", String.valueOf(i.code));
+            String rel = j.optString("url");
+            if (rel.startsWith("http")) i.url = rel;
+            else {
+                int q = u.lastIndexOf('/');
+                i.url = u.substring(0, q + 1) + rel;
+            }
+            i.notes = j.optString("notes", "");
+            i.force = j.optBoolean("force", false);
+            r.server = i;
+            r.newer = i.code > myCode(c);
+            return r;
         } catch (Throwable t) {
             r.err = t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage();
             return r;
         }
+    }
+
+    /** GET 一个小文本（update.json 这类）；非 2xx 抛异常，消息形如 "HTTP 404" */
+    private static String httpGet(String u) throws Exception {
+        HttpURLConnection conn = (HttpURLConnection) new URL(u).openConnection();
+        conn.setConnectTimeout(8000);
+        conn.setReadTimeout(10000);
+        conn.setInstanceFollowRedirects(true);
+        try {
+            int sc = conn.getResponseCode();
+            if (sc / 100 != 2) throw new Exception("HTTP " + sc);
+            InputStream in = conn.getInputStream();
+            StringBuilder sb = new StringBuilder();
+            byte[] buf = new byte[4096];
+            int n, tot = 0;
+            while ((n = in.read(buf)) > 0 && tot < 256 * 1024) {
+                sb.append(new String(buf, 0, n, "UTF-8"));
+                tot += n;
+            }
+            in.close();
+            return sb.toString();
+        } finally { conn.disconnect(); }
+    }
+
+    // ---------- 分支坑位列表（「分支」通道的选择行） ----------
+
+    public interface SlotsCb { void onRes(java.util.List<String> slots, String err); }
+
+    private static volatile java.util.List<String> lastSlots;   // 最近一次成功拉到的坑位列表（行先照它画，请求慢慢来）
+
+    public static java.util.List<String> lastSlots() { return lastSlots; }
+
+    /**
+     * 拉「分支坑位」名单：读 dev 根 update.json 里的 channels 数组（publish_dev.sh 每次构建都会
+     * 用 dev 上现存坑位重写它）。列表为空/失败都照实回调，界面显示原因 —— 不静默。
+     */
+    public static void fetchSlotsAsync(final Activity a, final SlotsCb cb) {
+        new Thread(new Runnable() {
+            @Override public void run() {
+                java.util.List<String> slots = null;
+                String err = null;
+                try {
+                    String base = a.getString(R.string.update_dev_src).trim();
+                    if (base.toLowerCase().endsWith(".json")) base = base.substring(0, base.lastIndexOf('/'));
+                    while (base.endsWith("/")) base = base.substring(0, base.length() - 1);
+                    slots = UpCh.parseChannels(httpGet(base + "/update.json"));
+                    if (slots.isEmpty()) err = a.getString(R.string.update_branch_list_empty);
+                } catch (Throwable t) {
+                    err = t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage();
+                }
+                if (slots != null && !slots.isEmpty()) lastSlots = slots;
+                else if (lastSlots != null && slots != null) slots = lastSlots;   // 这回没拉到，先亮上次的
+                final java.util.List<String> ok = slots == null ? new java.util.ArrayList<String>() : slots;
+                final String e = err;
+                a.runOnUiThread(new Runnable() {
+                    @Override public void run() { cb.onRes(ok, e); }
+                });
+            }
+        }).start();
     }
 
     /** 异步版：回调里连「查了哪个通道、服务器什么版本」一起给 */

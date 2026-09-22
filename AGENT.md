@@ -229,7 +229,17 @@ gh api "/repos/zhzx2026/wordsprint/git/blobs/$SHA" -H "Accept: application/vnd.g
     （`git rebase origin/main` / `refs/remotes/origin/main` 这类远端跟踪引用不受影响）。
     要根治只能删掉那个误建的 tag/Release —— **那是用户的东西，要删先问用户**（BRANCHING.md §1 残留台账）。
 
-## 当前状态（2026-09-21 第十次更新 · 本线最新）
+## 当前状态（2026-09-22 第十一次更新 · 本线最新）
+- 🆕 **更新源第 3 档「分支」（`arena/01a0c983-wordsprint`，dev v6.1 / code 44）**：用户 2026-09-22
+  「更新只有两个选项，其他分支怎么分别测试？」—— stable = Release（只有转正才动）、dev 根 = 最近一次构建
+  （谁后构建谁覆盖），而坑位 `channels/<id>/` 虽然一直在，App 里却没有入口。现在：
+  ① App 更新源 chips 变三档 stable / dev / **分支**，选「分支」异步拉 dev 根 update.json 的 `channels`
+  数组渲染坑位选择行（`UpCh` 纯逻辑 + `Update.fetchSlotsAsync` + `SettingsSubActivity` 坑位行），
+  点坑位锁定、带「刷新」；选中坑位记 `Prefs.K_UP_BR`，id 过 `UpCh.sanitizeSlot` 才进 URL。
+  ② `publish_dev.sh` 每次构建把 dev 上现存全部坑位 id 写进根 update.json 的 `channels`（坑位名单晚构建一步）。
+  ③ 新增主机测试 `UpChTest`（16 checks）。装机实测 SOP：装 dev 包 → 更新源选「分支」→ 锁本分支坑位。
+
+## 当前状态（2026-09-21 第十次更新）
 - 🆕 **分支分工澄清 + v6.0 转正（`arena/01a0c46d-wordsprint`，2026-09-21）**：
   ① 新增 **[BRANCHING.md](BRANCHING.md)** 作为「谁写哪个分支」的唯一权威（main / dev / arena 分工、文件写入矩阵、
   **Pages 战绩页托管分工**、手机两个更新源、多会话七道机制 + 红线、**§8 测试版装机 SOP**、§9 收尾检查单）；
