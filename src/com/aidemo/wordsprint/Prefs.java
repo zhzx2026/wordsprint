@@ -25,6 +25,8 @@ public class Prefs {
     public static final String K_NIGHT = "g_night";
     /** 配色主题：见 Skin.PALETTES 下标 */
     public static final String K_SKIN = "g_skin";
+    /** 外观代数：配色/深浅/字体/字号任一改动 +1；页面 resume 时对不上账就重建（见 Look.java） */
+    public static final String K_LOOK = "g_look";
     /** 字体：0 内置 Poppins（单层 a）· 1 内置 Quicksand（单层 a）· 2 系统 */
     public static final String K_FONT = "g_font";
     /** 字号缩放：0 标准 · 1 大屏自适应 · 2 特大 */
@@ -33,6 +35,8 @@ public class Prefs {
     public static final String K_GOAL_MODE = "g_goal_mode";
     public static final String K_UP_URL = "u_url", K_UP_CH = "u_ch", K_UP_AUTO = "u_auto",
             K_UP_LAST = "u_last", K_UP_SEEN = "u_seen";
+    /** 「分支」通道选中的坑位 id（预发布 Release ci 的 update-<id>.json，见 BRANCHING.md §3） */
+    public static final String K_UP_BR = "u_br";
     public static final String K_PROFILES = "p_profiles", K_ACTIVE = "p_active";
     /** 手势提示（首次进刷词页显示一行提示） */
     public static final String K_GES_HINT = "g_ges_hint";
@@ -44,14 +48,19 @@ public class Prefs {
     public static final int SCALE_AUTO = 1;
 
     /**
-     * 0 正式版（Release）· 1 开发版（dev 分支）
+     * 0 正式版（Release）· 2 分支（ci 预发布的 update-&lt;id&gt;.json）。
+     * 只有两档（用户 2026-09-22「安装界面 dev 还在」→ dev 档整个退役）；
+     * 存量值 1（旧 dev 档）迁到「分支」，老版本手填的 dev 地址同理。
      */
     public int updateChannel() {
-        if (p.contains(K_UP_CH)) return p.getInt(K_UP_CH, 0) == 1 ? 1 : 0;
+        if (p.contains(K_UP_CH)) {
+            int v = p.getInt(K_UP_CH, 0);
+            return v == 1 ? UpCh.BRANCH : UpCh.sanitize(v);         // 旧「dev」→「分支」（测试包只认分支）
+        }
         String old = p.getString(ns(K_UP_URL), "");                 // 老版本手填过地址的
-        if (old != null && old.contains("/dev")) return 1;
-        // 没显式选过通道：装的是 dev 包就盯 dev 通道。
-        // （否则刚装完 dev 包的人点「检查更新」，查到的是 Release 上的 2.0 —— 永远「已经是最新版本」）
+        if (old != null && old.contains("/dev")) return UpCh.BRANCH;
+        // 没显式选过通道：装的是测试包（X.Y）就默认盯「分支」。
+        // （否则刚装完测试包的人点「检查更新」，查到的是正式版 —— 永远「已经是最新版本」）
         return Vers.channel(installedName(), null);
     }
 
@@ -65,7 +74,30 @@ public class Prefs {
         }
     }
 
-    public void setUpdateChannel(int ch) { p.edit().putInt(K_UP_CH, ch == 1 ? 1 : 0).apply(); }
+    public void setUpdateChannel(int ch) { p.edit().putInt(K_UP_CH, UpCh.sanitize(ch)).apply(); }
+
+    /**
+     * 「分支」通道当前认的分支 id：显式点选过的优先；没选过 → 默认认**本包自己**的分支
+     * （构建标识 BuildInfo.STAMP 第一段 = branch_id，build.sh 编译期生成）——
+     * 用户 2026-09-22「分支都没用」：装了哪条分支的包还得再手动点一次同名分支，纯属多余。
+     */
+    public String upBranch() {
+        String saved = UpCh.sanitizeSlot(p.getString(ns(K_UP_BR), ""));
+        if (!saved.isEmpty()) return saved;
+        return ownBranchId();
+    }
+
+    public void setUpBranch(String id) { p.edit().putString(ns(K_UP_BR), UpCh.sanitizeSlot(id)).apply(); }
+
+    /** 本包出自哪条分支（构建标识第一段；双装包/解析失败返回空 —— 双装包应用内更新本来就关着） */
+    private static String ownBranchId() {
+        try {
+            if (BuildInfo.SBS) return "";
+            String st = BuildInfo.STAMP;
+            int i = st.indexOf('·');
+            return i > 0 ? UpCh.sanitizeSlot(st.substring(0, i)) : "";
+        } catch (Throwable t) { return ""; }
+    }
 
     public String str(String key, String def) { return p.getString(ns(key), def); }
     public void set(String key, String v) { p.edit().putString(ns(key), v).apply(); }
@@ -77,19 +109,32 @@ public class Prefs {
     public void ges(int[] map) { set(K_GES, Ges.encode(map)); }
 
     public int night() { return p.getInt(K_NIGHT, 0); }
-    public void setNight(int v) { p.edit().putInt(K_NIGHT, v).apply(); }
+    public void setNight(int v) { lookPut(K_NIGHT, 0, v); }
 
     public int skin() { return p.getInt(K_SKIN, 0); }
 
-    public void setSkin(int v) { p.edit().putInt(K_SKIN, v).apply(); }
+    public void setSkin(int v) { lookPut(K_SKIN, 0, v); }
 
     public int font() { return p.getInt(K_FONT, FONT_POPPINS); }
 
-    public void setFont(int v) { p.edit().putInt(K_FONT, v).apply(); }
+    public void setFont(int v) { lookPut(K_FONT, FONT_POPPINS, v); }
 
     public int scaleMode() { return p.getInt(K_SCALE, SCALE_AUTO); }
 
-    public void setScaleMode(int v) { p.edit().putInt(K_SCALE, v).apply(); }
+    public void setScaleMode(int v) { lookPut(K_SCALE, SCALE_AUTO, v); }
+
+    /** 当前外观代数（每次改外观 +1，页面出生时记下、回来时对账用） */
+    public int lookGen() { return p.getInt(K_LOOK, 0); }
+
+    /**
+     * 外观类设置统一入口：值真变了才写，并把外观代数一并 +1（同一个 editor 一次落，
+     * 拆成两次 apply 会有读-改-写丢更新的窗口）。值没变就不动 —— 重复点同一个 chip
+     * 既不该刷代数（免得别的页面白白重建），也不该让设置页自己闪一下。
+     */
+    private void lookPut(String key, int def, int v) {
+        if (p.getInt(key, def) == v) return;
+        p.edit().putInt(key, v).putInt(K_LOOK, p.getInt(K_LOOK, 0) + 1).apply();
+    }
 
     public static final int DEF_SIZE = Diary.DEF_SIZE, DEF_LAG = Diary.DEF_LAG;
     /** 每日目标默认 50（另一档是 100，见 Diary.DEF_GOAL） */
@@ -294,14 +339,21 @@ public class Prefs {
     public void setNext(String bid, int v) { p.edit().putInt(ns(bk(bid, "n")), v).apply(); }
     public int groupSize(String bid) { return p.getInt(ns(bk(bid, "g")), DEF_SIZE); }
     public int order(String bid) { return p.getInt(ns(bk(bid, "o")), 0); }
-    public int lag(String bid) { return p.getInt(ns(bk(bid, "l")), DEF_LAG); }
+    /**
+     * 回炉间隔：**全局设置**（设置 → 学习，K_LAG_DEF）。
+     * 用户 2026-09-23：「打开词表后，这个回炉间隔在设置中设置，不要在这里设置」——
+     * 词本弹层不再有这一项；老版本按本子存的「l」值不再读（统一走全局默认）。
+     */
+    public int lag(String bid) { return p.getInt(ns(K_LAG_DEF), DEF_LAG); }
 
-    public void saveSetup(String bid, int size, int order, int lag) {
-        p.edit().putInt(ns(bk(bid, "g")), size).putInt(ns(bk(bid, "o")), order).putInt(ns(bk(bid, "l")), lag).apply();
+    public void saveSetup(String bid, int size, int order) {
+        p.edit().putInt(ns(bk(bid, "g")), size).putInt(ns(bk(bid, "o")), order).apply();
         set(K_SIZE_DEF, size);
     }
 
     public static final String K_SIZE_DEF = "g_size";
+    /** 回炉间隔的全局默认（不认识后隔几张再出现）：3/5/8，设置 → 学习里改 */
+    public static final String K_LAG_DEF = "g_lag";
 
     public void touchBook(String bid) { p.edit().putLong(ns(bk(bid, "t")), System.currentTimeMillis()).apply(); }
 

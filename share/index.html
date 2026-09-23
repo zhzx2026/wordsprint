@@ -34,6 +34,13 @@ body{font:16px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hi
 .big{margin-top:16px;display:flex;align-items:flex-end;gap:10px}
 .big b{font-size:52px;line-height:1;font-weight:700;letter-spacing:-1px}
 .big span{font-size:12px;opacity:.85;padding-bottom:6px}
+.dl{margin-top:18px;position:relative;z-index:1;display:flex;gap:10px;flex-wrap:wrap}
+.dl a{display:inline-flex;align-items:center;gap:7px;text-decoration:none;font-size:14px;font-weight:700;
+      padding:10px 18px;border-radius:12px}
+.dl .pri{background:#fff;color:var(--head1)}
+.dl .sec{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.35)}
+.dl a:active{opacity:.85}
+.card a.dlink{color:var(--brand);text-decoration:none;font-weight:700}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:18px;position:relative;z-index:1}
 .grid div{text-align:center}
 .grid b{display:block;font-size:19px;font-weight:700}
@@ -49,9 +56,6 @@ body{font:16px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hi
 .row{margin-top:10px;display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--text2)}
 .tick{font-size:15px;font-weight:700}
 .tick.on{color:var(--green)}
-.habits{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
-.habits span{font-size:12px;text-align:center;padding:8px 4px;border-radius:12px;background:var(--chip);color:var(--text2)}
-.habits span.on{background:var(--greenbg);color:var(--green);font-weight:700}
 .heat{margin-top:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px}
 .heatin{display:flex;gap:3px;min-width:max-content}
 .heatin .col{display:flex;flex-direction:column;gap:3px}
@@ -74,16 +78,19 @@ a{color:var(--brand);text-decoration:none}
   <header class="hero">
     <div class="brand">刷单词 · WordsPrint</div>
     <div class="who"><b id="fName">我</b><small id="fDate"></small></div>
-    <div class="slogan" id="fSlogan">今天也把单词刷了</div>
+    <div class="slogan" id="fSlogan">我的单词战绩</div>
     <div class="big"><b id="fTotal">0</b><span>累计掌握</span></div>
     <div class="grid" id="fGrid"></div>
+    <div class="dl">
+      <a class="pri" href="https://github.com/zhzx2026/wordsprint/releases/latest/download/wordsprint.apk">⬇ 下载 App（正式版 APK）</a>
+      <a class="sec" href="https://github.com/zhzx2026/wordsprint/releases" target="_blank" rel="noopener">全部版本</a>
+    </div>
   </header>
 
   <section class="card">
     <h2>每日目标 <em id="fGoalPct"></em></h2>
     <div class="prog" id="fProg"><i></i></div>
     <div class="row"><span id="fGoalText">—</span><span class="tick" id="fTick">○</span></div>
-    <div class="habits" id="fHabits"></div>
   </section>
 
   <section class="card">
@@ -91,6 +98,19 @@ a{color:var(--brand);text-decoration:none}
     <div class="heat"><div class="heatin" id="fHeat"></div></div>
     <div class="legend"><span>少</span><i></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><span>多</span></div>
     <div class="meta" id="fMeta"></div>
+  </section>
+
+  <section class="card" id="fBuildsCard" hidden>
+    <h2>App 版本一览 <em id="fBuildsHint">直连 GitHub 实时读取</em></h2>
+    <div class="meta" style="margin-top:8px" id="fBuildsStable"></div>
+    <div id="fBuilds" style="margin-top:6px"></div>
+    <div class="meta" style="margin-top:8px;line-height:1.7">
+      正式版 = Releases/latest，只有转正才更新；每条开发分支的测试包挂在预发布
+      <a href="https://github.com/zhzx2026/wordsprint/releases/tag/ci" target="_blank" rel="noopener" style="color:var(--brand)">Release ci</a>，
+      App「设置 → 更新源 → 分支」可锁定任意一条。
+      想尝鲜可直接装<a class="dlink" href="https://github.com/zhzx2026/wordsprint/releases/download/ci/wordsprint.apk">最新测试包</a>
+      （新版本 App 会自动更新，不用反复来下）。
+    </div>
   </section>
 
   <footer>
@@ -302,8 +322,6 @@ if (typeof module !== 'undefined' && module.exports) module.exports = WPI;   /* 
     var tick = $('fTick');
     tick.textContent = done ? '✓ 达标' : '○ 还差 ' + (goal - today);
     if(done) tick.className = 'tick on'; else tick.className = 'tick';
-    $('fHabits').innerHTML =
-      habit(done, '每日目标') + habit(rev >= 3, '温习 ' + rev + '′');
 
     /* 热力图：182 天，按真实星期几对齐（列 = 周，行 = 周一…周日），最后一列不满就留空 */
     var nDays = heat.length;
@@ -331,7 +349,6 @@ if (typeof module !== 'undefined' && module.exports) module.exports = WPI;   /* 
       '达标天数 <b>' + days + ' 天</b> · 温习 <b>' + rev + ' 分钟</b>';
   }
   function cell(big, small){ return '<div><b>' + big + '</b><span>' + small + '</span></div>'; }
-  function habit(on, text){ return '<span class="' + (on ? 'on' : '') + '">' + (on ? '✓ ' : '○ ') + text + '</span>'; }
 
   function boot(){
     var d = para('d', '');
@@ -343,6 +360,78 @@ if (typeof module !== 'undefined' && module.exports) module.exports = WPI;   /* 
     try { render(p); } catch(e){ bad('渲染出错了：' + (e && e.message ? e.message : e)); }
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+})();
+</script>
+<script>
+/* =========================================================================
+   App 版本一览（用户 2026-09-22「page 要有各个分支的版本」）：
+   直连 GitHub API 读 stable 最新 Release + 全部分支 + 预发布 Release ci 的资产，
+   再逐条拉 update-<分支id>.json 拿版本号与说明。取不到就整卡隐藏，不影响战绩页。
+   ========================================================================= */
+(function(){
+  var API = 'https://api.github.com/repos/zhzx2026/wordsprint';
+  var DL  = 'https://github.com/zhzx2026/wordsprint/releases/download/ci/';
+  function DLSTable(tag){ return 'https://github.com/zhzx2026/wordsprint/releases/download/' + encodeURIComponent(tag) + '/wordsprint.apk'; }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function ago(iso){
+    if(!iso) return '';
+    var m = (Date.now() - new Date(iso).getTime()) / 60000;
+    if (m < 1) return '刚刚'; if (m < 60) return Math.round(m) + ' 分钟前';
+    if (m < 1440) return Math.round(m/60) + ' 小时前';
+    return Math.round(m/1440) + ' 天前';
+  }
+  function get(u){ return fetch(u, {headers:{'Accept':'application/vnd.github+json'}}).then(function(r){
+    if (!r.ok) throw new Error(r.status); return r.json(); }); }
+  function fillStable(){
+    return get(API + '/releases/latest').then(function(r){
+      document.getElementById('fBuildsStable').innerHTML =
+        '<b style="font-size:14px">正式版 ' + esc(r.tag_name) + '</b>' +
+        '<span style="opacity:.7">（' + esc(ago(r.published_at)) + '发布 · App 稳定通道）</span>' +
+        '　<a class="dlink" href="' + DLSTable(r.tag_name) + '">⬇ 下载 APK</a>';
+    }).catch(function(){
+      document.getElementById('fBuildsStable').textContent = '正式版：暂时取不到（GitHub API 限流或网络不通）';
+    });
+  }
+  function fillBranches(){
+    return get(API + '/branches?per_page=100').then(function(bs){
+      var ids = bs.map(function(b){ return b.name; }).filter(function(n){
+        return n.indexOf('arena/') === 0 || n.indexOf('staging/') === 0 || n === 'dev-build';
+      }).map(function(n){
+        var t = n.split('/'); var tail = t[1] || n;
+        if (t[0] === 'arena') tail = tail.split('-')[0];
+        return (t[0] === 'arena' ? 'arena' : t[0] + '-') + tail;
+      });
+      return get(API + '/releases/tags/ci').then(function(rel){
+        var built = (rel.assets || []).map(function(a){ return a.name; }).filter(function(n){
+          return n.indexOf('update-') === 0 && n.slice(-5) === '.json';
+        }).map(function(n){ return n.slice(7, -5); });
+        var box = document.getElementById('fBuilds');
+        if (!ids.length){ box.textContent = '还没有开发分支。'; return; }
+        var rows = ids.map(function(id){
+          var has = built.indexOf(id) >= 0;
+          if (!has) return '<div class="row"><span>' + esc(id) + '（还没有测试包）</span><span class="tick">○</span></div>';
+          return fetch(DL + 'update-' + id + '.json').then(function(r){
+            if (!r.ok) throw 0; return r.json();
+          }).then(function(j){
+            return '<div class="row"><span>' + esc(id) + ' · v' + esc(j.versionName) +
+                   '（code ' + esc(j.versionCode) + '）　<a class="dlink" href="' + DL +
+                   'wordsprint-' + encodeURIComponent(id) + '.apk">⬇ APK</a></span><span class="tick on">●</span></div>' +
+                   '<div class="meta" style="margin:-2px 0 6px;opacity:.8">' + esc((j.notes||'').split('\n')[1] || '').slice(0, 90) + '</div>';
+          }).catch(function(){
+            return '<div class="row"><span>' + esc(id) + '（有测试包）</span><span class="tick on">●</span></div>';
+          });
+        });
+        Promise.all(rows).then(function(html){ box.innerHTML = html.join(''); });
+      });
+    }).catch(function(){
+      document.getElementById('fBuildsHint').textContent = '分支列表暂时取不到（GitHub API 限流）';
+    });
+  }
+  try {
+    document.getElementById('fBuildsCard').hidden = false;
+    fillStable(); fillBranches();
+  } catch (e) { document.getElementById('fBuildsCard').hidden = true; }
 })();
 </script>
 </body>

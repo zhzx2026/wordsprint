@@ -17,17 +17,15 @@ https://zhzx2026.github.io/wordsprint/share/index.html?d=<payload>
 | GitHub Pages | 官方、`Content-Type: text/html`、查询参数原样保留、没有中转页 ✅ |
 
 **开启方式（只需一次，且必须是仓库所有者点）**：仓库 `Settings` → `Pages` → Source = *Deploy from a branch*
-→ Branch = **dev**、目录 = **/ (root)** → Save。
+→ Branch = **main**、目录 = **/ (root)** → Save。（2026-09-22 从 dev 切到 main：dev 聚合分支当日退役）
 
-> 规则与「什么时候该从 dev 切到 main、怎么切」见 [BRANCHING.md](../BRANCHING.md) §4（分支分工的唯一权威）。
-> 一句话：测试期挂在 `dev`（每次构建自动刷新），战绩页稳定后切到 `main`（只有转正才更新）；
-> 真身永远只在源码分支（`main` / `arena/**`）的 `share/index.html`，`dev` 上那份是副本。
+> 规则见 [BRANCHING.md](../BRANCHING.md) §4（分支分工的唯一权威）。
+> 一句话：Pages 只认 `main` —— 真身直接上线，没有副本；页面底部「App 版本一览」卡片由 JS
+> 直连 GitHub API 实时渲染各分支版本，页面不必跟着每次构建发版。
 
 - 为什么不用 Actions 发布：实测 `GITHUB_TOKEN` 没有创建 Pages 站点的权限
   （`Resource not accessible by integration`），所以 CI 里没法代劳；分支方式反而更省事。
-- 开完就能用：dev 分支本来就由 `publish_dev.sh` 在每次构建时刷新（含 `share/index.html`
-  与 `res/font/wp_word.ttf`），所以页面会跟着每次构建自动更新，**不需要重新发版**。
-- 转正后把 Source 切到 `main` 即可（地址不变，之前分享出去的图也不会失效）。
+- 未转正的页面改动要等合并进 main 才上线；想在真机提前验，本地 `python3 -m http.server` 即可。
 - 若想改用 Actions 发布（`actions/deploy-pages`），先把 Source 改成 *GitHub Actions* 再启用。
 
 ## 数据契约（App ↔ 页面，改一边必须改另一边）

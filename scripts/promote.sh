@@ -10,7 +10,7 @@ cd "$(dirname "$0")/.."
 export LANG=C.UTF-8 LC_ALL=C.UTF-8
 BR="${1:-$(git rev-parse --abbrev-ref HEAD)}"
 case "$BR" in
-  main|HEAD) echo "!! 当前在 $BR：dev 迭代不应直接在 main 上做，请切回 dev 分支、合 PR 转正" >&2; exit 1 ;;
+  main|HEAD) echo "!! 当前在 $BR：迭代不应直接在 main 上做，请切回工作分支（arena/**）、合 PR 转正" >&2; exit 1 ;;
 esac
 bash scripts/version.sh promote
 VER=$(grep -oE 'versionName="[^\"]*"' AndroidManifest.xml | sed 's/.*="//;s/"//')

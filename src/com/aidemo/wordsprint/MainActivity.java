@@ -112,9 +112,6 @@ public class MainActivity extends Activity {
         dash.findViewById(R.id.goalCard).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { pickGoal(); }
         });
-        dash.findViewById(R.id.habitRev).setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { openReview(); }
-        });
         dash.findViewById(R.id.quickSearch).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { startActivity(new Intent(MainActivity.this, SearchActivity.class)); }
         });
@@ -142,9 +139,6 @@ public class MainActivity extends Activity {
         badge.setVisibility(t.goalDone() ? View.VISIBLE : View.GONE);
 
         mark(R.id.habitWordMark, t.goalDone());
-        mark(R.id.habitRevMark, t.revDone);
-        ((TextView) findViewById(R.id.habitRevSub)).setText(
-                getString(R.string.habit_rev) + " " + Math.min(99, t.revSec / 60) + "′");
 
         // 有新版就一直挂着这条横幅（点一下就更新）；没有就收起来
         View banner = findViewById(R.id.upBanner);
@@ -266,16 +260,6 @@ public class MainActivity extends Activity {
 
     private static int parseGoal(String s, int def) {
         try { return Math.max(5, Math.min(500, Integer.parseInt(s.trim()))); } catch (Exception e) { return def; }
-    }
-
-    private void openReview() {
-        String bid = Prefs.of(this).lastBookId();
-        Db.Book bk = bid == null ? null : Db.I.byId(bid);
-        if (bk == null) { toast(getString(R.string.resume_none)); return; }
-        Intent it = new Intent(this, StudyActivity.class);
-        it.putExtra("book", bk.id);
-        it.putExtra("review", true);
-        startActivity(it);
     }
 
     @Override protected void onResume() {

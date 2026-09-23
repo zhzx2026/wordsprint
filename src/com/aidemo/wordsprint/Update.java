@@ -43,16 +43,20 @@ public class Update {
     public static class Res {
         public Info server;          // 服务器上的版本（查到了才非空；可能比本机旧）
         public boolean newer;        // 服务器版本是不是比本机新
-        public int channel;          // 0 = stable（正式版）· 1 = dev（dev 分支）
+        public int channel;          // 0 = stable（正式版）· 2 = branch（指定分支）
         public String url = "";      // 实际请求的地址
         public String err;           // 失败原因（null = 请求成功）
-        public boolean viaDev;       // 结果取自 dev 通道（正式版通道比它旧时会发生）
     }
 
     public interface Cb2 { void onRes(Res r); }
 
     public static String channelName(Context c, int ch) {
-        return ch == 1 ? c.getString(R.string.update_src_dev) : c.getString(R.string.update_src_stable);
+        if (ch == UpCh.BRANCH) {
+            String id = Prefs.of(c).upBranch();
+            String b = c.getString(R.string.update_src_branch);
+            return id.isEmpty() ? b : b + "·" + id;
+        }
+        return c.getString(R.string.update_src_stable);
     }
 
     private static Info pending;   // 等待用户授予安装权限后继续
@@ -100,12 +104,12 @@ public class Update {
     }
 
     /**
-     * 完整检查：请求 update.json，把服务器版本与本机版本比一比。
+     * 完整检查：请求当前通道的 update.json，把服务器版本与本机版本比一比。
      * 不抛异常 —— 失败原因放在 {@link Res#err}，界面可以照实显示（HTTP 码 / 连不上 / 没配置）。
      *
-     * 装的是开发版包（版本号 X.Y）时，会**顺带看一眼 dev 通道**：正式版通道只在转正时才前进，
-     * 平时永远停在旧版本上，只看它就会出现「明明有新包却显示已是最新版本」
-     * （用户 2026-09-15 装机实测遇到的正是这个）。dev 上的包更新就用它，并在界面标明来源。
+     * 装的是测试包（版本号 X.Y）时默认盯「分支」通道（用户 2026-09-15 装机实测：
+     * 测试包盯正式源永远「已经是最新版本」）；dev 聚合档已退役（2026-09-22「安装界面 dev 还在」），
+     * 显式选了 stable 就完全按 stable 来，不再替用户偷看别的源。
      */
     public static Res checkRes(Context c) {
         if (BuildInfo.SBS) {          // 同机双装包（包名带后缀）：应用内更新的 APK 是正式包名，装不上只会白报错
@@ -113,19 +117,7 @@ public class Update {
             r.err = "同机双装测试包不支持应用内更新，请从 GitHub Actions 的 staging artifact 手动下载安装";
             return r;
         }
-        Res r = fetch(c, Prefs.of(c).updateChannel());
-        if (r.channel == 0 && Vers.isDevName(myName(c))) {
-            Res d = fetch(c, 1);
-            int base = r.server == null ? myCode(c) : Math.max(r.server.code, myCode(c));
-            if (d.server != null && d.server.code > base) {
-                r.server = d.server;
-                r.newer = d.server.code > myCode(c);
-                r.viaDev = true;
-                r.url = d.url;
-                r.err = null;
-            }
-        }
-        return r;
+        return fetch(c, Prefs.of(c).updateChannel());
     }
 
     /** 只查一个通道 */
@@ -133,50 +125,105 @@ public class Update {
         Res r = new Res();
         r.channel = channel;
         try {
-            String raw = channel == 1
-                    ? c.getString(R.string.update_dev_src).trim()
-                    : c.getString(R.string.update_default_src).trim();
+            String raw;
+            if (channel == UpCh.BRANCH) {
+                // 分支坑位：GitHub 预发布 Release `ci` 里该分支自己的 update-<id>.json
+                //（用户 2026-09-22「apk 直接连 github 看分支」；dev 聚合分支与 dev 档都已删）
+                String slot = Prefs.of(c).upBranch();
+                if (slot.isEmpty()) { r.err = c.getString(R.string.update_branch_none); return r; }
+                raw = UpCh.branchUpdateUrl(c.getString(R.string.update_ci_base), slot);
+            } else {
+                raw = c.getString(R.string.update_default_src).trim();
+            }
             if (raw.contains("YOUR_GITHUB")) { r.err = "GitHub 源未配置"; return r; }
             if (raw.isEmpty()) { r.err = "未设置更新源地址"; return r; }
             String u = raw.toLowerCase().endsWith(".json") ? raw
                     : raw + (raw.endsWith("/") ? "" : "/") + "update.json";
             r.url = u;
-            HttpURLConnection conn = (HttpURLConnection) new URL(u).openConnection();
-            conn.setConnectTimeout(8000);
-            conn.setReadTimeout(10000);
-            conn.setInstanceFollowRedirects(true);
-            try {
-                int sc = conn.getResponseCode();
-                if (sc / 100 != 2) { r.err = "HTTP " + sc; return r; }
-                InputStream in = conn.getInputStream();
-                StringBuilder sb = new StringBuilder();
-                byte[] buf = new byte[4096];
-                int n, tot = 0;
-                while ((n = in.read(buf)) > 0 && tot < 256 * 1024) {
-                    sb.append(new String(buf, 0, n, "UTF-8"));
-                    tot += n;
-                }
-                in.close();
-                JSONObject j = new JSONObject(sb.toString());
-                Info i = new Info();
-                i.code = j.optInt("versionCode", 0);
-                i.name = j.optString("versionName", String.valueOf(i.code));
-                String rel = j.optString("url");
-                if (rel.startsWith("http")) i.url = rel;
-                else {
-                    int q = u.lastIndexOf('/');
-                    i.url = u.substring(0, q + 1) + rel;
-                }
-                i.notes = j.optString("notes", "");
-                i.force = j.optBoolean("force", false);
-                r.server = i;
-                r.newer = i.code > myCode(c);
-                return r;
-            } finally { conn.disconnect(); }
+            JSONObject j = new JSONObject(httpGet(u));
+            Info i = new Info();
+            i.code = j.optInt("versionCode", 0);
+            i.name = j.optString("versionName", String.valueOf(i.code));
+            String rel = j.optString("url");
+            if (rel.startsWith("http")) i.url = rel;
+            else {
+                int q = u.lastIndexOf('/');
+                i.url = u.substring(0, q + 1) + rel;
+            }
+            i.notes = j.optString("notes", "");
+            i.force = j.optBoolean("force", false);
+            r.server = i;
+            r.newer = i.code > myCode(c);
+            return r;
         } catch (Throwable t) {
             r.err = t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage();
+            // 分支 404 = 那条分支还没出过测试包，照实说人话，别甩一个「HTTP 404」
+            if (UpCh.BRANCH == channel && "HTTP 404".equals(r.err)) {
+                r.err = c.getString(R.string.update_branch_empty);
+            }
             return r;
         }
+    }
+
+    /** GET 一个小文本（update.json 这类）；非 2xx 抛异常，消息形如 "HTTP 404" */
+    private static String httpGet(String u) throws Exception {
+        HttpURLConnection conn = (HttpURLConnection) new URL(u).openConnection();
+        conn.setConnectTimeout(8000);
+        conn.setReadTimeout(10000);
+        conn.setInstanceFollowRedirects(true);
+        try {
+            int sc = conn.getResponseCode();
+            if (sc / 100 != 2) throw new Exception("HTTP " + sc);
+            InputStream in = conn.getInputStream();
+            StringBuilder sb = new StringBuilder();
+            byte[] buf = new byte[4096];
+            int n, tot = 0;
+            while ((n = in.read(buf)) > 0 && tot < 256 * 1024) {
+                sb.append(new String(buf, 0, n, "UTF-8"));
+                tot += n;
+            }
+            in.close();
+            return sb.toString();
+        } finally { conn.disconnect(); }
+    }
+
+    // ---------- 分支清单（「分支」通道的选择行：读 ci 根 update.json 的 channels） ----------
+
+    public interface BranchCb { void onRes(java.util.List<String> ids, String err); }
+
+    private static volatile java.util.List<String> lastBranches;   // 最近一次成功拉到的分支 id
+
+    public static java.util.List<String> lastBranches() { return lastBranches; }
+
+    /**
+     * 拉分支清单：读 ci 根 update.json 的 `channels` 数组（publish_ci.sh 每次构建都会用 ci 上
+     * 现存的全部 update-&lt;id&gt;.json 资产重写它）。域名与下载同（github.com），能下包就一定能拉清单
+     * —— 用户 2026-09-22「分支都没用，没反应」的教训：api.github.com 在手机网络下经常不通/匿名
+     * 限流 403，清单永远拉不到。失败时回落上次结果，err 照实回调给界面，不静默。
+     * 名单只含「出过测试包」的分支：新分支第一次构建后才进名单（没包的分支本来就没得选）。
+     */
+    public static void fetchBranchesAsync(final Activity a, final BranchCb cb) {
+        new Thread(new Runnable() {
+            @Override public void run() {
+                java.util.List<String> ids = null;
+                String err = null;
+                try {
+                    String base = a.getString(R.string.update_ci_base).trim();
+                    while (base.endsWith("/")) base = base.substring(0, base.length() - 1);
+                    ids = UpCh.parseChannels(httpGet(base + "/update.json"));
+                    if (ids.isEmpty()) err = a.getString(R.string.update_branch_list_empty);
+                } catch (Throwable t) {
+                    err = t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage();
+                }
+                if (ids != null && !ids.isEmpty()) lastBranches = ids;
+                else if (lastBranches != null) ids = lastBranches;   // 这回没拉到：亮上次的，别清空
+                final java.util.List<String> ok = ids == null ? new java.util.ArrayList<String>() : ids;
+                final String e = err;
+                a.runOnUiThread(new Runnable() {
+                    @Override public void run() { cb.onRes(ok, e); }
+                });
+            }
+        }).start();
     }
 
     /** 异步版：回调里连「查了哪个通道、服务器什么版本」一起给 */

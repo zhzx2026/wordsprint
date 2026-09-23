@@ -30,6 +30,7 @@
     <string name="order_shuffle">随机打乱</string>
     <string name="lag_label">不认识 · 回炉间隔</string>
     <string name="lag_n">每过 %1$d 张再出现</string>
+    <string name="lag_setting_desc">点「不认识」后隔几张再出现（全局，对所有词本生效）</string>
     <string name="redo_all">包含已掌握（重新刷整本）</string>
     <string name="session_done">本组完成</string>
     <string name="book_done">恭喜！整本书已刷完</string>
@@ -119,15 +120,21 @@
     <string name="update_auto">自动检查更新</string>
     <string name="update_src">更新源</string>
     <string name="update_src_stable">stable</string>
-    <string name="update_src_dev">dev</string>
-    <string name="update_src_hint">stable = GitHub Release；dev = 开发分支</string>
+    <string name="update_src_branch">分支</string>
+    <string name="update_src_hint">stable = 正式版；分支 = 各分支自己的测试包</string>
+    <string name="update_branch_refresh">刷新</string>
+    <string name="update_branch_list_loading">正在读取分支…</string>
+    <string name="update_branch_list_empty">还没有任何分支的测试包（先跑一次 staging 构建）</string>
+    <string name="update_branch_list_fail">读取分支失败（%1$s），点「刷新」重试</string>
+    <string name="update_branch_none">还没有可认领的分支（先点上面任意一条分支）</string>
+    <string name="update_branch_empty">该分支还没有测试包（先跑一次 staging 构建）</string>
     <string name="update_default_src" translatable="false">https://github.com/zhzx2026/wordsprint/releases/latest/download/update.json</string>
-    <string name="update_dev_src" translatable="false">https://raw.githubusercontent.com/zhzx2026/wordsprint/dev/update.json</string>
+    <string name="update_ci_base" translatable="false">https://github.com/zhzx2026/wordsprint/releases/download/ci</string>
+    <string name="update_repo_api" translatable="false">https://api.github.com/repos/zhzx2026/wordsprint</string>
     <string name="update_check">检查</string>
     <string name="update_checking">正在检查…</string>
     <string name="update_checking_ch">正在检查（%1$s 通道）…</string>
     <string name="update_cur_ver_ch">当前 v%1$s（code %2$d）· %3$s 通道</string>
-    <string name="update_found_dev">发现新版本 %1$s（dev 通道的测试包 · 当前 %2$s）</string>
     <string name="update_latest_detail">已是最新版本（%1$s 通道 · 服务器 %2$s / code %3$d · 本机 v%4$s / code %5$d）</string>
     <string name="update_latest_now">已是最新版本</string>
     <string name="update_cur_ver">当前 v%1$s（code %2$d）</string>
@@ -236,7 +243,7 @@
     <string name="share_saved">已保存到相册</string>
     <string name="share_save_fail">保存失败：%1$s</string>
     <string name="share_none">还没有战绩：先刷几个词再分享</string>
-    <string name="share_headline">今天也把单词刷了</string>
+    <string name="share_headline">我的单词战绩</string>
     <string name="share_mastered">累计掌握</string>
     <string name="share_today">今日新词</string>
     <string name="share_streak">连续打卡</string>
@@ -244,6 +251,7 @@
     <string name="share_goal_days">达标天数</string>
     <string name="share_heat">最近 26 周</string>
     <string name="share_foot">刷单词 · 扫码看我的学习战绩</string>
+    <string name="share_slogan_tail">素纸背单词</string>
     <string name="share_no_app">分享图片失败，已保存到相册</string>
 
 
@@ -371,11 +379,16 @@
     <string name="pv_batch">批量改进度</string>
     <string name="pv_start">去刷这本</string>
     <string name="pv_batch_title">批量改进度</string>
-    <string name="pv_batch_tip">输入词号范围（这本共 %1$d 词）。写法随意：100-300 / 1~50 / 第100到300 / 只写一个数 / 留空=整本。</string>
+    <string name="pv_batch_tip">先输词号范围（这本共 %1$d 词，写法随意：100-300 / 1~50 / 第100到300 / 留空=整本），再选动作：标记/取消已掌握，或让刷词从这段开始（继续刷=跳过已会的；重新刷=整段重来）。</string>
     <string name="pv_range_hint">例如 100-300</string>
     <string name="pv_range_ok">第 %1$d–%2$d 个词（共 %3$d 个）· 其中已掌握 %4$d 个</string>
     <string name="pv_act_mark">标记已掌握</string>
     <string name="pv_act_unmark">取消已掌握</string>
+    <string name="pv_act_continue">从这里继续刷</string>
+    <string name="pv_act_relearn">从这段重新刷</string>
+    <string name="pv_done_move">好了，下次从第 %1$d 个词开始刷</string>
+    <string name="pv_none_move">下次本来就从第 %1$d 个词开始，没动</string>
+    <string name="pv_range_now">当前下次从第 %1$d 个词接着刷</string>
     <string name="pv_apply">就改这些</string>
     <string name="pv_done">已改动 %1$d 个词（第 %2$d–%3$d）</string>
     <string name="pv_none_mark">这些词本来就已经掌握了，没改动</string>

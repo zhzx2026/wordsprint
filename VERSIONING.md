@@ -31,7 +31,7 @@ dev 1.1 ── +0.1 ──▶ dev 1.2 ── +0.1 ──▶ dev 1.3 ── 用�
 ## 3. 修改迭代规则
 
 - 所有内容调整仅在 dev 版本中执行；**每完成一轮修改，dev 次版本号 +0.1**，并同步更新版本标识。
-- dev 迭代不合 main、不打 tag：推分支 → `staging.yml` 出测试包（artifact + dev 通道）→ 用户装机实测。
+- dev 迭代不合 main、不打 tag：推分支 → `staging.yml` 出测试包（artifact + 预发布 Release `ci` 资产）→ 用户装机实测。
 - 同一轮内多次提交不重复 bump；**交付给用户实测的新一包，必须是新一号**（`Update.check` 是 code 严格大于）。
 
 ## 4. 转正规则
@@ -44,7 +44,7 @@ dev 1.1 ── +0.1 ──▶ dev 1.2 ── +0.1 ──▶ dev 1.3 ── 用�
 ## 5. versionCode（内部序号，与显示名解耦）
 
 - OTA 只认 `versionCode`（严格大于才提示更新），**显示名回退（如 1.3→1.0）不影响升级判断**。
-- 每次 bump-dev / promote，code 都取 `max(本地, dev 通道, main) + 1`（防多分支撞号，见 AGENT.md 坑 11）。
+- 每次 bump-dev / promote，code 都取 `max(本地, main) + 1`（防多分支撞号，见 AGENT.md 坑 11；dev 聚合分支 2026-09-22 起退役，无通道号可扫）。
 - 永远只增不减、不复用。
 
 ## 6. 版本标识同步清单（`version.sh` 自动做）
@@ -79,6 +79,9 @@ bash scripts/staging_build.sh      # 出测试包（不变）
    也就是手机弹窗里那段字 —— 堆历史 = 用户看到一整屏流水账。
 7. 用户点名要某个号（如 2026-09-17 的 2.x→3.x、4.0→5.0）时用 `bash scripts/version.sh set X.Y [code]`：
    它同样只许改版本号那一处，code 省略则取三方最大 +1；`promote` 只能从 dev 走，stable 上不能直接 promote。
+8. **每次发包必须写清楚内容**（用户 2026-09-22 定）：`RELEASE_NOTES.md` 正文就是手机「发现新版本」弹窗里
+   那段字，也是测试通道 `update.json` 的 `notes` —— 只写标题/空话 = 发不出去（`publish_ci.sh` 校验正文 ≥40 字，
+   不足直接失败）。转正时整份进 Release 正文；staging 时按分支拼进坑位 `notes`。
 
 ## 8. 迁移与发布台账
 
@@ -107,13 +110,13 @@ bash scripts/staging_build.sh      # 出测试包（不变）
 > 一句话：**版本号晚绑定 —— 分支开发期不动 manifest，发包实测前 / 合并转正前先 rebase main 再 `bump-dev`；撞没撞号由 CI 门禁说了算。**
 
 每条 Arena 会话分支是 `arena/<id>-wordsprint`，**分支短 id**（`bash scripts/branch_id.sh`，如 `arena01a0b2c2`）
-是它在 artifact 名、dev 通道坑位、APP 构建标识里的"身份证"。
+是它在 artifact 名、Release `ci` 资产名（`update-<id>.json`）、APP 构建标识里的"身份证"。
 
 ### 8.1 防撞号
 1. **晚绑定**：开发期不动 `AndroidManifest.xml` 版本（保持从 main 带下来的号）；只在两个时刻动版本：
    ① 发包实测前 `git fetch && git rebase origin/main` → `bash scripts/version.sh bump-dev`；
    ② 转正前同样先 rebase 再 `promote`。谁先 rebase+push 谁先用号，后到的自动避开。
-2. **取号范围**：`max_code` 现在扫 本地 / dev 通道 / main / **所有 `arena/**` 远端分支**，bump 自动跳过别人领过的 code。
+2. **取号范围**：`max_code` 现在扫 本地 / main / **所有 `arena/**` 远端分支**，bump 自动跳过别人领过的 code。
 3. **CI 门禁**：`staging.yml` 里有「多分支撞号门禁」= `version.sh check-unique` —— 同 versionCode 已被
    **分叉的**另一条 arena 分支占用（compare API 判 diverged）→ 直接 fail 并提示 rebase + bump；
    同 versionName 不同 code 只警告（后合并的转正前再 bump 让出名字）。还没领号（stable 且 code ≤ main）必过。
@@ -122,9 +125,9 @@ bash scripts/staging_build.sh      # 出测试包（不变）
 4. **测试包可辨识**：staging artifact 名 = `wordsprint-staging-v<ver>-<分支id>-r<run号>`；
    APK 内构建标识 `BuildInfo.STAMP`（build.sh 编译期生成，分支id·短sha）显示在设置页脚
    （`v5.1 · arena01a0b2c2·10c270e`），装错包一眼可见。
-5. **dev 通道分坑位**：`publish_dev.sh` 把包发到 `dev` 分支 `channels/<分支id>/`，每条分支有独立更新源
-   `https://raw.githubusercontent.com/<owner>/<repo>/dev/channels/<分支id>`，互不覆盖；
-   根目录保留「最近一次构建」兼容旧写法；发布前增量拉旧 dev 分支，**别的坑位不丢**。
+5. **测试通道分坑位（2026-09-22 起挂预发布 Release `ci`，dev 聚合分支已删）**：`publish_ci.sh` 把每条分支的包传成
+   `update-<分支id>.json` / `wordsprint-<分支id>.json` 资产，互不覆盖；根资产 =「最近一次构建」；
+   Release 正文 = 脚本自动维护的「分支 × 版本」索引表。App「分支」档直连 GitHub `/branches` 选分支、锁坑位。
 6. **同机双装**：`SBS=1 bash scripts/staging_build.sh`（或手动触发 staging 勾 side_by_side）→
    包名 `com.aidemo.wordsprint.sbs.<分支id>`、provider authorities 同步改写（build.sh 自检 badging）、
    数据隔离、可与正式包并存；**应用内更新对双装包禁用**（`Update.checkRes` 早退提示，装正式包名必失败）。

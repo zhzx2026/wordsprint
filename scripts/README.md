@@ -9,12 +9,12 @@
 |---|---|---|
 | `version.sh status` | 打印当前版本 / 通道（dev·stable·legacy）/ code，并预测下一步 | 接手仓库第一件事 |
 | `branch_audit.sh [--strict]` | **分支分工体检**（只读）：当前分支的角色与纪律、版本通道、tag 违规、是否落后 `origin/main`、远端各 `arena/**` 分支领的号（`--strict` 时有 ✗ 就 exit 1）。规则见 [BRANCHING.md](../BRANCHING.md) | 接手仓库、换分支、发包前 |
-| `version.sh bump-dev` | 一轮 dev 迭代：`X.Y → X.(Y+1)`（stable `X.0` 则回到 `X.1`），`versionCode` 取「本地 / dev 通道 / main」三者最大值 +1，同步 `AndroidManifest.xml` + `RELEASE_NOTES.md` 首行 + `README.md` 当前版本行 | 每轮改动交付给用户实测**之前** |
+| `version.sh bump-dev` | 一轮 dev 迭代：`X.Y → X.(Y+1)`（stable `X.0` 则回到 `X.1`），`versionCode` 取「本地 / main / 各 arena 远端分支」最大值 +1，同步 `AndroidManifest.xml` + `RELEASE_NOTES.md` 首行 + `README.md` 当前版本行 | 每轮改动交付给用户实测**之前** |
 | `version.sh promote` | 转正：dev `X.Y` → stable `(X+1).0`（只改文件，不打 tag 不 push） | 用户明确说「可以转正」之后 |
 | `version.sh set X.Y [code]` | 手工指定版本号（用户要求改编号时用，如 2026-09-17 的 2.x→3.x、2026-09-17 的 4.0→5.0）；code 省略则同样取三方最大 +1 | 用户点名要某个号 |
 | `version.sh sync` / `check` | 幂等地把 manifest 版本重写到各标识 / 校验格式（CI 门禁同款，legacy 三段号直接红） | 标识不同步时；`check` 由 `staging.yml` 调 |
 | `run_tests.sh` | 主机侧测试统一入口：**直接编译发版用的那一份 `src/`**，跑 14 个 JVM 测试 + node 的 `share_page_test.js` | 每次改动之后、发版之前（本地与 CI 同一条命令） |
-| `staging_build.sh [分支]` | 推分支 + 触发 `staging.yml` → CI 用 Secret 里的真钥匙签名，产出 Actions **Artifacts** + 孤儿分支 `dev`（`wordsprint.apk` + `update.json`）。**不打 tag、不发 Release** | 要给用户一个能覆盖安装的装机测试包 |
+| `staging_build.sh [分支]` | 推分支 + 触发 `staging.yml` → CI 用 Secret 里的真钥匙签名，产出 Actions **Artifacts** + 预发布 Release `ci` 资产（App 内更新用）。**不打正式 tag、不发正式 Release** | 要给用户一个能覆盖安装的装机测试包 |
 | `promote.sh [分支]` | 转正一条龙：`version.sh promote` → commit → 推分支 → **轮询等 staging 变绿**（不绿就中止，main/tag 不动）→ 打附注 tag → `git push HEAD:refs/heads/main` + tag | 用户确认转正、且要走「手动打 tag」这条路时（合 PR 走 `auto_release.yml` 是另一条路，二选一） |
 | `push_release.sh ["说明"]` | dev 迭代一条龙：`bump-dev` → 本地 `build.sh` → 拷一份 `../刷单词-vX.Y.apk` → commit（**不 tag、不 push**）；带 >2MB 误提交拦截 | 本机有工具链 + keystore 时 |
 
@@ -22,7 +22,7 @@
 
 | 脚本 | 谁调 | 干什么 |
 |---|---|---|
-| `publish_dev.sh ["说明"]` | `staging.yml` | 把刚构建的 apk + `update.json` + `share/index.html` + `res/font/wp_word.ttf` 推到孤儿分支 `dev`（raw 直链可达，GitHub Pages 也从这里托管战绩页）。**产物白名单门禁**：dev 上多塞任何非产物文件都会当场失败（BRANCHING.md §1/§2）。撤销：`git push origin --delete dev` |
+| `publish_ci.sh ["说明"]` | `staging.yml` | 把刚构建的 apk + `update.json` 传到**预发布 Release `ci`** 的资产（不是分支 —— 2026-09-22 起 dev 聚合分支已删）：根资产 = 最近一次构建，`update-<分支id>.json` / `wordsprint-<分支id>.apk` = 各分支坑位；并自动重写 Release 正文为「分支 × 版本」索引。**notes 必须写清内容**：取 `RELEASE_NOTES.md` 正文，<40 字直接失败（用户 2026-09-22 要求）。撤坑位 `gh release delete-asset ci update-<id>.json -y`；整条撤 `gh release delete ci -y` |
 | `make_release_manifest.sh` | `release.yml` / `auto_release.yml` | 组装 `dist/wordsprint.apk` + `dist/update.json`。**文案优先级：`RELEASE_NOTES` 环境变量 > 仓库根 `RELEASE_NOTES.md` > 最后一条提交标题**，所以 `RELEASE_NOTES.md` 必须只写当前这一版（它会整份变成 Release 正文与手机弹窗里那段字；历史文案存档在 `CHANGELOG.md`） |
 | `setup_tools.sh` | 维护机 / `AGENT.md` | 把 JDK17（temurin）+ Android SDK build-tools 34 + platform 34 下到 `./tools`（已 gitignore）。⚠️ Arena 沙箱出网是白名单制，`api.adoptium.net` / `dl.google.com` 都不通，**沙箱里跑不出来** |
 
@@ -45,5 +45,5 @@
 
 | 脚本 | 状态 |
 |---|---|
-| `make_update.sh` | **退役**：早期「同一 WiFi + `python3 -m http.server` 手递手更新」的流程，现在更新一律走 GitHub Releases（`release.yml` / `auto_release.yml`）与 dev 通道（`publish_dev.sh`） |
+| `make_update.sh`、`publish_dev.sh` | **退役**：前者是早期「同一 WiFi 手递手更新」；后者推的 dev 聚合分支 2026-09-22 按用户要求删除，接棒的是 `publish_ci.sh`（预发布 Release `ci` 资产） |
 | `github_setup.sh` | **一次性**，2026-09 已跑过：把默认更新源写进 App、`git init` + 首个 tag、配 `KEYSTORE_B64` Secret。再跑会 `git tag -f` / 改 remote，**别在现有仓库上执行** |

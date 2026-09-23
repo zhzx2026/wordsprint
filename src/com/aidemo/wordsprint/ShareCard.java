@@ -226,20 +226,8 @@ public final class ShareCard {
             c.drawRoundRect(new RectF(track.left, track.top, track.left + track.width() * pct, track.bottom), 9, 9, bp);
         }
 
-        // 两个习惯勾选（原来三个：自测那一栏已按用户要求删除）
-        String[] habits = {a.getString(R.string.goal_title), a.getString(R.string.habit_rev)};
-        boolean[] hdone = {done, s.revMin >= Diary.MIN_REV_MIN};
-        float hw = (textR - textL - 6) / 2f;
-        for (int i = 0; i < habits.length; i++) {
-            float x = textL + i * (hw + 3);
-            RectF hb = new RectF(x, y + 180, x + hw, y + 226);
-            Paint hp = new Paint(Paint.ANTI_ALIAS_FLAG);
-            hp.setColor(hdone[i] ? Ui.withAlpha(green, 0x22) : Skin.c(a, R.attr.wpChipBg));
-            c.drawRoundRect(hb, 16, 16, hp);
-            tp.setTextSize(26);
-            tp.setColor(hdone[i] ? green : text2);
-            c.drawText((hdone[i] ? "✓ " : "○ ") + habits[i], x + 18, y + 212, tp);
-        }
+        // （原来这里还有一排习惯小块：刷词/温习。删温习后只剩一枚，整排去掉 —— 用户 2026-09-23
+        // 「全部就只有一个刷词，这一个小块就不要了」。今日完成与否看上面的勾和进度条就够。）
 
         // ===== 热力图（26 周） =====
         // 尺寸全部由 ShareGeom 算：「最高连续」那行放在网格**下面**，不会压到星期标签（一/三/五/日）
@@ -292,14 +280,15 @@ public final class ShareCard {
                         + a.getString(R.string.streak_best) + " " + s.best + " 天",
                 textL, qy + 136, tp);
 
-        // 二维码
+        // 二维码（几何全从 ShareGeom 拿 —— 2026-09-23「二维码和字重叠」就是这里各写各的数）
         try {
             byte[] data = s.url.getBytes("UTF-8");
             boolean[][] mat = QRUtil.verifiedEncode(data);
-            float qsize = 250, qx = textR - qsize, qyy = qy + 34;
+            float qsize = ShareGeom.QR_SIZE, qx = ShareGeom.qrX(), qyy = qy + ShareGeom.QR_TOP_IN;
+            float pad = ShareGeom.QR_PAD;
             Paint wp = new Paint(Paint.ANTI_ALIAS_FLAG);
             wp.setColor(0xFFFFFFFF);
-            c.drawRoundRect(new RectF(qx - 14, qyy - 14, qx + qsize + 14, qyy + qsize + 14), 18, 18, wp);
+            c.drawRoundRect(new RectF(qx - pad, qyy - pad, qx + qsize + pad, qyy + qsize + pad), 18, 18, wp);
             float mod = qsize / mat.length;
             wp.setColor(0xFF101827);
             for (int yy = 0; yy < mat.length; yy++) {
@@ -315,11 +304,14 @@ public final class ShareCard {
             tp.setTextAlign(Paint.Align.LEFT);
         }
 
+        // 落款：左对齐 + 固定短文案「刷单词 · 素纸背单词」。
+        // 原来居中且带构建标识（v6.6 · 分支id·sha），右半截直接压进二维码白框
+        //（用户 2026-09-23「二维码和字会重叠」）。版本号在 设置→关于 里看，不再上分享图。
         tp.setTextSize(22);
         tp.setColor(text2);
-        tp.setTextAlign(Paint.Align.CENTER);
-        c.drawText(a.getString(R.string.app_name) + Ui.versionTag(a) + " · 素纸背单词", W / 2f,
-                ShareGeom.footBaseline(hy), tp);
+        tp.setTextAlign(Paint.Align.LEFT);
+        c.drawText(a.getString(R.string.app_name) + " · " + a.getString(R.string.share_slogan_tail),
+                ShareGeom.footX(), ShareGeom.footBaseline(hy), tp);
         return bmp;
     }
 

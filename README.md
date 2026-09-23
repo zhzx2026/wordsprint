@@ -1,6 +1,6 @@
 # 刷单词 WordsPrint
 
-**当前版本：v6.0（stable）** <!-- CURRENT-VERSION -->
+**当前版本：v7.0（stable）** <!-- CURRENT-VERSION -->
 
 一个精致的**离线背单词 Android 应用**：以「整本课本」为单位刷词，覆盖小学到大学的主流词表。
 无 Gradle、无第三方 UI 库，`bash build.sh` 直接出签名 APK；更新走 GitHub Releases（App 内 OTA）。
@@ -43,7 +43,8 @@
 
 ## 外观与手感
 
-- **5 套配色**（暖纸 / 松林 / 落日 / 莓红 / 深海）× 跟随系统 / 浅色 / 深色，设置里实时切换（深色是 navy 系）
+- **5 套配色**（暖纸 / 松林 / 落日 / 莓红 / 深海）× 跟随系统 / 浅色 / 深色，设置里实时切换（深色是 navy 系）；
+  换配色/深浅/字体/字号后返回其他页面立即生效，不用重启 App（外观代数对账，见 `Look.java`）
 - **两套内置字体**（Poppins / Quicksand 风格，字母 a 单层写法）+ 字号三档（标准 / 自动 / 特大，
   自动档按屏幕短边放大，平板不再小字）；缩放是幂等的，反复点不会越点越大
 - **手势自定义**：刷词页上滑/下滑/左滑/右滑/点一下/长按六个位置各绑什么由你定
@@ -128,7 +129,7 @@ bash build.sh                    # ⑤ aapt2 → javac → d8 → zipalign → a
 | 分支 / 资源 | 分工 |
 |---|---|
 | `main` | **正式线**：只有它打 tag、发 [Releases](https://github.com/zhzx2026/wordsprint/releases)，版本永远是 stable `X.0`。App 内置 OTA 源读 `releases/latest/download/update.json` |
-| `dev` | **产物通道**（孤儿分支，只有 CI 能写）：放测试包 `wordsprint.apk` / `update.json` 与各会话独立的装机坑位 `channels/<分支id>/`；在线战绩页（GitHub Pages）现在也从这里托管 |
+| Release `ci`（预发布，非分支） | **测试包聚合位**：根资产 = 最近一次构建；`update-<分支id>.json` = 各分支自己的坑位（App 更新源「分支」档直连 GitHub 选择）。在线战绩页（GitHub Pages）从 `main` 托管 |
 | `arena/<id>-wordsprint` | **工作分支**：一条 Arena 会话一条，代码/文档只在这里改；`bash scripts/staging_build.sh` 出测试包，用户确认后转正合进 `main` |
 
 接手仓库先跑 `bash scripts/branch_audit.sh`（只读体检：我在哪条线、该干什么、有没有踩线）。
@@ -138,8 +139,8 @@ bash build.sh                    # ⑤ aapt2 → javac → d8 → zipalign → a
 从 [Releases](https://github.com/zhzx2026/wordsprint/releases/latest) 下载 `wordsprint.apk`
 （或直接在 App 内「检查更新」）→ 传送到手机 → 允许「安装未知来源应用」→ 安装。
 同一签名证书，任意旧版本都能**覆盖安装**，学习进度、打卡、错词、档案全部保留。
-装机测试包另有一条路：设置 →「关于与更新」→ 更新源填
-`https://raw.githubusercontent.com/zhzx2026/wordsprint/dev` → 检查 → 立即更新。
+测试包另有更省事的路：设置 →「关于与更新」→ 更新源 →「分支」→ 选一条 → 检查 → 立即更新
+（App 直连 GitHub，各分支的包互不干扰；各分支版本一览见[在线页](https://zhzx2026.github.io/wordsprint/share/index.html)）。
 
 ## 目录
 

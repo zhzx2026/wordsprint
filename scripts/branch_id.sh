@@ -3,7 +3,7 @@
 #   arena/01a0b2c2-wordsprint → arena01a0b2c2
 #   staging/foo              → staging-foo
 #   main / develop           → main / develop
-# 用途：staging artifact 名、dev 通道坑位（channels/<id>/）、APK 内构建标识、撞号检查提示。
+# 用途：staging artifact 名、Release ci 资产名（update-<id>.json）、APK 内构建标识、撞号检查提示。
 # 环境变量 GIT_BRANCH 优先（CI 里 checkout 可能是 detached HEAD，由 workflow 传 github.ref_name）。
 set -e
 cd "$(dirname "$0")/.."

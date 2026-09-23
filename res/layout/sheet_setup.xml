@@ -135,77 +135,29 @@
             android:textColor="?attr/wpText2"
             android:textSize="12.5sp"/>
 
-        <!-- 顺序 + 间隔 -->
+        <!-- 顺序（回炉间隔 2026-09-23 起移到「设置 → 学习」全局设置，这里不再有） -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:orientation="horizontal">
+            android:orientation="vertical"
+            android:background="@drawable/bg_card_20"
+            android:padding="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/order_label"
+                android:textColor="?attr/wpText2"
+                android:textSize="11sp"
+                android:letterSpacing="0.1"/>
 
             <LinearLayout
-                android:layout_width="0dp"
+                android:id="@+id/orderChips"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:layout_marginEnd="8dp"
-                android:background="@drawable/bg_card_20"
-                android:padding="12dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/order_label"
-                    android:textColor="?attr/wpText2"
-                    android:textSize="11sp"
-                    android:letterSpacing="0.1"/>
-
-                <LinearLayout
-                    android:id="@+id/orderChips"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="horizontal"/>
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:background="@drawable/bg_card_20"
-                android:padding="12dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/lag_label"
-                    android:textColor="?attr/wpText2"
-                    android:textSize="11sp"
-                    android:letterSpacing="0.1"/>
-
-                <TextView
-                    android:id="@+id/tvLagVal"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="5dp"
-                    android:text="每过 5 张再出现"
-                    android:textColor="?attr/wpBrand"
-                    android:textSize="13sp"
-                    android:textStyle="bold"/>
-
-                <HorizontalScrollView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:scrollbars="none">
-
-                    <LinearLayout
-                        android:id="@+id/lagChips"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"/>
-                </HorizontalScrollView>
-            </LinearLayout>
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal"/>
         </LinearLayout>
 
         <!-- 重刷整本 -->
@@ -291,40 +243,18 @@
                 android:textStyle="bold"/>
         </LinearLayout>
 
-        <!-- 底部：订正 + 开始刷词（主按钮更宽更显眼，落在拇指最容易点到的右下角） -->
-        <LinearLayout
+        <!-- 底部：开始刷词（错词复习 2026-09-23 起从词本弹层移除：去「错题本」页点「开始订正」） -->
+        <TextView
+            android:id="@+id/btnStart"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="52dp"
             android:layout_marginTop="10dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-
-            <TextView
-                android:id="@+id/btnReview"
-                android:layout_width="0dp"
-                android:layout_height="52dp"
-                android:layout_weight="1"
-                android:background="@drawable/bg_btn_outline"
-                android:gravity="center"
-                android:maxLines="1"
-                android:text="@string/review_mode"
-                android:textColor="?attr/wpBrand"
-                android:textSize="14sp"
-                android:textStyle="bold"/>
-
-            <TextView
-                android:id="@+id/btnStart"
-                android:layout_width="0dp"
-                android:layout_height="52dp"
-                android:layout_weight="1.4"
-                android:layout_marginStart="10dp"
-                android:background="@drawable/bg_btn_gradient"
-                android:gravity="center"
-                android:maxLines="1"
-                android:text="@string/start_brush"
-                android:textColor="#FFFFFFFF"
-                android:textSize="15.5sp"
-                android:textStyle="bold"/>
-        </LinearLayout>
+            android:background="@drawable/bg_btn_gradient"
+            android:gravity="center"
+            android:maxLines="1"
+            android:text="@string/start_brush"
+            android:textColor="#FFFFFFFF"
+            android:textSize="15.5sp"
+            android:textStyle="bold"/>
     </LinearLayout>
 </FrameLayout>

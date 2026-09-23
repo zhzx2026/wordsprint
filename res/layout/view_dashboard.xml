@@ -111,32 +111,6 @@
                     android:textSize="11.5sp"/>
             </LinearLayout>
 
-            <LinearLayout
-                android:id="@+id/habitRev"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:gravity="center">
-                <TextView
-                    android:id="@+id/habitRevMark"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="○"
-                    android:textColor="?attr/wpText2"
-                    android:textSize="15sp"
-                    android:textStyle="bold"/>
-                <TextView
-                    android:id="@+id/habitRevSub"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="3dp"
-                    android:text="@string/habit_rev"
-                    android:textColor="?attr/wpText2"
-                    android:textSize="11.5sp"/>
-            </LinearLayout>
-
-            
         </LinearLayout>
     </LinearLayout>
 

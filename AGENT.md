@@ -17,14 +17,14 @@
 
 **分支分工的权威说明是 [BRANCHING.md](BRANCHING.md)**（谁写哪个分支、Pages 托管在哪、多会话怎么互不打架）。
 一句话：**`main` = 正式线（只放 stable `X.0`，只有它能发 tag / Release）；`dev` = 产物通道（孤儿分支，只有 CI 能写，
-只放 apk / update.json / `channels/<id>/`）；`arena/<id>-wordsprint` = 工作分支（代码只在这里改）。**
+测试包聚合 = 预发布 Release `ci` 的资产（根 = 最近构建，`update-<id>.json` = 各分支坑位））；`arena/<id>-wordsprint` = 工作分支（代码只在这里改）。**
 开工先跑 `bash scripts/branch_audit.sh` 看自己在哪条线上。
 
 多条 Arena 会话分支（`arena/<id>-wordsprint`）并行时，规则全文见 `VERSIONING.md` §8，要点：
 
 - **版本号晚绑定**：开发期不动 manifest；发包实测前 / 转正前先 `git fetch && git rebase origin/main` 再 `version.sh bump-dev`。撞号由 staging CI 的 `check-unique` 门禁拦截，不用人肉记。
 - **测试包可辨识**：artifact 名带分支 id + run 号；APK 设置页脚有构建标识（分支id·短sha）。
-- **dev 通道分坑位**：装机更新源填 `…/dev/channels/<分支id>`，别填根地址（会被任何分支覆盖）。
+- **测试通道分坑位**：App 更新源选「分支」锁 `update-<分支id>.json`（直连 GitHub），别用「dev」档根资产（会被任何分支覆盖）。
 - **同机双装**：`SBS=1 bash scripts/staging_build.sh` 出包名带后缀的包，可与正式包并存对比。
 - **日志解耦**：会话流水账写 `docs/logs/<分支id>.md`（只写自己的文件），别往本文件追加流水账；
   合并转正时由合并 PR 把结论摘回来。
@@ -68,7 +68,7 @@ wordsprint/
 >   `gh api /repos/<repo>/releases/tags/vX.Y.Z --jq '.assets[]|{name,size,digest}'`
 >   （Release 资产与本地那份**同尺寸但 sha256 不同**是正常的：APK 里 zip 存了 mtime，两次构建不逐字节相同；
 >   要确认签名对不对，看 CI 日志里 `Signer #1 certificate SHA-256 digest` 是否仍是 729793de…）
-> - `raw.githubusercontent.com` **不通**（403）→ 它是**手机上**填的更新源地址，不是给你自己 curl 的。
+> - `api.github.com` 在沙箱里要经 gh；手机端 App 直连的是 github.com（Release 资产 302）与 api.github.com，无沙箱限制。
 ```bash
 # 1) 工具链（约 250MB；只有在能直连 google/adoptium 的机器上才有效）
 cd wordsprint && bash scripts/setup_tools.sh        # 下到 ./tools/（已进 .gitignore，push_release 也有 >2MB 误提交拦截）
@@ -93,15 +93,15 @@ java -cp out:../libs/zxing-core.jar QRHostTest      # 期望：ALL QR/TRANSFER T
 ### ① 出装机测试包（随便做：不打 tag、不发 Release、不碰 main）
 ```bash
 bash scripts/version.sh status          # 先看当前版本/通道/code
-bash scripts/version.sh bump-dev        # 每轮迭代交付前：+0.1、code 取「本地/dev通道/main」最大 +1、同步三处标识
+bash scripts/version.sh bump-dev        # 每轮迭代交付前：+0.1、code 取「本地/main/各arena远端」最大 +1、同步三处标识
 # 然后把 RELEASE_NOTES.md 换成**这一版**的人话文案（旧文案挪 CHANGELOG.md，见坑 15）
 git add -A && git commit -m "dev vX.Y：……"
 bash scripts/staging_build.sh           # 推当前分支 → staging.yml：版本门禁 + run_tests.sh + 真钥匙构建
 #   产物：① Actions Artifacts 里的 wordsprint-staging-vX.Y（zip，解压得 apk）
-#         ② 孤儿分支 dev：wordsprint.apk + update.json（+ share/index.html，Pages 也从这里托管）
-#   手机装：设置 →「关于与更新」→ 更新源填 https://raw.githubusercontent.com/zhzx2026/wordsprint/dev/channels/<本分支id> → 检查 → 立即更新
-#           （多会话并行时**别填根地址** /dev：它=最近一次构建，会被任何分支刷新；见 BRANCHING.md §3）
-#   撤销 dev 通道：git push origin --delete dev
+#         ② 预发布 Release `ci` 资产：wordsprint.apk + update.json（根）+ update-<分支id>.json（本分支坑位）
+#   手机装：设置 →「关于与更新」→ 更新源 →「分支」→ 选本分支 → 检查 → 立即更新（App 直连 GitHub，无需手填）
+#           （多会话并行时**别用「dev」档**：它=最近一次构建，会被任何分支刷新；见 BRANCHING.md §3）
+#   撤本分支坑位：gh release delete-asset ci update-<本分支id>.json -y   撤整条：gh release delete ci -y
 # 本机有工具链 + keystore 时可以一条龙：bash scripts/push_release.sh "本次改动说明"（bump→build→commit，同样不 tag 不 push）
 ```
 盯 CI（沙箱读不到 Actions 日志页，靠 workflow 自己写回的 check-run）：
@@ -140,9 +140,9 @@ gh pr merge <n> --merge                  # 历史上都是用 merge commit（保
 ```bash
 gh api /repos/zhzx2026/wordsprint/releases/tags/vX.Y --jq '.assets[]|{name,size,digest}'   # apk + update.json 在不在、多大
 gh api /repos/zhzx2026/wordsprint/releases/latest --jq .tag_name                            # latest 指没指过来
-gh api "/repos/zhzx2026/wordsprint/contents/update.json?ref=dev" --jq .content | base64 -d  # dev 通道在发哪个号
+gh api "/repos/zhzx2026/wordsprint/releases/tags/ci" --jq '.assets[].name'  # 测试通道里有哪些包（update-<分支id>.json）
 # 要把 APK 拿到工作区交给用户（>1MB 时 contents API 会拒，走 git blob API）：
-SHA=$(gh api "/repos/zhzx2026/wordsprint/contents/wordsprint.apk?ref=dev" --jq .sha)
+gh api "/repos/zhzx2026/wordsprint/releases/tags/ci" --jq '.assets[] | select(.name=="update.json") | .updated_at'  # 最近一次构建时间
 gh api "/repos/zhzx2026/wordsprint/git/blobs/$SHA" -H "Accept: application/vnd.github.raw" > 刷单词-vX.Y.apk
 ```
 
@@ -169,7 +169,7 @@ gh api "/repos/zhzx2026/wordsprint/git/blobs/$SHA" -H "Accept: application/vnd.g
     `AndroidManifest.xml` 是唯一版本源，改它即可，脚本（run_ci/release.yml）都从它读。
     ⚠️ **bump 前必须先取「当前最大号」再 +1，别只看自己分支的基线**（用户明确要求）：
     ```bash
-    gh api "/repos/zhzx2026/wordsprint/contents/update.json?ref=dev" --jq .content | base64 -d   # dev 通道在发的号
+    gh api "/repos/zhzx2026/wordsprint/releases/tags/ci" --jq '.assets[].name'   # ci 通道里有哪些包
     gh api "/repos/zhzx2026/wordsprint/contents/AndroidManifest.xml?ref=main" --jq .content | base64 -d | grep version   # main 已占的号
     gh api "/repos/zhzx2026/wordsprint/tags?per_page=5" --jq '.[].name'                          # 已发布的 tag
     ```
@@ -229,7 +229,87 @@ gh api "/repos/zhzx2026/wordsprint/git/blobs/$SHA" -H "Accept: application/vnd.g
     （`git rebase origin/main` / `refs/remotes/origin/main` 这类远端跟踪引用不受影响）。
     要根治只能删掉那个误建的 tag/Release —— **那是用户的东西，要删先问用户**（BRANCHING.md §1 残留台账）。
 
-## 当前状态（2026-09-21 第十次更新 · 本线最新）
+## 当前状态（2026-09-22 第十一次更新 · 本线最新）
+- 🆕 **更新源第 3 档「分支」（`arena/01a0c983-wordsprint`，dev v6.1 / code 44）**：用户 2026-09-22
+  「更新只有两个选项，其他分支怎么分别测试？」—— stable = Release（只有转正才动）、dev 根 = 最近一次构建
+  （谁后构建谁覆盖），而坑位 `channels/<id>/` 虽然一直在，App 里却没有入口。现在：
+  ① App 更新源 chips 变三档 stable / dev / **分支**，选「分支」异步拉 dev 根 update.json 的 `channels`
+  数组渲染坑位选择行（`UpCh` 纯逻辑 + `Update.fetchSlotsAsync` + `SettingsSubActivity` 坑位行），
+  点坑位锁定、带「刷新」；选中坑位记 `Prefs.K_UP_BR`，id 过 `UpCh.sanitizeSlot` 才进 URL。
+  ② `publish_dev.sh` 每次构建把 dev 上现存全部坑位 id 写进根 update.json 的 `channels`（坑位名单晚构建一步）。
+  ③ 新增主机测试 `UpChTest`（16 checks）。装机实测 SOP：装 dev 包 → 更新源选「分支」→ 锁本分支坑位。
+- 🆕 **通道彻底重做（同日第二版，dev v6.2 / code 45）**：用户「直接删除 dev 好了，apk 直接连 github 看分支，
+  page 要有各个分支的版本……dev 分支就是一个聚合不用在最外面搞一个」——
+  ① **dev 聚合分支已删**（`git push origin --delete dev`），分支列表只剩 main + 工作分支；
+  ② 测试包聚合改走**预发布 Release `ci`**：`publish_ci.sh` 传根资产 + 各分支 `update-<id>.json`/`wordsprint-<id>.apk`，
+  正文自动维护「分支 × 版本」索引表；`releases/latest` 跳过预发布，stable OTA 不受影响；
+  ③ App「分支」档直连 GitHub：分支清单读 `api.github.com /branches`（`UpCh.branchId` 与 `branch_id.sh` 同规则）、
+  坑位取 `releases/download/ci/update-<id>.json`；没包的分支标「·无包」，404 说人话（`update_branch_empty`）；
+  ④ Pages 切到 **main**（Pages API 实测 agent 可改），share/index.html 底部新增「App 版本一览」实时卡片（JS 直读 GitHub API）；
+  ⑤ **每次发包 notes 必须写清内容**：`publish_ci.sh` 取 RELEASE_NOTES 正文，<40 字拒发（VERSIONING §7 铁律 8）；
+  ⑥ `UpChTest` 重写（22 checks），`publish_dev.sh` 退役。
+  ⚠️ 装过 v6.1 的手机 dev 源已死（指向被删分支），需手动装一次 v6.2 artifact。
+- 🆕 **App 更新源收敛两档：stable / 分支（dev v6.3 / code 46）**：用户「安装界面 dev 还在」——
+  v6.2 只删了 dev 分支，App 里还留着「dev」档。这版把档位删干净：chips 只剩 stable / 分支；
+  旧存量（显式选过 dev、老地址含 /dev）在 `Prefs`/`Vers.channel` 里迁到「分支」；
+  测试包（X.Y）默认通道 = 分支（延续 2026-09-15 事故的修法）；删掉「stable 上顺带偷看 dev」的补丁
+  （显式选择就该被尊重）；`UpCh.DEV`/`viaDev`/`update_src_dev`/`update_found_dev`/`update_dev_src` 全部移除。
+  ci 根资产保留（直链兼容 + 旧机过渡），App 无入口。
+- 🆕 **「分支」修通（dev v6.4 / code 47）**：用户「分支都没用，没反应」—— 三个实锤：
+  ① 分支清单原来直读 **api.github.com /branches**（手机网络下经常不通/匿名限流 403 → 清单永远
+  拉不到、整行卡死「正在读取」）→ 改读 **ci 根 update.json 的 `channels` 数组**（github.com
+  与下载同域，`publish_ci.sh` 每次构建从 ci 资产重写清单，绝不再依赖 api 域名）；
+  ② 通道 chips 高亮 bug：通道号 2 对两枚 chips（下标 0/1）永远不亮，点了没反馈 → selIdx 换算；
+  ③ 装了哪条分支的包还得手点同名分支 → `BuildInfo.STAMP` 第一段自动认领本包分支
+  （`Prefs.ownBranchId`，没显式选过 = 默认盯自己）。UpCh 删 api 解析器、parseChannels 回归；
+  UpChTest 24 checks。
+- 🆕 **chips 写入映射修复（dev v6.5 / code 48）**：用户「分支还是显示stable」——
+  v6.3 砍 dev 档后 chips 变两枚，但 onTap 仍把**按钮下标**(0/1)当**通道号**(0/2)存：
+  点「分支」实际 setUpdateChannel(1) → sanitize → stable。v6.1 三枚时代 idx==通道号纯属巧合。
+  修：`UpCh.channelForChip(idx)` 换算（收进纯逻辑 + UpChTest 断言，防第三次回归）；
+  显示侧 selIdx 换算 v6.4 已修。经验：映射类胶水代码不进 Activity，进 UpCh 被主机测试盯住。
+- 🆕 **四处交互调整（dev v6.6 / code 49）**：用户 2026-09-23 一口气定的——
+  ① **回炉间隔移到「设置 → 学习」**（全局 K_LAG_DEF，3/5/8）：词本弹层删掉这一项，
+  `Prefs.lag(bid)` 改读全局默认，`saveSetup` 不再收 lag（按本的旧「l」值弃用）；
+  ② **词本弹层删「错词复习」按钮**：订正去错题本页点「开始订正」（那里本来就有按筛选开刷的入口），
+  sheet 底部只剩「开始刷词」整行；
+  ③ **批量改进度四动作**：标记已掌握 / 取消已掌握 / **从这里继续刷**（指针→段首，跳过已会）/
+  **从这段重新刷**（指针→段首 + 段内清成未掌握），改完整体撤销连指针一起退；
+  ④ **首页今日目标删「温习」习惯格**（habitRev 布局/绑定/openReview 全删；Diary 的 rev 数据管道保留，热力图照用）。
+- 🆕 **分享图二维码压字 + 官网下载链接（dev v6.7 / code 50）**：用户「分享战绩下面二维码和字会重叠
+  而且网站没有软件下载链接」——
+  ① 落款原来 CENTER 在 W/2，带构建标识的串（≈570px）右半截压进二维码白框（x 702..980）。
+  修：二维码白框几何全部收进 `ShareGeom`（`qrX()/qrFrameL()/qrFrameTop()/QR_SIZE/QR_PAD/QR_TOP_IN`），
+  ShareCard 不再自己写 250/34/14；落款改**左对齐 textL**、固定短文案「刷单词 · 素纸背单词」，
+  **Ui.versionTag 从此不进分享图**（版本去 设置→关于与更新 看）。ShareGeomTest 加第 11/12 组断言
+  （白框不出卡、左文区与白框分界、短落款有余量），31 项全过。
+  ② share/index.html：hero 加「⬇ 下载 App（正式版 APK）」大按钮（`releases/latest/download/wordsprint.apk`
+  —— latest 只指非预发布，正是正式版）+「全部版本」次按钮；版本一览卡里正式版行、每条分支测试包行
+  都带 ⬇ APK 直链；说明文字给「最新测试包」（Release ci 根资产）直链。
+- 🆕 **战绩图重排（dev v6.8 / code 52）**：用户「分享的地方排版重新排一下，删除温习，全部就只有一个
+  刷词，这一个小块就不要了；今天也刷了表达太奇怪而且数值是全部的」——
+  ① 目标卡里习惯小块整排删除（删温习后只剩一枚刷词，孤零零没意义）：ShareCard 删 chips 循环、
+  `GOAL_CARD_H 250→200`， Freed 50px 匀进段距（HEAD_GAP 20 / GOAL_GAP 64 / HEAT_GAP 56，净位移 0）；
+  ShareGeomTest 加 slim 锁（GOAL_CARD_H ≤ 210），32 checks。
+  ② 标语「今天也把单词刷了」→「**我的单词战绩**」：原句配的大数字是**累计**掌握，说「今天」读不通；
+  扫码网页（index.html）同步换标语 + 删 habits 小块（CSS/div/fill/habit() 全清）。
+  注意：版本 code 51 被远端其他分支占掉，version.sh 取 max+1 → 52，属正常。
+- 🆕 **合并 arena/01a0cec1（外观切换）+ 发 v6.9 / code 53**：用户指名把另一条会话分支
+  （arena/01a0cec1-wordsprint，修「外观切换不及时」：Prefs g_look 外观代数 + Look.java
+  ActivityLifecycleCallbacks 对账 recreate + 字体/字号 chip 值没变就 return）合进来一起让他测。
+  合并冲突 4 处（Manifest/CHANGELOG/README/RELEASE_NOTES 均版本类），代码零冲突自动并；
+  v6.9 = 外观立即生效（①）+ v6.8 战绩图重排回顾（②）。**沙箱又重启了一次**（.git 对象丢失 +
+  /tmp 工具链被清）：`git fetch` + `reset --hard FETCH_HEAD` 恢复；工具链重装（jdk4py 自带 JRE、
+  ecj/android.jar 从 GitHub 重拉）；R stub 搓成脚本 **scripts/gen_r_stub.py**（2026-09-23 起
+  typecheck 前先跑它，别再手搓；注意资源名允许驼峰，上一版正则把 wpBg/btnBack 全滤没了）。
+- 🆕 **v7.0 转正 PR（2026-09-23）**：用户「Please open a pull request for the changes on this branch」
+  ——即启动转正（此前约定：合 PR 即授权）。走 VERSIONING §4 PR 路径：version.sh promote
+  （v6.9/53 → **stable v7.0 / code 54**）→ RELEASE_NOTES 重写为 v7.0 九轮总结（合并后 CI 原样进
+  Release 正文与 OTA notes）、CHANGELOG 归档 v6.9 → 提交推分支 → gh pr create。
+  合并后 auto_release.yml 自动打 tag v7.0 + 发正式 Release（OTA）；Pages 在 main，官网下载按钮随合并上线。
+  ⚠️ 下轮起 bump-dev 从 v7.0 起 → v7.1。
+
+## 当前状态（2026-09-21 第十次更新）
 - 🆕 **分支分工澄清 + v6.0 转正（`arena/01a0c46d-wordsprint`，2026-09-21）**：
   ① 新增 **[BRANCHING.md](BRANCHING.md)** 作为「谁写哪个分支」的唯一权威（main / dev / arena 分工、文件写入矩阵、
   **Pages 战绩页托管分工**、手机两个更新源、多会话七道机制 + 红线、**§8 测试版装机 SOP**、§9 收尾检查单）；
@@ -329,12 +409,12 @@ gh api "/repos/zhzx2026/wordsprint/git/blobs/$SHA" -H "Accept: application/vnd.g
   ```bash
   bash scripts/staging_build.sh            # 推当前分支 + gh workflow run staging.yml
   ```
-  CI 跑 `scripts/run_tests.sh`（主机测试）→ `build.sh`（真钥匙签名）→ ① artifact `wordsprint-staging-vX.Y.Z`
-  （zip，解压出 apk）② **孤儿分支 `dev`**：`wordsprint.apk` + `update.json`。
-  手机实测最省事的一条：设置 → 更新源填**本分支坑位**
-  `https://raw.githubusercontent.com/zhzx2026/wordsprint/dev/channels/<本分支id>`（`bash scripts/branch_id.sh` 取 id）
-  → 检查 → 立即更新（同签名覆盖安装，进度不丢）。并行会话多时别填根地址 `/dev`，它会被任何分支刷新（BRANCHING.md §3）。**这仍不是转正**：不建 tag、不建 Release，
-  手机内置源还是 releases/latest，别人不会收到这版。撤销：`git push origin --delete dev`。
+  CI 跑 `scripts/run_tests.sh`（主机测试）→ `build.sh`（真钥匙签名）→ ① artifact `wordsprint-staging-vX.Y`
+  （zip，解压出 apk）② **预发布 Release `ci` 资产**：根 `update.json` + 各分支 `update-<分支id>.json`。
+  手机实测最省事的一条：设置 → 更新源 →「分支」→ 选**本分支**（App 直连 GitHub /branches 与 Release 资产，
+  无需手填地址）→ 检查 → 立即更新（同签名覆盖安装，进度不丢）。并行会话多时别用「dev」档，
+  根资产会被任何分支刷新（BRANCHING.md §3）。**这仍不是转正**：预发布不是正式 Release，
+  手机内置源还是 releases/latest，别人不会收到这版。撤坑位：`gh release delete-asset ci update-<id>.json -y`。
   **CI 日志怎么读**（沙箱看不到 Actions 日志页）：staging.yml 无论成败都把 `run_tests.sh`+`build.sh` 全文
   写进自建 check-run `ci-diagnostics`，另外把 `error:` 前几行转成 annotations：
   ```bash
