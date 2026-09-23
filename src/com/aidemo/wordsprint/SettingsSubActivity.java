@@ -82,7 +82,8 @@ public class SettingsSubActivity extends Activity {
             }
         });
 
-        // 配色方案（多套皮肤）
+        // 配色方案（多套皮肤）。本页 recreate() 立即换装；返回栈里的其他页面（设置首页/首页）
+        // 由 Look 在 resume 时发现外观代数变了、自动重建 —— 不用等下次冷启动。
         LinearLayout skinRow = (LinearLayout) findViewById(R.id.skinChips);
         String[] skinNames = new String[Skin.count()];
         for (int i = 0; i < Skin.count(); i++) skinNames[i] = Skin.palette(i).name;
@@ -113,6 +114,7 @@ public class SettingsSubActivity extends Activity {
                 getString(R.string.set_font_system)};
         Ui.fillRowEqual((LinearLayout) findViewById(R.id.fontChips), fonts, pr.font(), new Ui.ChipTap() {
             @Override public void onTap(int idx, TextView chip) {
+                if (pr.font() == idx) return;      // 没变就别折腾：重建白闪一下还丢滚动位置
                 pr.setFont(idx);
                 recreate();
             }
@@ -124,6 +126,7 @@ public class SettingsSubActivity extends Activity {
                 getString(R.string.set_scale_big)};
         Ui.fillRow((LinearLayout) findViewById(R.id.scaleChips), scales, pr.scaleMode(), new Ui.ChipTap() {
             @Override public void onTap(int idx, TextView chip) {
+                if (pr.scaleMode() == idx) return;
                 pr.setScaleMode(idx);
                 recreate();
             }
