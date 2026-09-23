@@ -158,3 +158,36 @@
    预览行多显示「当前下次从第 N 个接着刷」；撤销连指针一起退。
 4. 「首页的今日目标里的温习给我删掉」→ view_dashboard 习惯行只剩刷词勾；
    MainActivity 删 habitRev 绑定/刷新/openReview；Diary.rev 数据管道保留（热力图/统计照用）。
+
+---
+
+# 第七轮（2026-09-23）：分享图二维码压字 + 官网下载链接（v6.7 / code 50）
+
+用户原话：「分享战绩下面二维码和字会重叠 而且网站没有软件下载链接」
+
+## 定位
+- 用坐标算出来的：落款 22px、**居中在 W/2=540**，串是「刷单词」+Ui.versionTag+「 · 素纸背单词」
+  （versionTag = `  vX.Y · arena01a0c983·e56b0f9`），估宽 ≈570px → x 254..826；
+  二维码白框 x 702..980、y qy+20..qy+298，落款基线 qy+286 恰在白框里 → 重叠 ≈124px 实锤。
+- 左侧三行（share_foot 32px、日期、连续天数）右缘 ≤634，是安全的；ShareGeom.check()
+  以前只查纵向，没有 foot↔QR 横向断言，所以测不出来。
+
+## 修法
+1. **几何全收 ShareGeom**：`QR_SIZE=250 / QR_PAD=14 / QR_TOP_IN=30`，`qrX()=textR-250`、
+   `qrFrameL/R/Top/Bottom`；ShareCard 画二维码与白框不再自带魔法数字。
+   `footX()=textL`、`footMaxWidth()=qrFrameL-textL-24`；check() 加白框出卡/顶底、
+   左文区（+400 上界）与白框 -20 分界断言。
+2. **落款改左对齐 + 固定短文案**「刷单词 · 素纸背单词」（新 string `share_slogan_tail`）；
+   versionTag 彻底不进分享图（版本号设置里看）。曾试过「超宽降级」，但长/短落款宽度
+   估算都贴着 footMaxWidth(564) 边界，测试钉不住 → 改成「根本不放 versionTag」这一条硬规矩。
+3. **官网下载**（share/index.html，Pages 挂 main）：hero 白底大按钮 →
+   `releases/latest/download/wordsprint.apk`（latest 只算非预发布，正好是正式版；
+   稳定版 Release 资产名同为 wordsprint.apk，gh api 核过）；次按钮「全部版本」→ Releases 页；
+   版本一览：正式版行 ⬇ APK（按 tag 拼 URL）、每条分支测试包行 ⬇ APK（DL+wordsprint-<id>.apk）、
+   说明文字「最新测试包」直链（Release ci 根资产）。
+
+## 验证
+- `PATH=/tmp/bin:$PATH bash scripts/run_tests.sh` 全过（ShareGeomTest 31 checks）；
+  typecheck（ecj + android-34 + zxing + R-stub 手补 share_slogan_tail=2130706640）0 error；
+  refcheck 过。网站 script 块 node parse OK、关键链接 grep 齐。
+- 注意：本机 typecheck 的 R stub 在 /tmp（重启会没），新字符串要手工补一行 id 再编。

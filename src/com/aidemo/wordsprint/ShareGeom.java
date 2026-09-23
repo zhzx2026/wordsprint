@@ -28,6 +28,12 @@ public final class ShareGeom {
     public static final float GOAL_CARD_H = 250;
     /** 二维码卡 */
     public static final float QR_CARD_H = 300;
+    /** 二维码正方形边长（ShareCard 画的时候必须用这个值，白框再各外扩 QR_PAD） */
+    public static final float QR_SIZE = 250;
+    /** 二维码白框比码身外扩的一圈 */
+    public static final float QR_PAD = 14;
+    /** 二维码顶部相对卡片顶的偏移 */
+    public static final float QR_TOP_IN = 30;
     /** 卡片比内容左右各外扩一圈 */
     public static final float CARD_INSET = 14;
     /** 热力图卡片内边距与星期标签宽度、格间距 */
@@ -96,6 +102,25 @@ public final class ShareGeom {
     /** 落款基线（二维码卡片底部之上 14） */
     public static float footBaseline(float heatTop) { return qrTop(heatTop) + QR_CARD_H - 14; }
 
+    // ---- 二维码（画图侧必须用这组数，别再自己写 250/34/14） ----
+    /** 二维码左上角 x：贴卡片右侧（textR - QR_SIZE） */
+    public static float qrX() { return textRight() - QR_SIZE; }
+    /** 二维码白框：[qrX()-QR_PAD, qrTop+QR_TOP_IN-QR_PAD] → [+QR_SIZE+QR_PAD, …] */
+    public static float qrFrameL() { return qrX() - QR_PAD; }
+    public static float qrFrameR() { return qrX() + QR_SIZE + QR_PAD; }
+    public static float qrFrameTop(float heatTop) { return qrTop(heatTop) + QR_TOP_IN - QR_PAD; }
+    public static float qrFrameBottom(float heatTop) { return qrFrameTop(heatTop) + QR_SIZE + 2 * QR_PAD; }
+
+    /**
+     * 落款基线的 x 与对齐：**左对齐 textL，且给二维码白框让路** ——
+     * 用户 2026-09-23「分享战绩下面二维码和字会重叠」：落款原来 CENTER 在 W/2，
+     * 而字符串带构建标识（刷单词 v6.6 · arena01a0c983·abc1234 · 素纸背单词 ≈ 570px），
+     * 右半截直接压进二维码白框。现在落款放左边、宽度上限 qrFrameL() - textL() - 24，
+     * 画图侧超宽就降级成短文案（不带构建标识）。
+     */
+    public static float footX() { return textLeft(); }
+    public static float footMaxWidth() { return qrFrameL() - textLeft() - 24; }
+
     /**
      * 大数字右边那行说明文字的 x。
      * 传进来的必须是**用大字号量出来的**宽度——上一版就是先改了字号再去量，量出来偏小，
@@ -129,6 +154,14 @@ public final class ShareGeom {
         if (qrBottom > bottom()) return "二维码卡片下缘贴边/出画布：" + qrBottom + " > " + bottom();
         if (footBaseline(heatTop) > bottom()) return "落款下缘贴边：" + footBaseline(heatTop);
         if (qrTop(heatTop) <= heatBottom) return "二维码卡片贴着热力图卡片";
+        // 二维码白框要在卡片内、不贴边
+        if (qrFrameR() > cardRight()) return "二维码白框越出卡片右缘：" + qrFrameR() + " > " + cardRight();
+        if (qrFrameBottom(heatTop) > qrTop(heatTop) + QR_CARD_H - 2)
+            return "二维码白框顶出卡片底：" + qrFrameBottom(heatTop);
+        // 左侧文字区与二维码白框必须有明确分界（用户 2026-09-23「二维码和字会重叠」）
+        if (footMaxWidth() < 300) return "二维码左边留给落款的空间不够：" + footMaxWidth();
+        float streakEnd = textLeft() + 400;           // 「当前连续 N 天 · 最高 N 天」24px 的实测上界
+        if (streakEnd > qrFrameL() - 20) return "左侧第三行文字会撞二维码白框：" + streakEnd + " vs " + qrFrameL();
         return null;                                  // 全部通过
     }
 }

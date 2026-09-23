@@ -84,6 +84,25 @@ public class ShareGeomTest {
         check(ShareGeom.QR_CARD_H >= 280, "二维码卡片高度够放大图");
         check(ShareGeom.bottom() - (qrTop + ShareGeom.QR_CARD_H) >= 40, "二维码卡与下缘之间也留了一段");
 
+        // 11) 二维码白框在卡片里、不贴边（画图侧用 ShareGeom.qrX()/QR_* 这组数）
+        check(ShareGeom.qrFrameR() < ShareGeom.cardRight(), "二维码白框不出卡片右缘："
+                + fmt(ShareGeom.qrFrameR()) + " vs " + fmt(ShareGeom.cardRight()));
+        check(ShareGeom.qrFrameBottom(heatTop) <= qrTop + ShareGeom.QR_CARD_H - 2,
+                "二维码白框不顶出卡片底：" + fmt(ShareGeom.qrFrameBottom(heatTop)));
+
+        // 12) 落款不压二维码（用户 2026-09-23「二维码和字会重叠」）：
+        //     落款左对齐 textL，可用宽度 = 白框左缘 - textL - 24；短落款（刷单词 · 素纸背单词）
+        //     在 22px 下约 270px，必须装得下；带构建标识的长落款（≈570px）装不下，
+        //     画图侧要降级成短文案 —— 这里把「长落款必须超宽」也钉住，逼着画图侧降级。
+        // 注意：分享图落款只许用固定短文案（刷单词 · 素纸背单词，约 270px），
+        // 不要把 Ui.versionTag（构建标识，约 500px+）加回来 —— 2026-09-23 用户报的
+        // 「二维码和字重叠」就是它压的。谁要加，先想清楚这条几何。
+        float footShort = 5 * 22 + 4 * 12;
+        check(footShort + 40 < ShareGeom.footMaxWidth(),
+                "短落款放得下且有余量：" + fmt(footShort) + " vs " + fmt(ShareGeom.footMaxWidth()));
+        check(ShareGeom.textLeft() + 400 < ShareGeom.qrFrameL() - 20,
+                "左侧第三行文字与二维码白框之间有分界");
+
         System.out.println("ALL SHARE GEOM TESTS PASS (" + checks + " checks)");
     }
 

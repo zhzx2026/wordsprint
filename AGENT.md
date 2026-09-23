@@ -276,6 +276,16 @@ gh api "/repos/zhzx2026/wordsprint/git/blobs/$SHA" -H "Accept: application/vnd.g
   ③ **批量改进度四动作**：标记已掌握 / 取消已掌握 / **从这里继续刷**（指针→段首，跳过已会）/
   **从这段重新刷**（指针→段首 + 段内清成未掌握），改完整体撤销连指针一起退；
   ④ **首页今日目标删「温习」习惯格**（habitRev 布局/绑定/openReview 全删；Diary 的 rev 数据管道保留，热力图照用）。
+- 🆕 **分享图二维码压字 + 官网下载链接（dev v6.7 / code 50）**：用户「分享战绩下面二维码和字会重叠
+  而且网站没有软件下载链接」——
+  ① 落款原来 CENTER 在 W/2，带构建标识的串（≈570px）右半截压进二维码白框（x 702..980）。
+  修：二维码白框几何全部收进 `ShareGeom`（`qrX()/qrFrameL()/qrFrameTop()/QR_SIZE/QR_PAD/QR_TOP_IN`），
+  ShareCard 不再自己写 250/34/14；落款改**左对齐 textL**、固定短文案「刷单词 · 素纸背单词」，
+  **Ui.versionTag 从此不进分享图**（版本去 设置→关于与更新 看）。ShareGeomTest 加第 11/12 组断言
+  （白框不出卡、左文区与白框分界、短落款有余量），31 项全过。
+  ② share/index.html：hero 加「⬇ 下载 App（正式版 APK）」大按钮（`releases/latest/download/wordsprint.apk`
+  —— latest 只指非预发布，正是正式版）+「全部版本」次按钮；版本一览卡里正式版行、每条分支测试包行
+  都带 ⬇ APK 直链；说明文字给「最新测试包」（Release ci 根资产）直链。
 
 ## 当前状态（2026-09-21 第十次更新）
 - 🆕 **分支分工澄清 + v6.0 转正（`arena/01a0c46d-wordsprint`，2026-09-21）**：
