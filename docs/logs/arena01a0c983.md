@@ -118,3 +118,11 @@
   4. UpCh 删掉 api 解析器（parseBranchNames/parseAssetNames/builtIds/extractStringValues），
      parseChannels 回归；Update.fetchBranchesAsync 签名 (ids, err)；界面文案照实报错。
 - 经验写进 BRANCHING §3（⚠️ 不要改回 api.github.com）与 AGENT 当前状态。
+
+## 收尾（2026-09-23 续）
+
+- 沙箱重置导致本地 git 对象丢失（工作区完好）：v6.1~v6.3 四个提交在远端完好，本地以
+  `reset --soft origin/<branch>` 对齐后把 v6.4 作为增量提交（146dd0f）推上，CI 绿
+  （run 35873889156）。
+- 根 update.json（1547B）已按 publish_ci.sh 逻辑本地重建比对（1550B - 3 个空行 = 完全一致），
+  确认 `channels: ["arena01a0c983"]` 写入成功 —— 「分支」清单与下载同域，手机可拉。
