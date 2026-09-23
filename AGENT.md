@@ -294,6 +294,14 @@ gh api "/repos/zhzx2026/wordsprint/git/blobs/$SHA" -H "Accept: application/vnd.g
   ② 标语「今天也把单词刷了」→「**我的单词战绩**」：原句配的大数字是**累计**掌握，说「今天」读不通；
   扫码网页（index.html）同步换标语 + 删 habits 小块（CSS/div/fill/habit() 全清）。
   注意：版本 code 51 被远端其他分支占掉，version.sh 取 max+1 → 52，属正常。
+- 🆕 **合并 arena/01a0cec1（外观切换）+ 发 v6.9 / code 53**：用户指名把另一条会话分支
+  （arena/01a0cec1-wordsprint，修「外观切换不及时」：Prefs g_look 外观代数 + Look.java
+  ActivityLifecycleCallbacks 对账 recreate + 字体/字号 chip 值没变就 return）合进来一起让他测。
+  合并冲突 4 处（Manifest/CHANGELOG/README/RELEASE_NOTES 均版本类），代码零冲突自动并；
+  v6.9 = 外观立即生效（①）+ v6.8 战绩图重排回顾（②）。**沙箱又重启了一次**（.git 对象丢失 +
+  /tmp 工具链被清）：`git fetch` + `reset --hard FETCH_HEAD` 恢复；工具链重装（jdk4py 自带 JRE、
+  ecj/android.jar 从 GitHub 重拉）；R stub 搓成脚本 **scripts/gen_r_stub.py**（2026-09-23 起
+  typecheck 前先跑它，别再手搓；注意资源名允许驼峰，上一版正则把 wpBg/btnBack 全滤没了）。
 
 ## 当前状态（2026-09-21 第十次更新）
 - 🆕 **分支分工澄清 + v6.0 转正（`arena/01a0c46d-wordsprint`，2026-09-21）**：

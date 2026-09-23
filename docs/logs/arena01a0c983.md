@@ -207,3 +207,28 @@
   语义拧着 → 改成「我的单词战绩」。网页同步（fSlogan 默认值 + 删 fHabits 块）。
 - ShareGeomTest 加 GOAL_CARD_H ≤ 210 的 slim 锁；32 checks 全过；typecheck/refcheck 过。
 - version.sh 远端探到 code 51（其他分支），bump 取 max+1 → **code 52**。
+
+---
+
+# 第九轮（2026-09-23）：合并 arena/01a0cec1 外观修复 + v6.9（code 53）
+
+用户指名：加上 arena/01a0cec1-wordsprint 让他测 6.9。那条分支是另一场会话从同一基线（4fb6364）
+做的单提交：外观切换及时生效（用户报「风格的切换没有及时更新」）——
+Prefs 全局外观代数 g_look，setNight/setSkin/setFont/setScaleMode 统一走 lookPut()（值变了才写、代数+1）；
+新文件 Look.java 挂 ActivityLifecycleCallbacks：页面出生记代数，resume 对不上账且未 finishing 就
+recreate()；SettingsSubActivity 字体/字号 chip 补「值没变就 return」防白闪。他们的 dev 号叫 v6.1
+（code 51），没单独发给用户，随本轮一起进 v6.9。
+
+## 过程要点
+- **沙箱第二次重启**：.git 对象又丢（HEAD 退回基线、工作区文件完好）——`git fetch` 本分支 +
+  `git reset --hard FETCH_HEAD` 对齐 5a8cc5f；/tmp、/var/tmp 全清。
+- 工具链重建：jdk4py 自带 JRE（/usr/local/lib/python3.11/dist-packages/jdk4py/java-runtime），
+  ecj 3.44（mesteryui/Dotfiles contents raw）+ android-34.jar（Sable/android-platforms contents raw，
+  26 MB / 13968 entries）→ /tmp/bin 两个包装脚本。
+- R stub 手搓升级成 **scripts/gen_r_stub.py**：扫 values/layout/drawable/Manifest 全量生成；
+  踩坑：资源名过滤正则只许小写 → wpBg/btnBack 全丢、288 个假错误；修正成驼峰合法 + style 名点换下划线。
+- 合并 0e39e86：冲突 4 处全是版本类文件（Manifest 留我方、CHANGELOG 双方段都留、README 留我方、
+  RELEASE_NOTES 重写），Prefs/SettingsSubActivity 自动并成功（两侧改动都在，grep 核过）。
+- CHANGELOG 归档 v6.8；RELEASE_NOTES 重写 v6.9（①外观立即生效 ②战绩图重排回顾）。
+- version.sh bump-dev → **v6.9 / code 53**。测试全过（ShareGeom 32 checks）、typecheck 0 error、
+  refcheck 过。
