@@ -302,6 +302,12 @@ gh api "/repos/zhzx2026/wordsprint/git/blobs/$SHA" -H "Accept: application/vnd.g
   /tmp 工具链被清）：`git fetch` + `reset --hard FETCH_HEAD` 恢复；工具链重装（jdk4py 自带 JRE、
   ecj/android.jar 从 GitHub 重拉）；R stub 搓成脚本 **scripts/gen_r_stub.py**（2026-09-23 起
   typecheck 前先跑它，别再手搓；注意资源名允许驼峰，上一版正则把 wpBg/btnBack 全滤没了）。
+- 🆕 **v7.0 转正 PR（2026-09-23）**：用户「Please open a pull request for the changes on this branch」
+  ——即启动转正（此前约定：合 PR 即授权）。走 VERSIONING §4 PR 路径：version.sh promote
+  （v6.9/53 → **stable v7.0 / code 54**）→ RELEASE_NOTES 重写为 v7.0 九轮总结（合并后 CI 原样进
+  Release 正文与 OTA notes）、CHANGELOG 归档 v6.9 → 提交推分支 → gh pr create。
+  合并后 auto_release.yml 自动打 tag v7.0 + 发正式 Release（OTA）；Pages 在 main，官网下载按钮随合并上线。
+  ⚠️ 下轮起 bump-dev 从 v7.0 起 → v7.1。
 
 ## 当前状态（2026-09-21 第十次更新）
 - 🆕 **分支分工澄清 + v6.0 转正（`arena/01a0c46d-wordsprint`，2026-09-21）**：

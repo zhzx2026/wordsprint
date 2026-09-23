@@ -232,3 +232,27 @@ recreate()；SettingsSubActivity 字体/字号 chip 补「值没变就 return」
 - CHANGELOG 归档 v6.8；RELEASE_NOTES 重写 v6.9（①外观立即生效 ②战绩图重排回顾）。
 - version.sh bump-dev → **v6.9 / code 53**。测试全过（ShareGeom 32 checks）、typecheck 0 error、
   refcheck 过。
+
+---
+
+# 第十轮（2026-09-23）：v7.0 转正 PR
+
+用户原话：「Please open a pull request for the changes on this branch」——接上一轮的 offer
+（发 PR 你合并即算授权），即启动转正。
+
+## 流程（VERSIONING §4 合 PR 路径，不走 promote.sh 直推 main）
+1. `version.sh promote`：dev v6.9（code 53）→ **stable v7.0（code 54）**，标识三处同步。
+2. RELEASE_NOTES 重写为 v7.0 九轮总结（①外观立即生效 ②测试包跟分支走 ③交互四连改
+   ④战绩分享+官网下载）；CHANGELOG 归档 v6.9。
+3. 提交推分支 → staging CI 绿 → `gh pr create`（base main）。
+4. 合并后：auto_release.yml 校验 stable X.0 → 自动 tag v7.0 → release.yml 发正式 Release
+   → 手机 OTA；Pages（main）同步上线下载按钮。
+
+## 内容清单（v6.0 → v7.0 九轮）
+v6.1 三档更新源 → v6.2 通道重做（dev 聚合退役）→ v6.3 收敛两档 → v6.4 分支清单域名/
+自动认领/高亮 → v6.5 chips 写入映射（UpCh.channelForChip + 回归测试）→ v6.6 交互四连改
+→ v6.7 二维码压字 + 官网下载 → v6.8 战绩图重排 → v6.9 合并 01a0cec1 外观立即生效。
+
+## 踩坑
+- AGENT 锚文本换行不一致导致第一个追加脚本 AssertionError：AGENT/日志条目漏出，单独补提交。
+  （提交顺序无碍：转正提交 1b385d7 只含版本标识与文案，正是 promote 该有的内容。）
