@@ -187,57 +187,40 @@ public class Update {
         } finally { conn.disconnect(); }
     }
 
-    // ---------- 分支清单（「分支」通道的选择行：直连 GitHub 看 branches） ----------
+    // ---------- 分支清单（「分支」通道的选择行：读 ci 根 update.json 的 channels） ----------
 
-    public interface BranchCb { void onRes(java.util.List<String> ids, java.util.List<String> built, String err); }
+    public interface BranchCb { void onRes(java.util.List<String> ids, String err); }
 
     private static volatile java.util.List<String> lastBranches;   // 最近一次成功拉到的分支 id
-    private static volatile java.util.List<String> lastBuilt;      // 其中哪些有测试包（ci 预发布里有资产）
 
     public static java.util.List<String> lastBranches() { return lastBranches; }
-    public static java.util.List<String> lastBuilt() { return lastBuilt; }
 
     /**
-     * 拉「分支」清单：分支列表直读 api.github.com 的 /branches（用户 2026-09-22「apk 直接连
-     * github 看分支」—— 不再依赖 dev 聚合分支，新工作分支推上去立刻能选）；
-     * 每条分支有没有测试包，看预发布 Release `ci` 的资产名里有没有 update-&lt;id&gt;.json。
-     * 失败时回落到上次结果（照旧显示），err 一并回调给界面 —— 不静默。
+     * 拉分支清单：读 ci 根 update.json 的 `channels` 数组（publish_ci.sh 每次构建都会用 ci 上
+     * 现存的全部 update-&lt;id&gt;.json 资产重写它）。域名与下载同（github.com），能下包就一定能拉清单
+     * —— 用户 2026-09-22「分支都没用，没反应」的教训：api.github.com 在手机网络下经常不通/匿名
+     * 限流 403，清单永远拉不到。失败时回落上次结果，err 照实回调给界面，不静默。
+     * 名单只含「出过测试包」的分支：新分支第一次构建后才进名单（没包的分支本来就没得选）。
      */
     public static void fetchBranchesAsync(final Activity a, final BranchCb cb) {
         new Thread(new Runnable() {
             @Override public void run() {
                 java.util.List<String> ids = null;
-                java.util.List<String> built = null;
                 String err = null;
                 try {
-                    String api = a.getString(R.string.update_repo_api).trim();
-                    while (api.endsWith("/")) api = api.substring(0, api.length() - 1);
-                    java.util.List<String> names = UpCh.parseBranchNames(httpGet(api + "/branches?per_page=100"));
-                    ids = new java.util.ArrayList<String>();
-                    for (String n : names) {
-                        if (!(n.startsWith("arena/") || n.startsWith("staging/") || n.equals("dev-build"))) continue;
-                        String id = UpCh.branchId(n);
-                        if (!id.isEmpty() && !ids.contains(id)) ids.add(id);
-                    }
-                    try {   // ci 预发布还没有（一次构建都没跑过）不算失败：清单照给，只是全都没包
-                        built = UpCh.builtIds(UpCh.parseAssetNames(httpGet(api + "/releases/tags/ci")));
-                    } catch (Throwable ignored) { built = new java.util.ArrayList<String>(); }
+                    String base = a.getString(R.string.update_ci_base).trim();
+                    while (base.endsWith("/")) base = base.substring(0, base.length() - 1);
+                    ids = UpCh.parseChannels(httpGet(base + "/update.json"));
                     if (ids.isEmpty()) err = a.getString(R.string.update_branch_list_empty);
                 } catch (Throwable t) {
                     err = t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage();
                 }
-                if (ids != null && !ids.isEmpty()) {
-                    lastBranches = ids;
-                    lastBuilt = built == null ? new java.util.ArrayList<String>() : built;
-                } else {                     // 这回没拉到：亮上次的，别把选择行清空
-                    if (lastBranches != null) ids = lastBranches;
-                    if (lastBuilt != null && built == null) built = lastBuilt;
-                }
-                final java.util.List<String> okIds = ids == null ? new java.util.ArrayList<String>() : ids;
-                final java.util.List<String> okBuilt = built == null ? new java.util.ArrayList<String>() : built;
+                if (ids != null && !ids.isEmpty()) lastBranches = ids;
+                else if (lastBranches != null) ids = lastBranches;   // 这回没拉到：亮上次的，别清空
+                final java.util.List<String> ok = ids == null ? new java.util.ArrayList<String>() : ids;
                 final String e = err;
                 a.runOnUiThread(new Runnable() {
-                    @Override public void run() { cb.onRes(okIds, okBuilt, e); }
+                    @Override public void run() { cb.onRes(ok, e); }
                 });
             }
         }).start();

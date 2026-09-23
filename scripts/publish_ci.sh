@@ -46,7 +46,7 @@ ${BODY}
 ——
 本包来自分支 ${BID}（${SUBJ}）。正式版以 Releases/latest 为准。"
 
-# ── 2) 组装资产（坑位一份 + 根目录一份）──
+# ── 2) 组装资产（坑位一份；根 update.json 在 3b 组装 —— 要带 channels 名单）──
 TMP=$(mktemp -d /tmp/wpci.XXXXXX)
 trap 'rm -rf "$TMP"' EXIT
 cp "$APK" "$TMP/wordsprint-$BID.apk"
@@ -59,21 +59,29 @@ d = {"versionCode": int(os.environ["_VC"]), "versionName": os.environ["_VER"],
      "force": False, "channel": "dev"}
 json.dump(d, open(os.environ["_OUT"], "w"), ensure_ascii=False, indent=1)
 PY
+# ── 3) 建/复用预发布 `ci`，覆盖上传资产（根 update.json 最后传 —— 它要带 channels 名单）──
+gh release view ci -R "$REPO" >/dev/null 2>&1 || \
+  gh release create ci -R "$REPO" --prerelease --title "刷单词 · 测试包通道（自动聚合，勿手改）" \
+    --notes "staging 构建的聚合发布位：update-<分支id>.json / wordsprint-<分支id>.apk = 各分支自己的坑位（App「分支」档就选它们）。正文由 publish_ci.sh 每次构建重写。"
+gh release upload ci -R "$REPO" --clobber \
+  "$TMP/wordsprint-$BID.apk" "$TMP/update-$BID.json" "$TMP/wordsprint.apk"
+
+# ── 3b) 分支清单 = ci 资产里的全部 update-<id>.json → 写进根 update.json 的 channels 数组。
+#    App 的「分支」选择行读它（github.com，与下载同域）—— 手机网络下 api.github.com 经常
+#    不通/匿名限流，清单绝不能依赖它（用户 2026-09-22「分支都没用，没反应」的教训）。
+CHS=$(gh api "/repos/$REPO/releases/tags/ci" --jq '.assets[].name' 2>/dev/null \
+      | grep -E '^update-.+\.json$' | sed 's/^update-//; s/\.json$//' | sort -u | tr '\n' ' ')
+[ -n "$CHS" ] || CHS="$BID"
 _OUT="$TMP/update.json" _VER="$VER" _VC="$VC" _URL="$BASE/wordsprint.apk" \
-  _NOTES="$NOTES" python3 - <<'PY'
+  _NOTES="$NOTES" _CHS="$CHS" python3 - <<'PYJ'
 import json, os
 d = {"versionCode": int(os.environ["_VC"]), "versionName": os.environ["_VER"],
      "url": os.environ["_URL"], "notes": os.environ["_NOTES"],
-     "force": False, "channel": "dev"}
+     "force": False, "channel": "dev",
+     "channels": os.environ["_CHS"].split()}
 json.dump(d, open(os.environ["_OUT"], "w"), ensure_ascii=False, indent=1)
-PY
-
-# ── 3) 建/复用预发布 `ci`，覆盖上传资产 ──
-gh release view ci -R "$REPO" >/dev/null 2>&1 || \
-  gh release create ci -R "$REPO" --prerelease --title "刷单词 · 测试包通道（自动聚合，勿手改）" \
-    --notes "staging 构建的聚合发布位：根资产 = 最近一次构建，update-<分支id>.json / wordsprint-<分支id>.apk = 各分支自己的坑位。正文由 publish_ci.sh 每次构建重写。"
-gh release upload ci -R "$REPO" --clobber \
-  "$TMP/wordsprint-$BID.apk" "$TMP/update-$BID.json" "$TMP/wordsprint.apk" "$TMP/update.json"
+PYJ
+gh release upload ci -R "$REPO" --clobber "$TMP/update.json"
 
 # ── 4) 重写 Release 正文 = 各分支坑位的版本索引（「Releases 页也能看到各分支版本」）──
 {

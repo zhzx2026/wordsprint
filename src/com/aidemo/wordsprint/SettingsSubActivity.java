@@ -222,7 +222,9 @@ public class SettingsSubActivity extends Activity {
         String[] srcNames = {getString(R.string.update_src_stable), getString(R.string.update_src_branch)};
         brScroll = (android.view.ViewGroup) findViewById(R.id.brScroll);
         brRow = (LinearLayout) findViewById(R.id.brChips);
-        Ui.fillRowEqual((LinearLayout) findViewById(R.id.srcChips), srcNames, pr.updateChannel(), new Ui.ChipTap() {
+        // 选中下标按「第几枚 chip」算（0/1），通道号 0/2 —— 不换算的话点「分支」永远不亮（2026-09-22 教训）
+        int selChip = pr.updateChannel() == UpCh.BRANCH ? 1 : 0;
+        Ui.fillRowEqual((LinearLayout) findViewById(R.id.srcChips), srcNames, selChip, new Ui.ChipTap() {
             @Override public void onTap(int idx, TextView chip) {
                 pr.setUpdateChannel(idx);
                 syncBranchRow();
@@ -274,7 +276,7 @@ public class SettingsSubActivity extends Activity {
                 Update.channelName(this, pr.updateChannel())));
     }
 
-    /** 「分支」选择行：选中第 3 档才显示；先按上次的结果画，再异步直连 GitHub 刷新 */
+    /** 「分支」选择行：选中第 2 档才显示；先按上次的结果画，再异步刷新（默认已认领本包自己的分支） */
     private void syncBranchRow() {
         if (brScroll == null) return;
         if (pr.updateChannel() != UpCh.BRANCH) {
@@ -282,16 +284,16 @@ public class SettingsSubActivity extends Activity {
             return;
         }
         brScroll.setVisibility(View.VISIBLE);
-        renderBranchRow(Update.lastBranches(), Update.lastBuilt(), null);   // 先照上次的画（没有就显示「正在读取」）
+        renderBranchRow(Update.lastBranches(), null);   // 先照上次的画（没有就显示「正在读取」）
         Update.fetchBranchesAsync(this, new Update.BranchCb() {
-            @Override public void onRes(java.util.List<String> ids, java.util.List<String> built, String err) {
+            @Override public void onRes(java.util.List<String> ids, String err) {
                 if (pr.updateChannel() != UpCh.BRANCH) return;   // 请求回来时用户已经切走
-                renderBranchRow(ids, built, err);
+                renderBranchRow(ids, err);
             }
         });
     }
 
-    private void renderBranchRow(java.util.List<String> ids, java.util.List<String> built, String err) {
+    private void renderBranchRow(java.util.List<String> ids, String err) {
         if (brRow == null) return;
         brRow.removeAllViews();
         if (ids == null || ids.isEmpty()) {
@@ -306,10 +308,9 @@ public class SettingsSubActivity extends Activity {
             hint.setLayoutParams(lp);
             brRow.addView(hint);
         } else {
-            java.util.Set<String> has = new java.util.HashSet<String>(built == null ? java.util.Collections.<String>emptyList() : built);
-            String sel = pr.upBranch();
+            String sel = pr.upBranch();          // 没显式选过 = 本包自己的分支，直接亮着
             for (final String id : ids) {
-                TextView tv = Ui.chip(this, has.contains(id) ? id : id + "·无包", id.equals(sel));
+                TextView tv = Ui.chip(this, id, id.equals(sel));
                 tv.setOnClickListener(new View.OnClickListener() {
                     @Override public void onClick(View v) {
                         pr.setUpBranch(id);
@@ -319,17 +320,16 @@ public class SettingsSubActivity extends Activity {
                 });
                 brRow.addView(tv);
             }
-            // 存的坑位不在清单里（分支已合并删除）也不清：状态行照实显示它，检查会明说 404
         }
         TextView rf = Ui.chip(this, getString(R.string.update_branch_refresh), false);
         rf.setTag("rf");                           // 选中态轮播时跳过它
         rf.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
-                renderBranchRow(null, null, null); // 先变回「正在读取」，失败原因会写在这行
+                renderBranchRow(null, null);       // 先变回「正在读取」，失败原因会写在这行
                 Update.fetchBranchesAsync(SettingsSubActivity.this, new Update.BranchCb() {
-                    @Override public void onRes(java.util.List<String> ids, java.util.List<String> built, String err) {
+                    @Override public void onRes(java.util.List<String> ids, String err) {
                         if (pr.updateChannel() != UpCh.BRANCH) return;
-                        renderBranchRow(ids, built, err);
+                        renderBranchRow(ids, err);
                     }
                 });
             }

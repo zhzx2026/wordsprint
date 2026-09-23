@@ -31,7 +31,7 @@ public class VersTest {
         check(Vers.channel("2.9", 0) == 0, "用户选了 stable → 就用 stable");
         check(Vers.channel("2.0", 2) == 2, "用户选了分支 → 就用分支");
         check(Vers.channel("2.9", 1) == 2, "旧版存量的 1=dev 通道 → 迁到分支（测试包只认分支）");
-        check(Vers.channel("2.9", -3) == 2, "越界通道号保守当分支？不 —— 除 0 外归分支，显式选过就不落回 stable");
+        check(Vers.channel("2.9", -3) == 2, "显式选过的脏值（-3）→ 不落回 stable，按分支处理");
 
         // 3) 没选过：装测试包默认盯分支，装正式版默认盯 stable（2026-09-15 事故的修法延续）
         check(Vers.channel("2.9", null) == 2, "装了测试包 2.9、没选过通道 → 默认盯分支（否则永远显示已是最新）");

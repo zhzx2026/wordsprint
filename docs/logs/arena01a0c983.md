@@ -97,3 +97,24 @@
 - 过渡路径（无需人工干预）：v6.2 手机的默认通道指向 ci 根 update.json → CI 发布 v6.3 根资产后
   自动弹「发现新版本 6.3」→ 更新后通道号自动迁移。
 - 验证：全量 host tests PASS；android-34 typecheck 0 error。
+
+---
+
+# 第四轮（同日）：「分支都没用，没反应」→ 修通「分支」档
+
+- 用户原话很冲，但问题是真的，三个实锤（全在 App 侧，我上一轮没在真机路径上验证）：
+  1. **分支清单直读 api.github.com /branches** —— 手机网络下这域名经常不通/匿名限流 403，
+     清单永远拉不到 → 选择行永远停在「正在读取」→ 用户看到的就是「没反应」。
+     （沙箱里我验证时走的是 gh 带 token + 沙箱网络，掩盖了这条。）
+  2. **chips 高亮 bug**：通道号 0/2 对两枚 chips 的下标 0/1，`i == sel` 永不成立 → 点「分支」不亮。
+  3. **默认不认领**：装了 arena01a0c983 的包，还要再手点一次同名分支。
+- 修复（dev v6.4 / code 47）：
+  1. 分支清单改读 **ci 根 update.json 的 `channels` 数组**（github.com 与下载同域 ——
+     能下包就能拉清单）；publish_ci.sh 每次构建从 ci 资产算出全部坑位 id 重写根 update.json
+     （上传顺序：apk + 坑位 json 先，根 update.json 最后）。绝不再依赖 api.github.com。
+  2. `selChip = (channel == BRANCH) ? 1 : 0`，点「分支」立刻亮。
+  3. `Prefs.ownBranchId()`：从 `BuildInfo.STAMP` 第一段（build.sh 编译期生成分支id）推导本包分支，
+     没显式选过 → 自动认领。装哪条盯哪条。
+  4. UpCh 删掉 api 解析器（parseBranchNames/parseAssetNames/builtIds/extractStringValues），
+     parseChannels 回归；Update.fetchBranchesAsync 签名 (ids, err)；界面文案照实报错。
+- 经验写进 BRANCHING §3（⚠️ 不要改回 api.github.com）与 AGENT 当前状态。

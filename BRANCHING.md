@@ -76,10 +76,12 @@
 > ci 的**根资产**（`update.json` / `wordsprint.apk` = 最近一次构建）还在服务器上，但只作直链兼容
 > （旧手机升级过渡用一次），App 不再有它的入口 —— 聚合不出现在任何「最外面」。
 
-- **分支清单直连 GitHub**：App 选「分支」时读 `api.github.com/repos/zhzx2026/wordsprint/branches`
-  （`Update.fetchBranchesAsync`），过滤出工作分支（`arena/**`、`staging/**`、`dev-build`）渲染选择行；
-  哪条有测试包，看 Release `ci` 资产里有没有 `update-<id>.json`，没有的标「·无包」。
-  **新分支推上去立刻能选**，不再依赖任何聚合分支/名单文件。
+- **分支清单 = ci 根 update.json 的 `channels` 数组**（`publish_ci.sh` 每次构建用 ci 上现存的全部
+  `update-<id>.json` 资产重写；App `Update.fetchBranchesAsync` 读它渲染选择行，github.com 与下载同域）。
+  ⚠️ 不要改成 `api.github.com`（用户 2026-09-22「分支都没用，没反应」：手机网络下它经常不通/匿名限流
+  403，清单永远拉不到）。代价是名单晚构建一步：新分支第一次构建后才出现 —— 没包的分支本来也没得选。
+- **默认认领自己的分支**：构建标识 `BuildInfo.STAMP` 第一段 = 分支 id（build.sh 编译期生成），
+  没显式选过分支时 App 自动认它（`Prefs.ownBranchId`）—— 装哪条分支的包就默认盯哪条。
 - **为什么包挂在预发布 Release 上而不是分支里**：Release 资产走 github.com 直链（免登录、
   不吃 api.github.com 每小时 60 次的匿名配额），`--prerelease` 让 `releases/latest` 永远跳过它
   （stable OTA 不受影响），而且它**不占分支列表** —— 用户 2026-09-22：「dev 分支就是一个聚合，不用在最外面搞一个」。

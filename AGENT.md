@@ -255,6 +255,14 @@ gh api "/repos/zhzx2026/wordsprint/git/blobs/$SHA" -H "Accept: application/vnd.g
   测试包（X.Y）默认通道 = 分支（延续 2026-09-15 事故的修法）；删掉「stable 上顺带偷看 dev」的补丁
   （显式选择就该被尊重）；`UpCh.DEV`/`viaDev`/`update_src_dev`/`update_found_dev`/`update_dev_src` 全部移除。
   ci 根资产保留（直链兼容 + 旧机过渡），App 无入口。
+- 🆕 **「分支」修通（dev v6.4 / code 47）**：用户「分支都没用，没反应」—— 三个实锤：
+  ① 分支清单原来直读 **api.github.com /branches**（手机网络下经常不通/匿名限流 403 → 清单永远
+  拉不到、整行卡死「正在读取」）→ 改读 **ci 根 update.json 的 `channels` 数组**（github.com
+  与下载同域，`publish_ci.sh` 每次构建从 ci 资产重写清单，绝不再依赖 api 域名）；
+  ② 通道 chips 高亮 bug：通道号 2 对两枚 chips（下标 0/1）永远不亮，点了没反馈 → selIdx 换算；
+  ③ 装了哪条分支的包还得手点同名分支 → `BuildInfo.STAMP` 第一段自动认领本包分支
+  （`Prefs.ownBranchId`，没显式选过 = 默认盯自己）。UpCh 删 api 解析器、parseChannels 回归；
+  UpChTest 24 checks。
 
 ## 当前状态（2026-09-21 第十次更新）
 - 🆕 **分支分工澄清 + v6.0 转正（`arena/01a0c46d-wordsprint`，2026-09-21）**：

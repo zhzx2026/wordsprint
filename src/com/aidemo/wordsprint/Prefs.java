@@ -74,9 +74,28 @@ public class Prefs {
 
     public void setUpdateChannel(int ch) { p.edit().putInt(K_UP_CH, UpCh.sanitize(ch)).apply(); }
 
-    /** 「分支」通道当前选的坑位 id（空 = 还没选；读出来先清洗，脏数据进不了 URL） */
-    public String upBranch() { return UpCh.sanitizeSlot(p.getString(ns(K_UP_BR), "")); }
+    /**
+     * 「分支」通道当前认的分支 id：显式点选过的优先；没选过 → 默认认**本包自己**的分支
+     * （构建标识 BuildInfo.STAMP 第一段 = branch_id，build.sh 编译期生成）——
+     * 用户 2026-09-22「分支都没用」：装了哪条分支的包还得再手动点一次同名分支，纯属多余。
+     */
+    public String upBranch() {
+        String saved = UpCh.sanitizeSlot(p.getString(ns(K_UP_BR), ""));
+        if (!saved.isEmpty()) return saved;
+        return ownBranchId();
+    }
+
     public void setUpBranch(String id) { p.edit().putString(ns(K_UP_BR), UpCh.sanitizeSlot(id)).apply(); }
+
+    /** 本包出自哪条分支（构建标识第一段；双装包/解析失败返回空 —— 双装包应用内更新本来就关着） */
+    private static String ownBranchId() {
+        try {
+            if (BuildInfo.SBS) return "";
+            String st = BuildInfo.STAMP;
+            int i = st.indexOf('·');
+            return i > 0 ? UpCh.sanitizeSlot(st.substring(0, i)) : "";
+        } catch (Throwable t) { return ""; }
+    }
 
     public String str(String key, String def) { return p.getString(ns(key), def); }
     public void set(String key, String v) { p.edit().putString(ns(key), v).apply(); }
