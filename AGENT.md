@@ -263,6 +263,11 @@ gh api "/repos/zhzx2026/wordsprint/git/blobs/$SHA" -H "Accept: application/vnd.g
   ③ 装了哪条分支的包还得手点同名分支 → `BuildInfo.STAMP` 第一段自动认领本包分支
   （`Prefs.ownBranchId`，没显式选过 = 默认盯自己）。UpCh 删 api 解析器、parseChannels 回归；
   UpChTest 24 checks。
+- 🆕 **chips 写入映射修复（dev v6.5 / code 48）**：用户「分支还是显示stable」——
+  v6.3 砍 dev 档后 chips 变两枚，但 onTap 仍把**按钮下标**(0/1)当**通道号**(0/2)存：
+  点「分支」实际 setUpdateChannel(1) → sanitize → stable。v6.1 三枚时代 idx==通道号纯属巧合。
+  修：`UpCh.channelForChip(idx)` 换算（收进纯逻辑 + UpChTest 断言，防第三次回归）；
+  显示侧 selIdx 换算 v6.4 已修。经验：映射类胶水代码不进 Activity，进 UpCh 被主机测试盯住。
 
 ## 当前状态（2026-09-21 第十次更新）
 - 🆕 **分支分工澄清 + v6.0 转正（`arena/01a0c46d-wordsprint`，2026-09-21）**：

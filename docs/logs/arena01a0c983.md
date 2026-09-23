@@ -126,3 +126,18 @@
   （run 35873889156）。
 - 根 update.json（1547B）已按 publish_ci.sh 逻辑本地重建比对（1550B - 3 个空行 = 完全一致），
   确认 `channels: ["arena01a0c983"]` 写入成功 —— 「分支」清单与下载同域，手机可拉。
+
+---
+
+# 第五轮（2026-09-23）：「分支还是显示stable」→ chips 写入映射 bug
+
+- 用户在 v6.3/v6.4 上点「分支」，状态行仍显示 stable 通道。实锤：v6.3 把 chips 从三枚砍到两枚后，
+  `onTap(idx)` 里的 idx（按钮下标 0/1）被直接 `setUpdateChannel(idx)` —— 存 1，
+  `UpCh.sanitize(1)` → stable。v6.1 的三枚 chips（stable/dev/分支）下标恰好==通道号(0/1/2)，
+  砍掉中间那枚后巧合断了；v6.4 只修了显示侧换算，没修写入侧。
+- 修复（dev v6.5 / code 48）：换算收进 `UpCh.channelForChip(idx)`（0→stable，1→分支），
+  Activity 调它；UpChTest 加回归断言（含 `sanitize(channelForChip(1))==BRANCH`）。
+  v6.3 里被误存的通道号 1 → v6.5 updateChannel 的迁移规则(1→分支)自动纠正；
+  v6.4 里被存成 0 的 → 用户重点一次「分支」即可。
+- 教训（已写进 AGENT）：「第几枚按钮 ↔ 哪个通道」这类映射胶水不许内联在 Activity 里 ——
+  主机测试够不着 Activity，进了 UpCh 才能被断言盯住。这是同一处逻辑第二次回归。

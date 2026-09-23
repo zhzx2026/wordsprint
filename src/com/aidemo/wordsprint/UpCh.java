@@ -31,6 +31,14 @@ public final class UpCh {
     public static int sanitize(int ch) { return ch == BRANCH ? ch : STABLE; }
 
     /**
+     * 更新源 chips 的第几枚 → 通道号。chips 只有两枚：0 = stable，1 = 分支。
+     * ⚠️ 这行换算必须存在：v6.1 三枚 chips（stable/dev/分支）时下标恰好等于通道号，
+     * 砍掉 dev 档后直接把下标 1 当通道号存 → 实际存成 stable（用户 2026-09-23
+     * 「分支还是显示stable」）—— v6.3/v6.4 的回归根源，现收进这里被测试盯住。
+     */
+    public static int channelForChip(int chipIdx) { return chipIdx == 1 ? BRANCH : STABLE; }
+
+    /**
      * 坑位 id 清洗：只保留 [A-Za-z0-9-]，最长 48，其余字符直接剔除。
      * id 会被拼进下载 URL / 资产名匹配，宁可剔成怪名字也不能让「..」「/」把路径带偏。
      */

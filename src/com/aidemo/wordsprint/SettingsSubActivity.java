@@ -222,11 +222,12 @@ public class SettingsSubActivity extends Activity {
         String[] srcNames = {getString(R.string.update_src_stable), getString(R.string.update_src_branch)};
         brScroll = (android.view.ViewGroup) findViewById(R.id.brScroll);
         brRow = (LinearLayout) findViewById(R.id.brChips);
-        // 选中下标按「第几枚 chip」算（0/1），通道号 0/2 —— 不换算的话点「分支」永远不亮（2026-09-22 教训）
+        // chips 下标（0/1）↔ 通道号（0/2）必须双向换算：v6.3/v6.4 只顾了显示没顾写入，
+        // 点「分支」实际存成 stable（用户 2026-09-23「分支还是显示stable」）。换算规则在 UpCh。
         int selChip = pr.updateChannel() == UpCh.BRANCH ? 1 : 0;
         Ui.fillRowEqual((LinearLayout) findViewById(R.id.srcChips), srcNames, selChip, new Ui.ChipTap() {
             @Override public void onTap(int idx, TextView chip) {
-                pr.setUpdateChannel(idx);
+                pr.setUpdateChannel(UpCh.channelForChip(idx));
                 syncBranchRow();
                 refreshState();
             }

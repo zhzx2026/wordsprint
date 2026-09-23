@@ -28,7 +28,14 @@ public class UpChTest {
         // 1) 通道号清洗：只有 stable(0) / 分支(2) 两档；旧 1=dev 与越界一律当 stable
         check(UpCh.sanitize(0) == 0 && UpCh.sanitize(2) == 2, "0/2 原样通过");
         check(UpCh.sanitize(1) == 0, "旧 1=dev 档兜底为 stable（Prefs 层在它之前迁到分支）");
+        check(UpCh.sanitize(UpCh.channelForChip(1)) == UpCh.BRANCH, "chips 下标 1 → 通道 2，写入后仍是分支（v6.3/v6.4 回归断言）");
         check(UpCh.sanitize(3) == 0 && UpCh.sanitize(-1) == 0 && UpCh.sanitize(99) == 0, "越界通道号一律当 stable");
+
+        // 1b) chips 下标 → 通道号（v6.3/v6.4 回归点：下标 1 被当通道号存，点「分支」变成 stable）
+        check(UpCh.channelForChip(0) == UpCh.STABLE && UpCh.channelForChip(1) == UpCh.BRANCH,
+                "两枚 chips：第 0 枚 stable、第 1 枚分支（别把下标当通道号存）");
+        check(UpCh.channelForChip(9) == UpCh.STABLE && UpCh.channelForChip(-1) == UpCh.STABLE,
+                "越界下标保守当 stable");
 
         // 2) 坑位 id 清洗：它要拼进 URL / 匹配资产名，路径字符一个都不能留
         check(UpCh.sanitizeSlot("arena01a0c983").equals("arena01a0c983"), "正常坑位 id 原样保留");
