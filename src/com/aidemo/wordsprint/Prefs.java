@@ -324,14 +324,21 @@ public class Prefs {
     public void setNext(String bid, int v) { p.edit().putInt(ns(bk(bid, "n")), v).apply(); }
     public int groupSize(String bid) { return p.getInt(ns(bk(bid, "g")), DEF_SIZE); }
     public int order(String bid) { return p.getInt(ns(bk(bid, "o")), 0); }
-    public int lag(String bid) { return p.getInt(ns(bk(bid, "l")), DEF_LAG); }
+    /**
+     * 回炉间隔：**全局设置**（设置 → 学习，K_LAG_DEF）。
+     * 用户 2026-09-23：「打开词表后，这个回炉间隔在设置中设置，不要在这里设置」——
+     * 词本弹层不再有这一项；老版本按本子存的「l」值不再读（统一走全局默认）。
+     */
+    public int lag(String bid) { return p.getInt(ns(K_LAG_DEF), DEF_LAG); }
 
-    public void saveSetup(String bid, int size, int order, int lag) {
-        p.edit().putInt(ns(bk(bid, "g")), size).putInt(ns(bk(bid, "o")), order).putInt(ns(bk(bid, "l")), lag).apply();
+    public void saveSetup(String bid, int size, int order) {
+        p.edit().putInt(ns(bk(bid, "g")), size).putInt(ns(bk(bid, "o")), order).apply();
         set(K_SIZE_DEF, size);
     }
 
     public static final String K_SIZE_DEF = "g_size";
+    /** 回炉间隔的全局默认（不认识后隔几张再出现）：3/5/8，设置 → 学习里改 */
+    public static final String K_LAG_DEF = "g_lag";
 
     public void touchBook(String bid) { p.edit().putLong(ns(bk(bid, "t")), System.currentTimeMillis()).apply(); }
 

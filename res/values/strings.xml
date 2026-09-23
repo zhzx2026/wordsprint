@@ -30,6 +30,7 @@
     <string name="order_shuffle">随机打乱</string>
     <string name="lag_label">不认识 · 回炉间隔</string>
     <string name="lag_n">每过 %1$d 张再出现</string>
+    <string name="lag_setting_desc">点「不认识」后隔几张再出现（全局，对所有词本生效）</string>
     <string name="redo_all">包含已掌握（重新刷整本）</string>
     <string name="session_done">本组完成</string>
     <string name="book_done">恭喜！整本书已刷完</string>
@@ -377,11 +378,16 @@
     <string name="pv_batch">批量改进度</string>
     <string name="pv_start">去刷这本</string>
     <string name="pv_batch_title">批量改进度</string>
-    <string name="pv_batch_tip">输入词号范围（这本共 %1$d 词）。写法随意：100-300 / 1~50 / 第100到300 / 只写一个数 / 留空=整本。</string>
+    <string name="pv_batch_tip">先输词号范围（这本共 %1$d 词，写法随意：100-300 / 1~50 / 第100到300 / 留空=整本），再选动作：标记/取消已掌握，或让刷词从这段开始（继续刷=跳过已会的；重新刷=整段重来）。</string>
     <string name="pv_range_hint">例如 100-300</string>
     <string name="pv_range_ok">第 %1$d–%2$d 个词（共 %3$d 个）· 其中已掌握 %4$d 个</string>
     <string name="pv_act_mark">标记已掌握</string>
     <string name="pv_act_unmark">取消已掌握</string>
+    <string name="pv_act_continue">从这里继续刷</string>
+    <string name="pv_act_relearn">从这段重新刷</string>
+    <string name="pv_done_move">好了，下次从第 %1$d 个词开始刷</string>
+    <string name="pv_none_move">下次本来就从第 %1$d 个词开始，没动</string>
+    <string name="pv_range_now">当前下次从第 %1$d 个词接着刷</string>
     <string name="pv_apply">就改这些</string>
     <string name="pv_done">已改动 %1$d 个词（第 %2$d–%3$d）</string>
     <string name="pv_none_mark">这些词本来就已经掌握了，没改动</string>

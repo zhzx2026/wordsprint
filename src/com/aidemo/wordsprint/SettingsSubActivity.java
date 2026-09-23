@@ -152,6 +152,18 @@ public class SettingsSubActivity extends Activity {
             @Override public void onTap(int idx, TextView chip) { pr.set(Prefs.K_SIZE_DEF, sizes[idx]); }
         });
 
+        // 回炉间隔（全局；2026-09-23 从词本弹层移到这里，用户定的）
+        final int[] lags = {3, 5, 8};
+        String[] lagLabels = new String[lags.length];
+        int curLag = pr.i(Prefs.K_LAG_DEF, Prefs.DEF_LAG), selLag = 1;
+        for (int i = 0; i < lags.length; i++) {
+            lagLabels[i] = getString(R.string.lag_n, lags[i]);
+            if (lags[i] == curLag) selLag = i;
+        }
+        Ui.fillRow((LinearLayout) findViewById(R.id.lagChips), lagLabels, selLag, new Ui.ChipTap() {
+            @Override public void onTap(int idx, TextView chip) { pr.set(Prefs.K_LAG_DEF, lags[idx]); }
+        });
+
         // 每日目标
         final int[] goals = {50, 100, 150, 200};
         String[] goalLabels = new String[goals.length];

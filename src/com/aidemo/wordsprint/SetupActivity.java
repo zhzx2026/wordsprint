@@ -22,14 +22,12 @@ import java.util.BitSet;
 public class SetupActivity extends Activity {
 
     private static final int[] SIZES = {20, 30, 50, 80, 100, 150};
-    private static final String[] LAGS = {"3 张", "5 张", "8 张"};
-    private static final int[] LAG_V = {3, 5, 8};
 
     private Db.Book book;
     private Prefs prefs;
-    private int size, order, lag;
+    private int size, order;
 
-    private TextView tvCta, tvStats, tvLagVal;
+    private TextView tvCta, tvStats;
     private RingProgress ring;
 
     @Override protected void attachBaseContext(Context base) { super.attachBaseContext(Night.wrap(base)); }
@@ -48,7 +46,6 @@ public class SetupActivity extends Activity {
 
         size = prefs.groupSize(book.id);
         order = prefs.order(book.id);
-        lag = prefs.lag(book.id);
 
         // 点上方遮罩关闭详情（见 sheet_setup.xml 的 scrim 注释）
         findViewById(R.id.scrim).setOnClickListener(new View.OnClickListener() {
@@ -69,7 +66,6 @@ public class SetupActivity extends Activity {
 
         tvCta = (TextView) findViewById(R.id.btnStart);
         tvStats = (TextView) findViewById(R.id.tvStats);
-        tvLagVal = (TextView) findViewById(R.id.tvLagVal);
         ring = (RingProgress) findViewById(R.id.ring);
 
         LinearLayout sizeRow = (LinearLayout) findViewById(R.id.sizeChips);
@@ -97,12 +93,6 @@ public class SetupActivity extends Activity {
                     @Override public void onTap(int idx, TextView chip) { order = idx; }
                 });
 
-        Ui.fillRow((LinearLayout) findViewById(R.id.lagChips), LAGS, lagIndex(lag), new Ui.ChipTap() {
-            @Override public void onTap(int idx, TextView chip) {
-                lag = LAG_V[idx];
-                tvLagVal.setText(getString(R.string.lag_n, lag));
-            }
-        });
 
         final android.widget.Switch redoSw = (android.widget.Switch) findViewById(R.id.swRedo);
         View redoRow = findViewById(R.id.rowRedo);
@@ -112,7 +102,7 @@ public class SetupActivity extends Activity {
 
         findViewById(R.id.btnStart).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
-                prefs.saveSetup(book.id, size, order, lag);
+                prefs.saveSetup(book.id, size, order);
                 Intent it = new Intent(SetupActivity.this, StudyActivity.class);
                 it.putExtra("book", book.id);
                 it.putExtra("redo", redoSw.isChecked());
@@ -121,25 +111,8 @@ public class SetupActivity extends Activity {
             }
         });
 
-        findViewById(R.id.btnReview).setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                WrongBook wbNow = prefs.wrongBook(book.id);
-                if (wbNow.dueCount() == 0) {
-                    Toast.makeText(SetupActivity.this,
-                            wbNow.isEmpty() ? R.string.no_wrongs : R.string.no_wrongs_due,
-                            Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                prefs.saveSetup(book.id, size, order, lag);
-                Intent it = new Intent(SetupActivity.this, StudyActivity.class);
-                it.putExtra("book", book.id);
-                it.putExtra("review", true);
-                startActivity(it);
-                finish();
-            }
-        });
-
-        // 错题本：从词本进来 = 总错题本 + 本词本筛选（用户 2026-09-16）
+        // 错题本：从词本进来 = 总错题本 + 本词本筛选（用户 2026-09-16）。
+        // 「错词复习」不再放在词本弹层（用户 2026-09-23：去错题本里点开始订正就好）。
         findViewById(R.id.btnWrong).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { WrongActivity.open(SetupActivity.this, book.id); }
         });
@@ -181,11 +154,6 @@ public class SetupActivity extends Activity {
         return true;
     }
 
-    private static int lagIndex(int l) {
-        for (int i = 0; i < LAG_V.length; i++) if (LAG_V[i] == l) return i;
-        return 1;
-    }
-
     private void askCustomSize() {
         final EditText et = new EditText(this);
         et.setInputType(InputType.TYPE_CLASS_NUMBER);
@@ -223,10 +191,6 @@ public class SetupActivity extends Activity {
         tvCta.setText(done == 0 ? getString(R.string.start_brush) : getString(R.string.continue_brush));
         tvStats.setText(getString(R.string.sheet_stats_group, done, book.n - done, wrong,
                 p.next(book.id) / Math.max(1, size) + 1));
-        ((TextView) findViewById(R.id.btnReview)).setText(wrong > 0
-                ? getString(R.string.review_with_count, wrong) : getString(R.string.review_mode));
-        ((TextView) findViewById(R.id.btnReview)).setEnabled(true);
-        tvLagVal.setText(getString(R.string.lag_n, lag));
         sizeRowHighlight();
     }
 

@@ -61,6 +61,23 @@
             android:paddingBottom="12dp"/>
     </LinearLayout>
 
+    <TextView style="@style/SectionHead" android:text="@string/lag_label"/>
+
+    <LinearLayout style="@style/CardBox">
+        <LinearLayout style="@style/SettingRow">
+            <LinearLayout style="@style/SettingRowText">
+                <TextView style="@style/SettingTitle" android:text="@string/lag_label"/>
+                <TextView android:id="@+id/tvLagDesc" style="@style/SettingDesc" android:text="@string/lag_setting_desc"/>
+            </LinearLayout>
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/lagChips"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingBottom="12dp"/>
+    </LinearLayout>
+
     <TextView style="@style/SectionHead" android:text="@string/set_goal_title"/>
 
     <LinearLayout style="@style/CardBox">

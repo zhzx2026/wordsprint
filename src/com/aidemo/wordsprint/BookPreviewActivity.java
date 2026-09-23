@@ -216,7 +216,9 @@ public class BookPreviewActivity extends Activity {
         rlp.topMargin = (int) Ui.dp(this, 10);
         col.addView(etRange, rlp);
 
-        final int[] action = {0};               // 0 = 标记已掌握 · 1 = 取消已掌握
+        // 0 = 标记已掌握 · 1 = 取消已掌握 · 2 = 从这里继续刷 · 3 = 从这段重新刷
+        // （用户 2026-09-23：批量改进度别只会标记，要能让刷词「从不会的开始 / 按这段继续 / 整段重来」）
+        final int[] action = {0};
         final TextView status = new TextView(this);
         status.setTextSize(12.5f);
         status.setTextColor(Skin.c(this, R.attr.wpText2));
@@ -225,21 +227,24 @@ public class BookPreviewActivity extends Activity {
         stlp.topMargin = (int) Ui.dp(this, 8);
         col.addView(status, stlp);
 
-        final String[] actNames = {getString(R.string.pv_act_mark), getString(R.string.pv_act_unmark)};
+        final String[] actNames = {getString(R.string.pv_act_mark), getString(R.string.pv_act_unmark),
+                getString(R.string.pv_act_continue), getString(R.string.pv_act_relearn)};
         final LinearLayout actRow = new LinearLayout(this);
-        actRow.setOrientation(LinearLayout.HORIZONTAL);
+        actRow.setOrientation(LinearLayout.VERTICAL);
         LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         alp.topMargin = (int) Ui.dp(this, 8);
         col.addView(actRow, alp);
 
-        // 先把范围解析出来给用户看「这段里现在有几个已掌握」——避免改错范围自己不知道
+        // 先把范围解析出来给用户看「这段里现在有几个已掌握 + 下次从哪开始」——避免改错范围自己不知道
         final Runnable preview = new Runnable() {
             @Override public void run() {
                 BookEdit.Range r = BookEdit.parseRange(etRange.getText().toString(), book.n);
                 if (!r.ok) { status.setText(r.why); return; }
                 int has = BookEdit.countIn(ms, r);
-                status.setText(getString(R.string.pv_range_ok, r.from + 1, r.to + 1, r.to - r.from + 1, has));
+                String t = getString(R.string.pv_range_ok, r.from + 1, r.to + 1, r.to - r.from + 1, has);
+                if (action[0] >= 2) t += "\n" + getString(R.string.pv_range_now, Prefs.of(BookPreviewActivity.this).next(book.id) + 1);
+                status.setText(t);
             }
         };
         etRange.addTextChangedListener(new TextWatcher() {
@@ -247,35 +252,61 @@ public class BookPreviewActivity extends Activity {
             @Override public void onTextChanged(CharSequence s, int a, int b, int c) {}
             @Override public void afterTextChanged(Editable e) { preview.run(); }
         });
-        Ui.fillRow(actRow, actNames, 0, new Ui.ChipTap() {
-            @Override public void onTap(int idx, TextView chip) { action[0] = idx; }
+        // 两行各两枚（四个动作名都不短，一行塞不下）
+        Ui.fillRowEqual(actRow, new String[]{actNames[0], actNames[1]}, 0, new Ui.ChipTap() {
+            @Override public void onTap(int idx, TextView chip) { action[0] = idx; preview.run(); }
+        });
+        LinearLayout row2 = new LinearLayout(this);
+        row2.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams r2lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        r2lp.topMargin = (int) Ui.dp(this, 8);
+        actRow.addView(row2, r2lp);
+        Ui.fillRowEqual(row2, new String[]{actNames[2], actNames[3]}, -1, new Ui.ChipTap() {
+            @Override public void onTap(int idx, TextView chip) { action[0] = idx + 2; preview.run(); }
         });
         preview.run();
 
         Ui.cardDialogEx(this, getString(R.string.pv_batch_title), Ui.scrollable(col, 300),
                 getString(R.string.pv_apply), new Runnable() {
-                    @Override public void run() { applyBatch(etRange.getText().toString(), action[0] == 0); }
+                    @Override public void run() { applyBatch(etRange.getText().toString(), action[0]); }
                 }, getString(R.string.cancel), null, true);
     }
 
-    private void applyBatch(String spec, boolean mark) {
+    private void applyBatch(String spec, int action) {
         final BookEdit.Range r = BookEdit.parseRange(spec, book.n);
         if (!r.ok) { toast(r.why); return; }
         final BitSet before = (BitSet) ms.clone();
-        int changed = BookEdit.apply(ms, r, mark);
-        if (changed == 0) {
-            toast(getString(mark ? R.string.pv_none_mark : R.string.pv_none_unmark));
+        final int beforeNext = Prefs.of(this).next(book.id);
+        boolean mark = action == 0, move = action >= 2;
+
+        final int[] changed = {0};
+        if (mark || action == 1) {
+            changed[0] = BookEdit.apply(ms, r, mark);
+            if (changed[0] > 0) toast(getString(R.string.pv_done, changed[0], r.from + 1, r.to + 1));
+        }
+        if (move) {
+            // 2 = 从这里继续刷：指针指到段首，已掌握的自动跳过（= 从没刷过的开始）
+            // 3 = 从这段重新刷：指针指到段首 + 这段清成未掌握（整段重来）
+            if (action == 3) changed[0] += BookEdit.apply(ms, r, false);
+            Prefs.of(this).setNext(book.id, r.from);
+            toast(getString(R.string.pv_done_move, r.from + 1));
+        }
+        if (changed[0] == 0) {
+            if (action <= 1) toast(getString(mark ? R.string.pv_none_mark : R.string.pv_none_unmark));
+            else toast(getString(R.string.pv_none_move, beforeNext + 1));
             return;
         }
         save();
         adapter.notifyDataSetChanged();
         updateSummary();
-        toast(getString(R.string.pv_done, changed, r.from + 1, r.to + 1));
-        // 批量改错了很难一个一个改回来 → 给一次整体撤销
+
+        // 批量改错了很难一个一个改回来 → 给一次整体撤销（掌握位 + 指针一起退）
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         TextView tv = new TextView(this);
-        tv.setText(getString(R.string.pv_undo_tip, changed, r.from + 1, r.to + 1));
+        tv.setText(move ? getString(R.string.pv_done_move, r.from + 1)
+                : getString(R.string.pv_undo_tip, changed[0], r.from + 1, r.to + 1));
         tv.setTextSize(13f);
         tv.setTextColor(Skin.c(this, R.attr.wpText2));
         tv.setLineSpacing(Ui.dp(this, 3), 1f);
@@ -285,6 +316,7 @@ public class BookPreviewActivity extends Activity {
                     @Override public void run() {
                         ms = before;
                         save();
+                        Prefs.of(BookPreviewActivity.this).setNext(book.id, beforeNext);
                         adapter.notifyDataSetChanged();
                         updateSummary();
                         toast(getString(R.string.pv_undone));

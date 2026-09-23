@@ -141,3 +141,20 @@
   v6.4 里被存成 0 的 → 用户重点一次「分支」即可。
 - 教训（已写进 AGENT）：「第几枚按钮 ↔ 哪个通道」这类映射胶水不许内联在 Activity 里 ——
   主机测试够不着 Activity，进了 UpCh 才能被断言盯住。这是同一处逻辑第二次回归。
+
+---
+
+# 第六轮（2026-09-23）：四处交互调整（v6.6 / code 49）
+
+用户原话四件事：
+1. 「打开词表后，这个回炉间隔在设置中设置，不要在这里设置」→ SetupActivity 删 lagChips、
+   sheet_setup.xml 删间隔卡（顺序卡变整行）；设置→学习加全局「不认识 · 回炉间隔」chips；
+   Prefs.lag(bid) 改读 K_LAG_DEF，saveSetup(bid,size,order) 三参。
+2. 「错题复习，不要放在错题本里，再点进去就好了」→ 词本弹层删 btnReview（订正去错题本页
+   「开始订正」，那个入口本来就有：按筛选选本 → StudyActivity MODE_WRONG）。
+3. 「批量改进度……可以选择从哪个到哪个……直接设置为从不会的开始刷……按这个继续刷词……
+   从哪里到哪里重新刷」→ askBatch 四动作两行 chips：标记已掌握 / 取消已掌握 /
+   从这里继续刷（setNext(r.from)）/ 从这段重新刷（setNext + 段内清位）；
+   预览行多显示「当前下次从第 N 个接着刷」；撤销连指针一起退。
+4. 「首页的今日目标里的温习给我删掉」→ view_dashboard 习惯行只剩刷词勾；
+   MainActivity 删 habitRev 绑定/刷新/openReview；Diary.rev 数据管道保留（热力图/统计照用）。

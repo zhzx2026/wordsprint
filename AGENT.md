@@ -268,6 +268,14 @@ gh api "/repos/zhzx2026/wordsprint/git/blobs/$SHA" -H "Accept: application/vnd.g
   点「分支」实际 setUpdateChannel(1) → sanitize → stable。v6.1 三枚时代 idx==通道号纯属巧合。
   修：`UpCh.channelForChip(idx)` 换算（收进纯逻辑 + UpChTest 断言，防第三次回归）；
   显示侧 selIdx 换算 v6.4 已修。经验：映射类胶水代码不进 Activity，进 UpCh 被主机测试盯住。
+- 🆕 **四处交互调整（dev v6.6 / code 49）**：用户 2026-09-23 一口气定的——
+  ① **回炉间隔移到「设置 → 学习」**（全局 K_LAG_DEF，3/5/8）：词本弹层删掉这一项，
+  `Prefs.lag(bid)` 改读全局默认，`saveSetup` 不再收 lag（按本的旧「l」值弃用）；
+  ② **词本弹层删「错词复习」按钮**：订正去错题本页点「开始订正」（那里本来就有按筛选开刷的入口），
+  sheet 底部只剩「开始刷词」整行；
+  ③ **批量改进度四动作**：标记已掌握 / 取消已掌握 / **从这里继续刷**（指针→段首，跳过已会）/
+  **从这段重新刷**（指针→段首 + 段内清成未掌握），改完整体撤销连指针一起退；
+  ④ **首页今日目标删「温习」习惯格**（habitRev 布局/绑定/openReview 全删；Diary 的 rev 数据管道保留，热力图照用）。
 
 ## 当前状态（2026-09-21 第十次更新）
 - 🆕 **分支分工澄清 + v6.0 转正（`arena/01a0c46d-wordsprint`，2026-09-21）**：
