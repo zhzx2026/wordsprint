@@ -286,6 +286,14 @@ gh api "/repos/zhzx2026/wordsprint/git/blobs/$SHA" -H "Accept: application/vnd.g
   ② share/index.html：hero 加「⬇ 下载 App（正式版 APK）」大按钮（`releases/latest/download/wordsprint.apk`
   —— latest 只指非预发布，正是正式版）+「全部版本」次按钮；版本一览卡里正式版行、每条分支测试包行
   都带 ⬇ APK 直链；说明文字给「最新测试包」（Release ci 根资产）直链。
+- 🆕 **战绩图重排（dev v6.8 / code 52）**：用户「分享的地方排版重新排一下，删除温习，全部就只有一个
+  刷词，这一个小块就不要了；今天也刷了表达太奇怪而且数值是全部的」——
+  ① 目标卡里习惯小块整排删除（删温习后只剩一枚刷词，孤零零没意义）：ShareCard 删 chips 循环、
+  `GOAL_CARD_H 250→200`， Freed 50px 匀进段距（HEAD_GAP 20 / GOAL_GAP 64 / HEAT_GAP 56，净位移 0）；
+  ShareGeomTest 加 slim 锁（GOAL_CARD_H ≤ 210），32 checks。
+  ② 标语「今天也把单词刷了」→「**我的单词战绩**」：原句配的大数字是**累计**掌握，说「今天」读不通；
+  扫码网页（index.html）同步换标语 + 删 habits 小块（CSS/div/fill/habit() 全清）。
+  注意：版本 code 51 被远端其他分支占掉，version.sh 取 max+1 → 52，属正常。
 
 ## 当前状态（2026-09-21 第十次更新）
 - 🆕 **分支分工澄清 + v6.0 转正（`arena/01a0c46d-wordsprint`，2026-09-21）**：

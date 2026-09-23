@@ -226,20 +226,8 @@ public final class ShareCard {
             c.drawRoundRect(new RectF(track.left, track.top, track.left + track.width() * pct, track.bottom), 9, 9, bp);
         }
 
-        // 两个习惯勾选（原来三个：自测那一栏已按用户要求删除）
-        String[] habits = {a.getString(R.string.goal_title), a.getString(R.string.habit_rev)};
-        boolean[] hdone = {done, s.revMin >= Diary.MIN_REV_MIN};
-        float hw = (textR - textL - 6) / 2f;
-        for (int i = 0; i < habits.length; i++) {
-            float x = textL + i * (hw + 3);
-            RectF hb = new RectF(x, y + 180, x + hw, y + 226);
-            Paint hp = new Paint(Paint.ANTI_ALIAS_FLAG);
-            hp.setColor(hdone[i] ? Ui.withAlpha(green, 0x22) : Skin.c(a, R.attr.wpChipBg));
-            c.drawRoundRect(hb, 16, 16, hp);
-            tp.setTextSize(26);
-            tp.setColor(hdone[i] ? green : text2);
-            c.drawText((hdone[i] ? "✓ " : "○ ") + habits[i], x + 18, y + 212, tp);
-        }
+        // （原来这里还有一排习惯小块：刷词/温习。删温习后只剩一枚，整排去掉 —— 用户 2026-09-23
+        // 「全部就只有一个刷词，这一个小块就不要了」。今日完成与否看上面的勾和进度条就够。）
 
         // ===== 热力图（26 周） =====
         // 尺寸全部由 ShareGeom 算：「最高连续」那行放在网格**下面**，不会压到星期标签（一/三/五/日）

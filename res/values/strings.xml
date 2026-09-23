@@ -243,7 +243,7 @@
     <string name="share_saved">已保存到相册</string>
     <string name="share_save_fail">保存失败：%1$s</string>
     <string name="share_none">还没有战绩：先刷几个词再分享</string>
-    <string name="share_headline">今天也把单词刷了</string>
+    <string name="share_headline">我的单词战绩</string>
     <string name="share_mastered">累计掌握</string>
     <string name="share_today">今日新词</string>
     <string name="share_streak">连续打卡</string>

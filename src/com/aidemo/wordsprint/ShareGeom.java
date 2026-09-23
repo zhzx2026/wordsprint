@@ -24,8 +24,8 @@ public final class ShareGeom {
 
     /** 顶部渐变卡 */
     public static final float HEAD_H = 620;
-    /** 今日目标卡 */
-    public static final float GOAL_CARD_H = 250;
+    /** 今日目标卡（slim：只有标题 + 已刷 + 进度条；习惯小块整排已删 —— 用户 2026-09-23） */
+    public static final float GOAL_CARD_H = 200;
     /** 二维码卡 */
     public static final float QR_CARD_H = 300;
     /** 二维码正方形边长（ShareCard 画的时候必须用这个值，白框再各外扩 QR_PAD） */
@@ -41,7 +41,7 @@ public final class ShareGeom {
     /** 热力图要画多少列（26 周 ≈ 半年） */
     public static final int HEAT_COLS = 26;
     /** 段落间距 */
-    public static final float HEAD_GAP = 10, GOAL_GAP = 50, HEAT_GAP = 40;
+    public static final float HEAD_GAP = 20, GOAL_GAP = 64, HEAT_GAP = 56;
     /** 大数字与右边说明文字之间的最小间距（叠字就是这里没留够） */
     public static final float STAT_GAP = 24;
 

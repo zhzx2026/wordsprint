@@ -1,6 +1,6 @@
 # 刷单词 WordsPrint
 
-**当前版本：v6.7（dev）** <!-- CURRENT-VERSION -->
+**当前版本：v6.8（dev）** <!-- CURRENT-VERSION -->
 
 一个精致的**离线背单词 Android 应用**：以「整本课本」为单位刷词，覆盖小学到大学的主流词表。
 无 Gradle、无第三方 UI 库，`bash build.sh` 直接出签名 APK；更新走 GitHub Releases（App 内 OTA）。

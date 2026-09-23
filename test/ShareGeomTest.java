@@ -84,6 +84,11 @@ public class ShareGeomTest {
         check(ShareGeom.QR_CARD_H >= 280, "二维码卡片高度够放大图");
         check(ShareGeom.bottom() - (qrTop + ShareGeom.QR_CARD_H) >= 40, "二维码卡与下缘之间也留了一段");
 
+        // 10.5) 目标卡保持 slim：习惯小块（刷词/温习整排）已按用户 2026-09-23 删除，
+        //       卡里只剩 标题+已刷+进度条。谁要把小块加回来，卡片就得变高，这里立刻红。
+        check(ShareGeom.GOAL_CARD_H <= 210, "目标卡别再变高（习惯小块已删，卡里只有标题+进度）："
+                + fmt(ShareGeom.GOAL_CARD_H));
+
         // 11) 二维码白框在卡片里、不贴边（画图侧用 ShareGeom.qrX()/QR_* 这组数）
         check(ShareGeom.qrFrameR() < ShareGeom.cardRight(), "二维码白框不出卡片右缘："
                 + fmt(ShareGeom.qrFrameR()) + " vs " + fmt(ShareGeom.cardRight()));

@@ -191,3 +191,19 @@
   typecheck（ecj + android-34 + zxing + R-stub 手补 share_slogan_tail=2130706640）0 error；
   refcheck 过。网站 script 块 node parse OK、关键链接 grep 齐。
 - 注意：本机 typecheck 的 R stub 在 /tmp（重启会没），新字符串要手工补一行 id 再编。
+
+---
+
+# 第八轮（2026-09-23）：战绩图重排（v6.8 / code 52）
+
+用户原话：「分享的地方你那排班重新排一下 删除温习 而且全部就只有一个刷词
+这一个下面的小块就不要了，今天也刷了 表达太奇怪而且数值是全部的」
+
+## 理解与改动
+- 「这一个小块就不要了」= 目标卡底部那排习惯小块（刷词/温习）：删温习后只剩一枚，整排删。
+  ShareCard 删循环，GOAL_CARD_H 250→200；腾出的 50px 匀给段距
+  （HEAD_GAP 10→20、GOAL_GAP 50→64、HEAT_GAP 40→56），底部余量不变。
+- 「今天也刷了……数值是全部的」= 标语「今天也把单词刷了」压在「累计掌握」大数字上，
+  语义拧着 → 改成「我的单词战绩」。网页同步（fSlogan 默认值 + 删 fHabits 块）。
+- ShareGeomTest 加 GOAL_CARD_H ≤ 210 的 slim 锁；32 checks 全过；typecheck/refcheck 过。
+- version.sh 远端探到 code 51（其他分支），bump 取 max+1 → **code 52**。
