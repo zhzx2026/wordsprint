@@ -25,6 +25,8 @@ public class Prefs {
     public static final String K_NIGHT = "g_night";
     /** 配色主题：见 Skin.PALETTES 下标 */
     public static final String K_SKIN = "g_skin";
+    /** 外观代数：配色/深浅/字体/字号任一改动 +1；页面 resume 时对不上账就重建（见 Look.java） */
+    public static final String K_LOOK = "g_look";
     /** 字体：0 内置 Poppins（单层 a）· 1 内置 Quicksand（单层 a）· 2 系统 */
     public static final String K_FONT = "g_font";
     /** 字号缩放：0 标准 · 1 大屏自适应 · 2 特大 */
@@ -107,19 +109,32 @@ public class Prefs {
     public void ges(int[] map) { set(K_GES, Ges.encode(map)); }
 
     public int night() { return p.getInt(K_NIGHT, 0); }
-    public void setNight(int v) { p.edit().putInt(K_NIGHT, v).apply(); }
+    public void setNight(int v) { lookPut(K_NIGHT, 0, v); }
 
     public int skin() { return p.getInt(K_SKIN, 0); }
 
-    public void setSkin(int v) { p.edit().putInt(K_SKIN, v).apply(); }
+    public void setSkin(int v) { lookPut(K_SKIN, 0, v); }
 
     public int font() { return p.getInt(K_FONT, FONT_POPPINS); }
 
-    public void setFont(int v) { p.edit().putInt(K_FONT, v).apply(); }
+    public void setFont(int v) { lookPut(K_FONT, FONT_POPPINS, v); }
 
     public int scaleMode() { return p.getInt(K_SCALE, SCALE_AUTO); }
 
-    public void setScaleMode(int v) { p.edit().putInt(K_SCALE, v).apply(); }
+    public void setScaleMode(int v) { lookPut(K_SCALE, SCALE_AUTO, v); }
+
+    /** 当前外观代数（每次改外观 +1，页面出生时记下、回来时对账用） */
+    public int lookGen() { return p.getInt(K_LOOK, 0); }
+
+    /**
+     * 外观类设置统一入口：值真变了才写，并把外观代数一并 +1（同一个 editor 一次落，
+     * 拆成两次 apply 会有读-改-写丢更新的窗口）。值没变就不动 —— 重复点同一个 chip
+     * 既不该刷代数（免得别的页面白白重建），也不该让设置页自己闪一下。
+     */
+    private void lookPut(String key, int def, int v) {
+        if (p.getInt(key, def) == v) return;
+        p.edit().putInt(key, v).putInt(K_LOOK, p.getInt(K_LOOK, 0) + 1).apply();
+    }
 
     public static final int DEF_SIZE = Diary.DEF_SIZE, DEF_LAG = Diary.DEF_LAG;
     /** 每日目标默认 50（另一档是 100，见 Diary.DEF_GOAL） */
