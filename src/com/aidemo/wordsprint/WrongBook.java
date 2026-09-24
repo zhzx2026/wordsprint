@@ -105,6 +105,34 @@ public final class WrongBook {
         return false;
     }
 
+    /** 直接写入一条（进度码解码/合并用；left<0 按 0 计） */
+    public void put(int i, int lv) {
+        if (i < 0) return;
+        left.put(i, Math.max(0, lv));
+    }
+
+    /**
+     * 并入另一本错题（进度码导入，v7.1+）：取并集；同一个词留「还差几次」的**较大值**。
+     * 只增不减 —— 对方还没练完的词，合过来继续练，不会因为“我这边已掌握”就把人家的订正进度吞了；
+     * 反过来也一样。返回**新收录**的词数（两边都有的不算）。
+     */
+    public int mergeUnion(WrongBook o) {
+        if (o == null) return 0;
+        int added = 0;
+        for (java.util.Map.Entry<Integer, Integer> e : o.left.entrySet()) {
+            int k = e.getKey();
+            int v = e.getValue() == null ? 0 : Math.max(0, e.getValue());
+            Integer cur = left.get(k);
+            if (cur == null) {
+                left.put(k, v);
+                added++;
+            } else if (v > cur) {
+                left.put(k, v);
+            }
+        }
+        return added;
+    }
+
     // ---------------- 手动清理（用户：「可以手动删」） ----------------
 
     /** 删掉一个词（不管什么档），返回是否真的删到了 */

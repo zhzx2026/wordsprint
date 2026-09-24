@@ -183,8 +183,33 @@ public final class DiaryStore {
         String key = String.format(Locale.US, "%04d-%02d-%02d",
                 yyyymmdd / 10000, yyyymmdd / 100 % 100, yyyymmdd % 100);
         if (key.compareTo(Diary.today()) >= 0) return;
-        Diary.Day d = cache.get(key, Prefs.DEF_GOAL);
+        Diary.Day d = cache.get(key, goalDefault());   // 新天跟档案默认目标（以前写死 50，导过来的天目标会对不上）
         if (d.learned < count) d.learned = count;
         save();
+    }
+
+    /**
+     * 进度码导入的完整日记（v7.1+ 扩展区）：计数只合「今天之前」的天（老规矩，不刷爆今天），
+     * 目标今天也能同步（见 {@link Diary#mergeDay}）。d_ 镜像键一并取大 —— 首页「今日已刷」
+     * 读的还是它，两边对不上会穿帮。脏日期直接丢掉。返回是否有变化。
+     */
+    public static synchronized boolean importFull(Transfer.DiaryRec r) {
+        attachIfNeeded();
+        ensure();
+        if (r == null) return false;
+        String key = String.format(Locale.US, "%04d-%02d-%02d",
+                r.date / 10000, r.date / 100 % 100, r.date % 100);
+        boolean counts = key.compareTo(Diary.today()) < 0;
+        boolean ch = cache.mergeDay(key, r.learned, r.goal, r.rev, r.test, r.sec, r.revSec, r.testSec,
+                (r.flags & 1) != 0, (r.flags & 2) != 0, (r.flags & 4) != 0, counts);
+        if (sp != null && r.learned > 0) {
+            String k = Prefs.ns("d_" + r.date);
+            if (sp.getInt(k, 0) < r.learned) {
+                sp.edit().putInt(k, Math.min(1000000, r.learned)).apply();
+                ch = true;
+            }
+        }
+        if (ch) { save(); fire(); }
+        return ch;
     }
 }

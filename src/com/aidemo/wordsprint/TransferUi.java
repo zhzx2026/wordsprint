@@ -103,7 +103,12 @@ public class TransferUi {
         }
     }
 
-    private static void success(Activity a, int[] res, Transfer.Decoded dec, boolean truncated,
+    /**
+     * 导入成功卡。res={词书本数, 新增掌握词数, 打卡天数, 有错题的书数, 新增错词数}（见 Prefs.importDecoded）。
+     * v7.1 起多三行：来自谁 / 错题本明细 / 对方设置（差异 + “采用”按钮 —— 设置默认不自动应用，
+     * 用户点了才换，免得扫了别人的码把自己的手势/目标悄悄改了）。
+     */
+    private static void success(final Activity a, int[] res, final Transfer.Decoded dec, boolean truncated,
                                  final Done onDone) {
         lastNote = null;
         vibrate(a);
@@ -112,9 +117,18 @@ public class TransferUi {
         TextView big = new TextView(a);
         big.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
         big.setTextColor(Skin.c(a, R.attr.wpText));
-        big.setText(a.getString(R.string.import_ok, res[0], res[1], dec.days.size()));
+        try { big.setText(a.getString(R.string.import_ok, res[0], res[1], res[2])); }
+        catch (Throwable ignored) { big.setText(str(a, R.string.import_ok_title)); }
         col.addView(big, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        if (dec.profileName != null && dec.profileName.length() > 0) {
+            try { col.addView(subLine(a, a.getString(R.string.import_ok_from, dec.profileName))); }
+            catch (Throwable ignored) {}
+        }
+        if (res.length > 4 && (res[3] > 0 || res[4] > 0)) {
+            try { col.addView(subLine(a, a.getString(R.string.import_ok_wrong, res[3], res[4]))); }
+            catch (Throwable ignored) {}
+        }
         if (truncated) {
             TextView warn = new TextView(a);
             warn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
@@ -126,10 +140,53 @@ public class TransferUi {
             lp.topMargin = (int) Ui.dp(a, 8);
             col.addView(warn, lp);
         }
-        Ui.cardDialog(a, str(a, R.string.import_ok_title), Ui.scrollable(col, 240),
+        // 对方设置：有差异才出这一行 + 采用按钮（跟我的完全一样就静默，不打扰）
+        String diff = null;
+        try { diff = Prefs.of(a).describeSettingsDiff(dec.settings); } catch (Throwable ignored) {}
+        if (diff != null) {
+            try { col.addView(subLine(a, a.getString(R.string.import_settings, diff))); }
+            catch (Throwable ignored) {}
+            final TextView adopt = new TextView(a);
+            adopt.setText(str(a, R.string.import_settings_adopt));
+            adopt.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
+            adopt.setGravity(android.view.Gravity.CENTER);
+            adopt.setTextColor(Skin.c(a, R.attr.wpBrand));
+            adopt.setBackgroundResource(R.drawable.bg_card_field);
+            LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, (int) Ui.dp(a, 36));
+            alp.topMargin = (int) Ui.dp(a, 8);
+            col.addView(adopt, alp);
+            adopt.setOnClickListener(new android.view.View.OnClickListener() {
+                @Override public void onClick(android.view.View v) {
+                    try {
+                        Prefs.of(a).applySettings(dec.settings);
+                        adopt.setText(str(a, R.string.import_settings_done));
+                        adopt.setEnabled(false);
+                        adopt.setAlpha(0.6f);
+                    } catch (Throwable t) {
+                        safeToast(a, msgOf(t));
+                    }
+                }
+            });
+        }
+        Ui.cardDialog(a, str(a, R.string.import_ok_title), Ui.scrollable(col, 280),
                 str(a, R.string.import_done), new Runnable() {
                     @Override public void run() { call(onDone, true); }
                 }, null);
+    }
+
+    /** 成功卡里的一行小字（来自谁 / 错题明细 / 对方设置） */
+    private static TextView subLine(Activity a, String s) {
+        TextView tv = new TextView(a);
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
+        tv.setTextColor(Skin.c(a, R.attr.wpText2));
+        tv.setLineSpacing(Ui.dp(a, 2), 1f);
+        tv.setText(s);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = (int) Ui.dp(a, 6);
+        tv.setLayoutParams(lp);
+        return tv;
     }
 
     private static void fail(final Activity a, String err, ProgressCode.Out po,

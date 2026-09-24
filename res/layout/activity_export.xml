@@ -38,106 +38,210 @@
             android:textStyle="bold"/>
     </LinearLayout>
 
-    <LinearLayout
+    <!-- v7.1：内容可选。两行 chips 选数据类型 + 一行选词书；小屏手机放不下就滚（以前是定死的居中列）。 -->
+    <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:orientation="vertical"
-        android:gravity="center"
-        android:padding="20dp">
-
-        <TextView
-            android:id="@+id/exportStat"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textColor="?attr/wpText2"
-            android:textSize="12.5sp"/>
-
-        <FrameLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:background="@drawable/bg_card_28"
-            android:padding="14dp">
-
-            <ImageView
-                android:id="@+id/qrView"
-                android:layout_width="280dp"
-                android:layout_height="280dp"
-                android:contentDescription="@null"
-                android:scaleType="fitCenter"/>
-        </FrameLayout>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:gravity="center"
-            android:text="@string/transfer_desc"
-            android:textColor="?attr/wpText2"
-            android:textSize="11.5sp"/>
-
-        <TextView
-            android:id="@+id/codeText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:maxLines="3"
-            android:ellipsize="middle"
-            android:gravity="center"
-            android:textColor="?attr/wpText2"
-            android:textSize="10sp"
-            android:fontFamily="monospace"
-            android:lineSpacingExtra="2dp"
-            android:paddingStart="6dp"
-            android:paddingEnd="6dp"
-            android:textIsSelectable="true"
-            android:visibility="gone"/>
-
-        <TextView
-            android:id="@+id/btnFullCode"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:padding="6dp"
-            android:text="@string/code_full_btn"
-            android:textColor="?attr/wpBrand"
-            android:textSize="12sp"/>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"/>
+        android:fillViewport="true">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:padding="20dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <TextView
+                    android:id="@+id/chipBooks"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_chip"
+                    android:text="@string/export_inc_books"
+                    android:textColor="@color/chip_text"
+                    android:textSize="12.5sp"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"/>
+
+                <TextView
+                    android:id="@+id/chipWrong"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:background="@drawable/bg_chip"
+                    android:text="@string/export_inc_wrong"
+                    android:textColor="@color/chip_text"
+                    android:textSize="12.5sp"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <TextView
+                    android:id="@+id/chipDays"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_chip"
+                    android:text="@string/export_inc_days"
+                    android:textColor="@color/chip_text"
+                    android:textSize="12.5sp"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"/>
+
+                <TextView
+                    android:id="@+id/chipSet"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:background="@drawable/bg_chip"
+                    android:text="@string/export_inc_set"
+                    android:textColor="@color/chip_text"
+                    android:textSize="12.5sp"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"/>
+            </LinearLayout>
 
             <TextView
-                android:id="@+id/btnCopy"
-                android:layout_width="0dp"
-                android:layout_height="52dp"
-                android:layout_weight="1"
-                android:background="@drawable/bg_btn_outline"
+                android:id="@+id/btnBooks"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_card_field"
                 android:gravity="center"
-                android:text="@string/copy_code"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
                 android:textColor="?attr/wpBrand"
-                android:textSize="15sp"
-                android:textStyle="bold"/>
+                android:textSize="12.5sp"/>
 
             <TextView
-                android:id="@+id/btnShare"
-                android:layout_width="0dp"
-                android:layout_height="52dp"
-                android:layout_weight="1"
-                android:layout_marginStart="12dp"
-                android:background="@drawable/bg_btn_gradient"
+                android:id="@+id/exportStat"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
                 android:gravity="center"
-                android:text="@string/share_code"
-                android:textColor="#FFFFFFFF"
-                android:textSize="15sp"
-                android:textStyle="bold"/>
+                android:textColor="?attr/wpText2"
+                android:textSize="12.5sp"/>
+
+            <FrameLayout
+                android:id="@+id/qrCard"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_card_28"
+                android:padding="14dp">
+
+                <ImageView
+                    android:id="@+id/qrView"
+                    android:layout_width="240dp"
+                    android:layout_height="240dp"
+                    android:contentDescription="@null"
+                    android:scaleType="fitCenter"/>
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/qrHint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_card_field"
+                android:gravity="center"
+                android:lineSpacingExtra="2dp"
+                android:padding="12dp"
+                android:textColor="?attr/wpAmber"
+                android:textSize="12sp"
+                android:visibility="gone"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:gravity="center"
+                android:text="@string/transfer_desc"
+                android:textColor="?attr/wpText2"
+                android:textSize="11.5sp"/>
+
+            <TextView
+                android:id="@+id/codeText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:maxLines="3"
+                android:ellipsize="middle"
+                android:gravity="center"
+                android:textColor="?attr/wpText2"
+                android:textSize="10sp"
+                android:fontFamily="monospace"
+                android:lineSpacingExtra="2dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:textIsSelectable="true"
+                android:visibility="gone"/>
+
+            <TextView
+                android:id="@+id/btnFullCode"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:padding="6dp"
+                android:text="@string/code_full_btn"
+                android:textColor="?attr/wpBrand"
+                android:textSize="12sp"/>
         </LinearLayout>
+    </ScrollView>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="20dp">
+
+        <TextView
+            android:id="@+id/btnCopy"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_btn_outline"
+            android:gravity="center"
+            android:text="@string/copy_code"
+            android:textColor="?attr/wpBrand"
+            android:textSize="15sp"
+            android:textStyle="bold"/>
+
+        <TextView
+            android:id="@+id/btnShare"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
+            android:background="@drawable/bg_btn_gradient"
+            android:gravity="center"
+            android:text="@string/share_code"
+            android:textColor="#FFFFFFFF"
+            android:textSize="15sp"
+            android:textStyle="bold"/>
     </LinearLayout>
 </LinearLayout>

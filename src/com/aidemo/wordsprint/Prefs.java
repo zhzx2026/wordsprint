@@ -8,9 +8,13 @@ import android.util.SparseLongArray;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.TimeZone;
 
 /**
@@ -448,37 +452,199 @@ public class Prefs {
             try { out.add(new Transfer.DayRec(Integer.parseInt(raw.substring(2)), Math.min(65535, cnt))); }
             catch (NumberFormatException ignored) {}
         }
+        // v1 天数只有 u8：超 255 天的老用户只取最近 255 天写 v1 段（以前是 writeByte 静默截断，
+        // 丢的是哪段全凭运气）；完整天数走扩展日记段（u16 计数，不封顶），新旧 App 都不丢。
+        Collections.sort(out, new Comparator<Transfer.DayRec>() {
+            @Override public int compare(Transfer.DayRec a, Transfer.DayRec b) {
+                return b.date - a.date;
+            }
+        });
+        if (out.size() > 255) out = out.subList(0, 255);
         return out;
     }
 
+    /** 错题本导出（v7.1+ 扩展区）：每本有错题的书一条 */
+    public java.util.List<Transfer.WrongRec> exportWrongs() {
+        java.util.List<Transfer.WrongRec> out = new ArrayList<Transfer.WrongRec>();
+        if (!Db.ready()) return out;
+        for (Db.Book b : Db.I.books()) {
+            Transfer.WrongRec r = Transfer.wrongRecOf(b.id, wrongBook(b.id));
+            if (r != null) out.add(r);
+        }
+        return out;
+    }
+
+    /**
+     * 完整日记导出（v7.1+ 扩展区）：新词/目标/温习/用时/完成标记全带（v1 段只有新词数）。
+     *
+     * 体积控制（否则 365 天 × 19B 直接把二维码撑爆）：一天只在“v1 段表达不了它”时才进日记段——
+     *  ① v1 段没覆盖这天（v1 只留最近 255 天；只温习没刷词的天 v1 也没有）→ 必须带，否则丢；
+     *  ② 这天有增量信息（温习过/计过时/改过目标/打过勾/目标不是默认）→ 带；
+     *  ③ 纯刷词 + 默认目标的天 → v1 那 6 个字节就够了，这里跳过。
+     * 导入侧两者叠加即完整（v1 先合新词数，日记段再合细节），见 importDecoded。
+     */
+    public java.util.List<Transfer.DiaryRec> exportDiaryFull() {
+        java.util.List<Transfer.DiaryRec> out = new ArrayList<Transfer.DiaryRec>();
+        Diary dy = DiaryStore.diary();
+        Set<Integer> covered = new HashSet<Integer>();
+        for (Transfer.DayRec y : exportDays()) covered.add(y.date);
+        int defGoal = DiaryStore.goalDefault();
+        for (String k : dy.sortedKeys()) {
+            Diary.Day d = dy.days.get(k);
+            if (d == null) continue;
+            if (d.total() == 0 && !d.custom && !d.revDone && !d.testDone) continue;
+            int ymd;
+            try {
+                ymd = Integer.parseInt(k.substring(0, 4)) * 10000
+                        + Integer.parseInt(k.substring(5, 7)) * 100
+                        + Integer.parseInt(k.substring(8, 10));
+            } catch (Exception e) { continue; }
+            boolean interesting = d.rev > 0 || d.test > 0 || d.sec > 0 || d.revSec > 0
+                    || d.testSec > 0 || d.revDone || d.testDone || d.custom || d.goal != defGoal;
+            if (covered.contains(ymd) && !interesting) continue;   // v1 够了，不凑数
+            int flags = (d.revDone ? 1 : 0) | (d.testDone ? 2 : 0) | (d.custom ? 4 : 0);
+            out.add(new Transfer.DiaryRec(ymd, d.learned, d.goal, d.rev, d.test,
+                    d.sec, d.revSec, d.testSec, flags));
+        }
+        return out;
+    }
+
+    /** 学习设置导出（v7.1+ 扩展区）：手势 + 默认目标/组词数/回炉 + 每本书的分组设置 */
+    public Transfer.Settings exportSettings() {
+        Transfer.Settings s = new Transfer.Settings();
+        int[] g = ges();
+        for (int i = 0; i < Ges.SLOTS && i < g.length; i++) s.ges[i] = g[i];
+        s.goalDef = DiaryStore.goalDefault();
+        s.sizeDef = i(K_SIZE_DEF, DEF_SIZE);
+        s.lag = i(K_LAG_DEF, DEF_LAG);
+        if (Db.ready()) {
+            for (Db.Book b : Db.I.books()) {
+                int gv = p.getInt(ns(bk(b.id, "g")), -1);
+                int ov = p.getInt(ns(bk(b.id, "o")), -1);
+                if (gv > 0 || ov >= 0)          // 存过分组才带，没动过的书不凑数
+                    s.setups.add(new Transfer.BookSetup(b.id, gv > 0 ? gv : DEF_SIZE, Math.max(0, ov)));
+            }
+        }
+        return s;
+    }
+
+    /**
+     * 合并进度码（只增不减）。
+     * @return {词书本数, 新增掌握词数, 打卡天数, 有错题的书数, 新增错词数}
+     * 学习设置**不自动应用**（扫了别人的码不该悄悄改掉我的手势/目标）——
+     * 成功页会出一行“对方设置”+“采用”按钮，用户点了才换（见 TransferUi）。
+     */
     public int[] importDecoded(Transfer.Decoded d) {
-        if (!Db.ready()) return new int[]{0, 0};
-        int books = 0, added = 0;
-        for (Transfer.BookRec r : d.books) {
-            Db.Book b = Db.I.byId(r.bookId);
-            if (b == null) continue;
-            java.util.BitSet cur = mastered(b.id, b.n);
-            int before = cur.cardinality();
-            java.util.BitSet in = java.util.BitSet.valueOf(r.bits);
-            in.clear(b.n, Integer.MAX_VALUE);
-            cur.or(in);
-            int after = cur.cardinality();
-            added += Math.max(0, after - before);
-            int pos = Math.max(p.getInt(ns(bk(b.id, "n")), 0), Math.min(r.pos, b.n));
-            SharedPreferences.Editor e = p.edit();
-            byte[] bytes = cur.toByteArray();
-            e.putString(ns(bk(b.id, "p")), Base64.encodeToString(bytes, Base64.NO_WRAP | Base64.URL_SAFE));
-            e.putInt(ns(bk(b.id, "n")), pos);
-            e.putLong(ns(bk(b.id, "t")), System.currentTimeMillis());
-            e.apply();
-            books++;
+        if (d == null) return new int[5];
+        int books = 0, added = 0, wrongBooks = 0, wrongNew = 0;
+        Set<Integer> daySet = new HashSet<Integer>();
+        if (Db.ready()) {
+            for (Transfer.BookRec r : d.books) {
+                Db.Book b = Db.I.byId(r.bookId);
+                if (b == null) continue;
+                java.util.BitSet cur = mastered(b.id, b.n);
+                int before = cur.cardinality();
+                java.util.BitSet in = java.util.BitSet.valueOf(r.bits);
+                in.clear(b.n, Integer.MAX_VALUE);
+                cur.or(in);
+                int after = cur.cardinality();
+                added += Math.max(0, after - before);
+                int pos = Math.max(p.getInt(ns(bk(b.id, "n")), 0), Math.min(r.pos, b.n));
+                SharedPreferences.Editor e = p.edit();
+                byte[] bytes = cur.toByteArray();
+                e.putString(ns(bk(b.id, "p")), Base64.encodeToString(bytes, Base64.NO_WRAP | Base64.URL_SAFE));
+                e.putInt(ns(bk(b.id, "n")), pos);
+                e.putLong(ns(bk(b.id, "t")), System.currentTimeMillis());
+                e.apply();
+                books++;
+            }
+            for (Transfer.WrongRec w : d.wrongs) {
+                Db.Book b = Db.I.byId(w.bookId);
+                if (b == null || w.idx == null) continue;
+                WrongBook inc = new WrongBook();
+                for (int k = 0; k < w.idx.length; k++) {
+                    int id = w.idx[k];
+                    if (id < 0 || id >= b.n) continue;       // 词书更新后词数变了，越界下标丢掉
+                    int lv = (w.left != null && k < w.left.length) ? w.left[k] : 0;
+                    inc.put(id, lv);
+                }
+                if (inc.isEmpty()) continue;
+                WrongBook cur = wrongBook(b.id);
+                wrongNew += cur.mergeUnion(inc);
+                saveWrongBook(b.id, cur);
+                wrongBooks++;
+            }
         }
         for (Transfer.DayRec y : d.days) {
             String k = ns("d_" + y.date);
             if (p.getInt(k, 0) < y.count) p.edit().putInt(k, y.count).apply();
             DiaryStore.importDay(y.date, y.count);
+            if (y.date > 0) daySet.add(y.date);
         }
-        return new int[]{books, added};
+        if (d.diary != null) {
+            for (Transfer.DiaryRec r : d.diary) {
+                try { DiaryStore.importFull(r); } catch (Throwable ignored) {}
+                if (r != null && r.date > 0) daySet.add(r.date);
+            }
+        }
+        return new int[]{books, added, daySet.size(), wrongBooks, wrongNew};
+    }
+
+    /**
+     * 对方设置跟我的差在哪（一行人话；完全一样返回 null → 成功页就不出“采用”按钮）。
+     * 纯展示，不写任何东西。
+     */
+    public String describeSettingsDiff(Transfer.Settings s) {
+        if (s == null) return null;
+        java.util.List<String> parts = new ArrayList<String>();
+        int[] mine = ges();
+        boolean gesDiff = false;
+        for (int i = 0; i < Ges.SLOTS; i++) {
+            int a = (s.ges != null && i < s.ges.length) ? s.ges[i] : -1;
+            if (a != mine[i]) { gesDiff = true; break; }
+        }
+        if (gesDiff) parts.add("手势");
+        if (s.goalDef > 0 && s.goalDef != DiaryStore.goalDefault()) parts.add("每日目标" + s.goalDef);
+        if (s.sizeDef > 0 && s.sizeDef != i(K_SIZE_DEF, DEF_SIZE)) parts.add("每组" + s.sizeDef + "词");
+        if (s.lag > 0 && s.lag != i(K_LAG_DEF, DEF_LAG)) parts.add("回炉" + s.lag + "张");
+        int sd = 0;
+        if (Db.ready() && s.setups != null) {
+            for (Transfer.BookSetup bs : s.setups) {
+                if (Db.I.byId(bs.bookId) == null) continue;
+                int gv = p.getInt(ns(bk(bs.bookId, "g")), DEF_SIZE);
+                int ov = p.getInt(ns(bk(bs.bookId, "o")), 0);
+                if ((bs.groupSize > 0 && bs.groupSize != gv) || (bs.order >= 0 && bs.order != ov)) sd++;
+            }
+        }
+        if (sd > 0) parts.add(sd + "本分组");
+        if (parts.isEmpty()) return null;
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < parts.size(); i++) {
+            if (i > 0) sb.append(" · ");
+            sb.append(parts.get(i));
+        }
+        return sb.toString();
+    }
+
+    /** 采用对方设置（用户在成功页点了“采用”才调这里；脏值全部钳位，不会把设置写坏） */
+    public void applySettings(Transfer.Settings s) {
+        if (s == null) return;
+        try {
+            if (s.ges != null) ges(s.ges);                            // Ges.encode 会把非法值退回默认
+            if (s.goalDef > 0) DiaryStore.setGoalDefault(Math.min(1000, s.goalDef));
+            if (s.sizeDef > 0) set(K_SIZE_DEF, Math.max(5, Math.min(500, s.sizeDef)));
+            if (s.lag > 0) set(K_LAG_DEF, Math.max(1, Math.min(99, s.lag)));
+            if (Db.ready() && s.setups != null) {
+                for (Transfer.BookSetup bs : s.setups) {
+                    if (Db.I.byId(bs.bookId) == null) continue;
+                    SharedPreferences.Editor e = p.edit();
+                    if (bs.groupSize >= 5 && bs.groupSize <= 500)
+                        e.putInt(ns(bk(bs.bookId, "g")), bs.groupSize);
+                    if (bs.order == 0 || bs.order == 1) e.putInt(ns(bk(bs.bookId, "o")), bs.order);
+                    e.apply();
+                }
+            }
+        } catch (Throwable ignored) {}
     }
 
     public int totalMastered() {

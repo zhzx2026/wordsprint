@@ -402,4 +402,23 @@
     <string name="book_clear_progress">清除进度</string>
     <string name="sheet_stats_group">已学 %1$d · 剩余 %2$d · 错词 %3$d · 下一组第 %4$d 组</string>
     <string name="book_batch">批量改进度</string>
+
+    <!-- ===== v7.1：进度码内容可选 + 错题/日记/设置一起传 ===== -->
+    <string name="export_inc_books">词书进度</string>
+    <string name="export_inc_wrong">错题本</string>
+    <string name="export_inc_days">打卡记录</string>
+    <string name="export_inc_set">学习设置</string>
+    <string name="export_books_pick">词书：已选 %1$d/%2$d 本 ▸</string>
+    <string name="export_books_title">选择要导出的词书</string>
+    <string name="export_sel_all">全选</string>
+    <string name="export_sel_none">清空</string>
+    <string name="export_qr_big">内容太多，二维码装不下（文本码 %1$d 字符）：可少选几本词书分多次传，或直接复制文本码（粘贴导入不限长度）</string>
+    <string name="export_need_one">至少选一项内容再导出</string>
+    <string name="export_generating">正在生成…</string>
+    <string name="export_with_set">含设置</string>
+    <string name="import_ok_wrong">错题本：%1$d 本 · 新增 %2$d 个错词</string>
+    <string name="import_ok_from">来自「%1$s」的进度码</string>
+    <string name="import_settings">对方设置：%1$s</string>
+    <string name="import_settings_adopt">采用对方设置</string>
+    <string name="import_settings_done">已采用对方设置 ✓</string>
 </resources>
