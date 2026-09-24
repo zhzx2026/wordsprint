@@ -70,9 +70,10 @@
 
 - 内置更新源 `github.com/zhzx2026/wordsprint/releases/latest/download/update.json`；
   App 在前台每 60 秒静默查一次、进首页立刻查一次，发现新版首页亮横幅 + 弹窗（同版本只弹一次窗）
-- **通道自动跟包走**：装的是 dev 包（版本号形如 X.Y，Y≥1）就默认盯 `dev` 通道；就算手选了 stable，
-  检查时也会顺带看一眼 dev，dev 更新就用它并写明来源。「已是最新版本」会写清
-  查了哪个通道、服务器什么版本、本机什么版本（判断逻辑是纯 java + `VersTest` 主机测试）
+- **测试包按分支更新**：装的是 dev 包（版本号形如 X.Y，Y≥1）就默认盯本包自己的「分支」坑位；
+  也可在设置里切换正式源 / 其他测试分支。分支列表来自 ci 根 `update.json`，只显示现存且已有
+  完整测试包的分支；删除分支后 CI 会清理它的坑位和列表。「已是最新版本」会写清查了哪个通道、
+  服务器什么版本、本机什么版本（判断逻辑见 `VersTest` / `UpChTest` 主机测试）
 - 下载有进度弹窗（百分比 / 已下 / 总量 / 速度），下完按长度核对 + 用 zip 读一遍（必须有 `AndroidManifest.xml`），
   被截断或拿到错误页一律判失败并**自动重下一次**；装包走 `ApkProvider` + `REQUEST_INSTALL_PACKAGES`
 - **进度条是自己画的**（`UpdateBar`，不用系统 ProgressBar）：用户前后四次反馈「更新没有进度条」，
@@ -97,8 +98,9 @@ bash build.sh                    # ⑤ aapt2 → javac → d8 → zipalign → a
 `ScaleTest`（字号缩放幂等）、`GesTest`（手势映射）、`WrongBookTest`（错题本规则）、
 `ShareGeomTest`（战绩图版面）、`HeatRampTest`（热力图在每套配色下都看得见格子）、
 `BookEditTest`（范围解析 + 批量改掌握）、`VersTest`（版本/更新通道）、`ProfilesTest`（多档案隔离）、
-`DlProgTest`（更新下载进度：百分比不卡 0 + 条子在 10 套配色下都看得见），
-外加 node 跑的 `share_page_test.js`（在线战绩页那个手写 inflate）。**发版前必过**。
+`DlProgTest`（更新下载进度：百分比不卡 0 + 条子在 10 套配色下都看得见）、`UpChTest`（分支清单），
+外加 Python 的 `ci_sync_test.py`（删除分支后资产/索引/清单对账，不误删）和 node 的
+`share_page_test.js`（在线战绩页那个手写 inflate）。**发版前必过**。
 
 产物：minSdk 26 / targetSdk 34，自适应桌面图标（vector），APK 约 0.9MB（v4.0 实测 911,769 字节，含 ZXing 解码库与两套字体）。
 
@@ -106,11 +108,11 @@ bash build.sh                    # ⑤ aapt2 → javac → d8 → zipalign → a
 
 规则见 [VERSIONING.md](VERSIONING.md)：**dev 版 `X.Y`（Y≥1）做迭代，每轮 +0.1；用户确认后转正为 stable `(X+1).0`**。
 版本号**只许 `bash scripts/version.sh` 改**（它同步 `AndroidManifest.xml` / `RELEASE_NOTES.md` / `README.md`，
-`versionCode` 取「本地 / dev 通道 / main」三者最大值 +1，防多分支撞号）。
+`versionCode` 取「本地 / main / 各 arena 远端分支」最大值 +1，防多分支撞号）。
 
 | 目的 | 命令 | 结果 |
 |---|---|---|
-| 出装机测试包 | `bash scripts/staging_build.sh` | CI 用仓库 Secret 里的真钥匙签名 → Actions **Artifacts** + 孤儿分支 `dev`（`wordsprint.apk` + `update.json`）。**不打 tag、不发 Release**，手机不会收到 OTA。撤销：`git push origin --delete dev` |
+| 出装机测试包 | `bash scripts/staging_build.sh` | CI 用仓库 Secret 里的真钥匙签名 → Actions **Artifacts** + 预发布 Release `ci` 的该分支坑位。**不打正式 tag、不发正式 Release**，stable OTA 不受影响；删除工作分支会自动移除坑位/更新 App 清单和聚合版本索引 |
 | 正式发布（转正） | 合 PR 到 `main` | `auto_release.yml` 自动跑测试 → 构建 → 校验签名证书 → 打 tag `vX.0` → 发 Release（`wordsprint.apk` + `update.json`）→ `releases/latest` 指向它 → 手机 OTA |
 | 手动发布 | `git tag -a vX.0 -m … && git push origin vX.0` | 走 `release.yml`，同上 |
 
@@ -129,7 +131,7 @@ bash build.sh                    # ⑤ aapt2 → javac → d8 → zipalign → a
 | 分支 / 资源 | 分工 |
 |---|---|
 | `main` | **正式线**：只有它打 tag、发 [Releases](https://github.com/zhzx2026/wordsprint/releases)，版本永远是 stable `X.0`。App 内置 OTA 源读 `releases/latest/download/update.json` |
-| Release `ci`（预发布，非分支） | **测试包聚合位**：根资产 = 最近一次构建；`update-<分支id>.json` = 各分支自己的坑位（App 更新源「分支」档直连 GitHub 选择）。在线战绩页（GitHub Pages）从 `main` 托管 |
+| Release `ci`（预发布，非分支） | **测试包聚合位**：根资产 = 最近一次构建（仅旧版直链兼容）；`update-<分支id>.json` / `wordsprint-<分支id>.apk` = 每条现存分支的独立坑位。删除分支时自动清理，不再留在 App 清单/Release 版本索引里。在线战绩页（GitHub Pages）从 `main` 托管 |
 | `arena/<id>-wordsprint` | **工作分支**：一条 Arena 会话一条，代码/文档只在这里改；`bash scripts/staging_build.sh` 出测试包，用户确认后转正合进 `main` |
 
 接手仓库先跑 `bash scripts/branch_audit.sh`（只读体检：我在哪条线、该干什么、有没有踩线）。
@@ -151,12 +153,12 @@ src/com/aidemo/wordsprint/  全部 Java 源码（无第三方依赖，libs/ 只�
 res/                        布局 / 配色 / 字符串 / 字体；values-night/ 是深色配对；raw/wdb.dat 是词库
 test/                       主机侧 JVM 测试（CI 跑的那批）；test/scratch/ 是一次性调试脚本
 scripts/                    构建 / 版本 / 发布 / ETL 辅助脚本（清单见 scripts/README.md）
-share/                      在线战绩页（GitHub Pages 现从 dev 分支托管，切到 main 的规则见 BRANCHING.md §4）
+share/                      在线战绩页（GitHub Pages 从 main 托管，见 BRANCHING.md §4）
 data/                       词库源数据（小学 tsv、四六级 tsv.gz）
-.github/workflows/          staging.yml（测试包）· auto_release.yml（合并即发布）· release.yml（打 tag 发布）
+.github/workflows/          staging.yml（测试包）· sync_ci.yml（分支删除后对账）· auto_release.yml（合并转正）· release.yml（打 tag 发布）
 AGENT.md / AGENTS.md        给接手这个仓库的 AI 的交接说明（含踩坑清单）
 VERSIONING.md               版本迭代与转正规则
-BRANCHING.md                分支分工（main / dev / arena）+ Pages 托管 + 多会话并行机制
+BRANCHING.md                分支分工（main / Release ci / arena）+ Pages 托管 + 多会话并行机制
 RELEASE_NOTES.md            当前这一版的发布文案（会进 Release 正文与 update.json）
 CHANGELOG.md                历代发布文案存档（只供查阅）
 ```

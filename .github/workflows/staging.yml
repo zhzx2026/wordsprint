@@ -1,5 +1,5 @@
-# 暂存测试包：只构建 + 上传 artifact。**不打 tag、不发 Release、不动 main** ——
-# 转正之前用户要先装机实测（见 AGENT.md 发版铁律），所以这条流刻意不碰 Releases。
+# 暂存测试包：构建 + artifact + 预发布 Release `ci` 的分支坑位。
+# **不打正式 tag、不发正式 Release、不动 main** —— 转正前先装机实测（AGENT.md 发版铁律）。
 # 版本格式门禁：dev 须 X.Y（Y>=1），stable 须 X.0（见 VERSIONING.md）；旧 1.0.x 三段号直接失败。
 # 用仓库 Secret KEYSTORE_B64（与线上同一个签名证书）→ 这个包可以直接覆盖安装，进度不丢。
 name: staging
@@ -9,9 +9,13 @@ name: staging
 on:
   workflow_dispatch:
     inputs:
-      label: { description: "备注（只写进构建摘要）", required: false, default: "staging" }
+      label: { description: "备注（只写进构建摘要）；ci-sync-only = 只修复聚合、不构建（兼容旧工作流入口）", required: false, default: "staging" }
       side_by_side:
         description: "同机双装包（包名加分支后缀，可与正式包并存；只能手动安装）"
+        required: false
+        default: "false"
+      sync_only:
+        description: "只同步 ci 聚合：移除已删除分支，不构建 APK / 不发布版本"
         required: false
         default: "false"
   push:
@@ -21,7 +25,15 @@ permissions:
   checks: write            # 只用于把失败日志写回 ci-diagnostics 检查（沙箱/无日志权限的一侧靠它自查）
 jobs:
   build:
+    # [ci-sync-only] 用于无法 workflow_dispatch 的集成：仅跑主机测试 + 对账，不出 APK。
+    if: github.event.inputs.sync_only != 'true' && github.event.inputs.label != 'ci-sync-only' && !contains(github.event.head_commit.message, '[ci-sync-only]')
     runs-on: ubuntu-latest
+    outputs:
+      ver: ${{ steps.meta.outputs.ver }}
+      vc: ${{ steps.meta.outputs.vc }}
+      bid: ${{ steps.meta.outputs.bid }}
+      sbs: ${{ steps.meta.outputs.sbs }}
+      apk: ${{ steps.meta.outputs.apk }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -72,6 +84,7 @@ jobs:
         env:
           SDK_ROOT: "${{ runner.temp }}/sdk"
           KS_PASS: "${{ secrets.KS_PASS }}"
+          GIT_BRANCH: "${{ github.ref_name }}"
           SIDE_BY_SIDE: "${{ github.event.inputs.side_by_side == 'true' && '1' || '0' }}"
         run: |
           set +e
@@ -148,26 +161,66 @@ jobs:
           retention-days: 14
           if-no-files-found: error
 
-      # 测试通道：同一份包传到预发布 Release `ci` 的资产（不是分支！2026-09-22 起不再有 dev 聚合分支）。
-      # App「分支」通道直读 api.github.com 的 /branches 选分支，按分支取 update-<id>.json；
-      # 根资产 = 最近一次构建（仅直链兼容，App 已无入口）。双装包不发通道：包名带后缀，应用内更新本来就装不了。
-      - name: Publish ci 通道（预发布 Release 资产 + 版本索引）
-        if: github.event.inputs.side_by_side != 'true'
+  # 只串行化对同一条 ci Release 的写操作，Android 构建本身仍可在多分支并行。
+  # 删除分支事件由 sync_ci.yml 走同一个锁：不会在清理后被尚未结束的旧构建重新写回。
+  publish:
+    needs: build
+    if: github.event.inputs.side_by_side != 'true'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ci-release-aggregation
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: wordsprint-staging-v${{ needs.build.outputs.ver }}-${{ needs.build.outputs.bid }}-r${{ github.run_number }}${{ needs.build.outputs.sbs }}
+          path: .
+      - name: Publish ci 通道（预发布 Release 资产 + 现存分支版本索引）
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GIT_BRANCH: ${{ github.ref_name }}
         run: |
-          bash scripts/publish_ci.sh "CI staging v${{ steps.meta.outputs.ver }}（code ${{ steps.meta.outputs.vc }}）"
+          bash scripts/publish_ci.sh "CI staging v${{ needs.build.outputs.ver }}（code ${{ needs.build.outputs.vc }}）"
           {
             echo
             echo "### 手机装机（App 内更新，不用手填地址）"
             echo
-            echo "设置 → 关于与更新 → 更新源 →「分支」→ 选 \`${{ steps.meta.outputs.bid }}\` → 检查 → 立即更新（同签名，覆盖安装不丢进度）"
+            echo "设置 → 关于与更新 → 更新源 →「分支」→ 选 \`${{ needs.build.outputs.bid }}\` → 检查 → 立即更新（同签名，覆盖安装不丢进度）"
             echo
-            echo "坑位直链：\`https://github.com/${{ github.repository }}/releases/download/ci/update-${{ steps.meta.outputs.bid }}.json\`"
+            echo "坑位直链：\`https://github.com/${{ github.repository }}/releases/download/ci/update-${{ needs.build.outputs.bid }}.json\`"
             echo
-            echo "> 根资产（update.json / wordsprint.apk）= 最近一次构建，会被任何分支刷新；锁定本分支请用 App 的「分支」档。各分支版本索引见 [Release ci](https://github.com/${{ github.repository }}/releases/tag/ci)。"
+            echo "> 根资产（update.json / wordsprint.apk）= 最近一次构建，仅供旧版直链兼容。各分支版本索引见 [Release ci](https://github.com/${{ github.repository }}/releases/tag/ci)。"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # 维护模式先过完整主机测试：只跑轻量测试，不安装 Android SDK、不构建/发布 APK。
+  sync_tests:
+    if: (github.event_name == 'workflow_dispatch' && (github.event.inputs.sync_only == 'true' || github.event.inputs.label == 'ci-sync-only')) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[ci-sync-only]'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: "17" }
+      - name: Host tests
+        run: bash scripts/run_tests.sh
+      - name: 资源引用静态检查
+        run: python3 scripts/refcheck.py
+
+  # 手动修复旧聚合数据；旧 main 工作流尚无 sync_only input 时可传已有的 label=ci-sync-only。
+  # 集成不允许 workflow_dispatch（403）时推一个带 [ci-sync-only] 的维护提交也能触发。
+  sync_only:
+    needs: sync_tests
+    if: (github.event_name == 'workflow_dispatch' && (github.event.inputs.sync_only == 'true' || github.event.inputs.label == 'ci-sync-only')) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[ci-sync-only]'))
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ci-release-aggregation
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: 同步 ci 现存分支（无需构建）
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: python3 scripts/ci_sync.py
 
 # 战绩页（share/index.html）不走 Actions 发布，而是用 Pages 的「Deploy from a branch」：
 # 仓库 Settings → Pages → Source = Deploy from a branch → main → /(root)（2026-09-22 从 dev 切到 main）。
-# 真身永远在源码分支的 share/index.html；页面上「各分支版本」一栏由 JS 直读 GitHub API，永远实时。
+# 真身永远在源码分支的 share/index.html；页面「各分支版本」一栏由 JS 直读 GitHub API。

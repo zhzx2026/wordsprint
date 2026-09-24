@@ -1,0 +1,24 @@
+# 删除工作分支后即刻把预发布 Release ci 的幽灵坑位清掉（不出 APK、不打正式 tag）。
+# schedule 作兜底：GitHub delete 事件偶尔丢失，或在 publish 并发时被取消排队。
+name: sync-ci-branches
+on:
+  delete:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 4 * * *'
+permissions:
+  contents: write
+jobs:
+  sync:
+    if: github.event_name != 'delete' || github.event.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ci-release-aggregation
+      cancel-in-progress: false
+    steps:
+      # delete 事件的 ref 指向默认分支；不用已删除的工作分支做 checkout。
+      - uses: actions/checkout@v4
+        with: { ref: main }
+      - name: 同步 ci 坑位 / App 分支清单 / Release 版本索引
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: python3 scripts/ci_sync.py
