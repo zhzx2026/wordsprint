@@ -312,7 +312,7 @@ gh api "/repos/zhzx2026/wordsprint/git/blobs/$SHA" -H "Accept: application/vnd.g
   /tmp 工具链被清）：`git fetch` + `reset --hard FETCH_HEAD` 恢复；工具链重装（jdk4py 自带 JRE、
   ecj/android.jar 从 GitHub 重拉）；R stub 搓成脚本 **scripts/gen_r_stub.py**（2026-09-23 起
   typecheck 前先跑它，别再手搓；注意资源名允许驼峰，上一版正则把 wpBg/btnBack 全滤没了）。
-- 🆕 **v7.1 / code 56（arena/01a0d3d5，2026-09-24）意外退出续存**：刷词页每张卡落盘现场（坑 18），
+- 🆕 **v8.1 / code 58（arena/01a0d3d5，2026-09-24）意外退出续存**：刷词页每张卡落盘现场（坑 18），
   重开接着那张继续；EngineTest 7→14 组；全量 src typecheck（ecj -1.8 -bootclasspath android-34.jar，
   注意 -17 模式下 android.jar 的 java.* 会和 JRE 模块撞 split package，必须走 -1.8 + bootclasspath）。
 - 🆕 **v7.0 转正 PR（2026-09-23）**：用户「Please open a pull request for the changes on this branch」

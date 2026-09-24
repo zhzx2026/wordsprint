@@ -18,4 +18,4 @@ docs/logs/arena<id>.md     ← 如 arena01a0b2c2.md
 | arena01a0b2c2 | 已合并（PR #10） | 多分支并行防撞号 + 测试便利机制（本仓库引入 §8 的这次） |
 | arena01a0c46d | 进行中 | dev / main 分工澄清：新增 `BRANCHING.md`（含 Pages 托管分工）+ `publish_dev.sh` 产物白名单门禁 + `scripts/branch_audit.sh` 体检 |
 | arena01a0cec1 | 进行中 | 外观切换及时生效：外观代数对账（`Look.java`），改配色/深浅/字体/字号后返回其他页面自动重建（v6.1） |
-| arena01a0d3d5 | 进行中 | 刷词意外退出续存：每张卡落盘现场，重开接着那张（v7.1 / code 56） |
+| arena01a0d3d5 | 进行中 | 刷词意外退出续存：每张卡落盘现场，重开接着那张（v8.1 / code 58） |

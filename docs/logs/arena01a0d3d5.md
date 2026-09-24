@@ -1,4 +1,4 @@
-# arena01a0d3d5 — 刷词意外退出会重头开始（v7.1 / code 56）
+# arena01a0d3d5 — 刷词意外退出会重头开始（v8.1 / code 58）
 
 - 日期：2026-09-24 · 基点：main @ d8832bb（stable v7.0 / code 54）
 - 用户原话：「刷词意外退出会重头开始」
@@ -20,7 +20,7 @@
    `restoreScene()` 成功则 `startTs` 回拨、toast `resume_tip`。`BookPreviewActivity.applyBatch` 删现场。
 4. 测试：`EngineTest` 新增 8~14 组（恢复精确到张 + 回炉调度不变 + 幂等 + 剔除已掌握 + 指针挪走拒收 +
    9 种脏快照 + 答完未出下一张 + 订正不产/不吃现场 + 空组无现场）。15 个主机测试全绿。
-5. 版本：`version.sh bump-dev` → v7.1 / code 56（远端已有 55）。v7.0 文案归档 CHANGELOG。
+5. 版本：`version.sh bump-dev` → v8.1 / code 58（远端已有 55）。v7.0 文案归档 CHANGELOG。
 
 ## 沙箱工具链（本次）
 - JRE：`pip install --break-system-packages jdk4py`；ecj 3.44：mesteryui/Dotfiles sparse clone
