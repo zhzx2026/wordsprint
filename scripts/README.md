@@ -13,7 +13,7 @@
 | `version.sh promote` | 转正：dev `X.Y` → stable `(X+1).0`（只改文件，不打 tag 不 push） | 用户明确说「可以转正」之后 |
 | `version.sh set X.Y [code]` | 手工指定版本号（用户要求改编号时用，如 2026-09-17 的 2.x→3.x、2026-09-17 的 4.0→5.0）；code 省略则同样取三方最大 +1 | 用户点名要某个号 |
 | `version.sh sync` / `check` | 幂等地把 manifest 版本重写到各标识 / 校验格式（CI 门禁同款，legacy 三段号直接红） | 标识不同步时；`check` 由 `staging.yml` 调 |
-| `run_tests.sh` | 主机侧测试统一入口：**直接编译发版用的那一份 `src/`**，跑 14 个 JVM 测试 + node 的 `share_page_test.js` | 每次改动之后、发版之前（本地与 CI 同一条命令） |
+| `run_tests.sh` | 主机侧测试统一入口：ci 聚合同步 Python 回归测试 + **直接编译发版用的那一份 `src/`**，跑 JVM 测试及 node 的 `share_page_test.js` | 每次改动之后、发版之前（本地与 CI 同一条命令） |
 | `staging_build.sh [分支]` | 推分支 + 触发 `staging.yml` → CI 用 Secret 里的真钥匙签名，产出 Actions **Artifacts** + 预发布 Release `ci` 资产（App 内更新用）。**不打正式 tag、不发正式 Release** | 要给用户一个能覆盖安装的装机测试包 |
 | `promote.sh [分支]` | 转正一条龙：`version.sh promote` → commit → 推分支 → **轮询等 staging 变绿**（不绿就中止，main/tag 不动）→ 打附注 tag → `git push HEAD:refs/heads/main` + tag | 用户确认转正、且要走「手动打 tag」这条路时（合 PR 走 `auto_release.yml` 是另一条路，二选一） |
 | `push_release.sh ["说明"]` | dev 迭代一条龙：`bump-dev` → 本地 `build.sh` → 拷一份 `../刷单词-vX.Y.apk` → commit（**不 tag、不 push**）；带 >2MB 误提交拦截 | 本机有工具链 + keystore 时 |
@@ -22,7 +22,8 @@
 
 | 脚本 | 谁调 | 干什么 |
 |---|---|---|
-| `publish_ci.sh ["说明"]` | `staging.yml` | 把刚构建的 apk + `update.json` 传到**预发布 Release `ci`** 的资产（不是分支 —— 2026-09-22 起 dev 聚合分支已删）：根资产 = 最近一次构建，`update-<分支id>.json` / `wordsprint-<分支id>.apk` = 各分支坑位；并自动重写 Release 正文为「分支 × 版本」索引。**notes 必须写清内容**：取 `RELEASE_NOTES.md` 正文，<40 字直接失败（用户 2026-09-22 要求）。撤坑位 `gh release delete-asset ci update-<id>.json -y`；整条撤 `gh release delete ci -y` |
+| `publish_ci.sh ["说明"]` | `staging.yml` 的 publish job | 把测试包传到**预发布 Release `ci`** 的本分支坑位；调用 `ci_sync.py` 按远端现存分支清理旧坑位并重写 App 分支清单 / 版本索引、上传聚合根资产。**notes 必须写清内容**：取 `RELEASE_NOTES.md` 正文，<40 字直接失败（用户 2026-09-22 要求）。分支已删或 GitHub API 故障时不冒险发布 |
+| `ci_sync.py` | `publish_ci.sh` / `sync_ci.yml` / `staging.yml` 的 `sync_only` | 以 GitHub **远端分支**为准，对账 ci 资产：删已删分支的 manifest + APK、根 `update.json` 的 `channels` 只含现存且有完整包的分支、重写 Release 正文。删除分支事件立即执行 + 每日兜底；API 失败先停、绝不误删。维护动作只在 CI 中运行，无须新 APK/版本号 |
 | `make_release_manifest.sh` | `release.yml` / `auto_release.yml` | 组装 `dist/wordsprint.apk` + `dist/update.json`。**文案优先级：`RELEASE_NOTES` 环境变量 > 仓库根 `RELEASE_NOTES.md` > 最后一条提交标题**，所以 `RELEASE_NOTES.md` 必须只写当前这一版（它会整份变成 Release 正文与手机弹窗里那段字；历史文案存档在 `CHANGELOG.md`） |
 | `setup_tools.sh` | 维护机 / `AGENT.md` | 把 JDK17（temurin）+ Android SDK build-tools 34 + platform 34 下到 `./tools`（已 gitignore）。⚠️ Arena 沙箱出网是白名单制，`api.adoptium.net` / `dl.google.com` 都不通，**沙箱里跑不出来** |
 

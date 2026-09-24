@@ -44,7 +44,7 @@ dev 1.1 ── +0.1 ──▶ dev 1.2 ── +0.1 ──▶ dev 1.3 ── 用�
 ## 5. versionCode（内部序号，与显示名解耦）
 
 - OTA 只认 `versionCode`（严格大于才提示更新），**显示名回退（如 1.3→1.0）不影响升级判断**。
-- 每次 bump-dev / promote，code 都取 `max(本地, main) + 1`（防多分支撞号，见 AGENT.md 坑 11；dev 聚合分支 2026-09-22 起退役，无通道号可扫）。
+- 每次 bump-dev / promote，code 都取 `max(本地, main, 各 arena 远端分支) + 1`（防多分支撞号，见 AGENT.md 坑 11；已删分支不占用）。
 - 永远只增不减、不复用。
 
 ## 6. 版本标识同步清单（`version.sh` 自动做）
@@ -127,7 +127,8 @@ bash scripts/staging_build.sh      # 出测试包（不变）
    （`v5.1 · arena01a0b2c2·10c270e`），装错包一眼可见。
 5. **测试通道分坑位（2026-09-22 起挂预发布 Release `ci`，dev 聚合分支已删）**：`publish_ci.sh` 把每条分支的包传成
    `update-<分支id>.json` / `wordsprint-<分支id>.json` 资产，互不覆盖；根资产 =「最近一次构建」；
-   Release 正文 = 脚本自动维护的「分支 × 版本」索引表。App「分支」档直连 GitHub `/branches` 选分支、锁坑位。
+   Release 正文 = 脚本自动维护的「现存分支 × 版本」索引表；`ci_sync.py` 在构建和删除分支后对账，
+   清理失效坑位并把现存且有完整测试包的分支写入根 `update.json` 的 `channels`，供 App 选择、锁坑位。
 6. **同机双装**：`SBS=1 bash scripts/staging_build.sh`（或手动触发 staging 勾 side_by_side）→
    包名 `com.aidemo.wordsprint.sbs.<分支id>`、provider authorities 同步改写（build.sh 自检 badging）、
    数据隔离、可与正式包并存；**应用内更新对双装包禁用**（`Update.checkRes` 早退提示，装正式包名必失败）。

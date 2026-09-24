@@ -75,9 +75,15 @@ public class UpChTest {
         check(UpCh.parseChannels(tricky).size() == 1 && UpCh.parseChannels(tricky).get(0).equals("a"),
                 "notes 里的方括号/引号不干扰解析");
 
-        // 7) 名单语义：可空、可遍历（界面直接拿去渲染 chips）
+        // 7) 名单语义：有效的 [] 表示所有分支都没了；只有请求失败(null)才保留旧 chips
         check(new ArrayList<String>(UpCh.parseChannels("{\"channels\":[\"a\",\"a\"]}")).size() == 2,
-                "重复 id 原样保留（后端去重是 publish_ci.sh 的事）");
+                "重复 id 原样保留（后端去重是 ci_sync.py 的事）");
+        List<String> previous = UpCh.parseChannels("{\"channels\":[\"deleted\"]}");
+        check(UpCh.fetchedOrCached(UpCh.parseChannels("{\"channels\":[]}"), previous).isEmpty(),
+                "服务器明确返回空名单 → 必须清空本机旧名单（不能继续显示已删分支）");
+        check(UpCh.fetchedOrCached(null, previous).equals(previous),
+                "网络失败 → 沿用上次成功拿到的名单");
+        check(UpCh.fetchedOrCached(null, null).isEmpty(), "首轮网络失败 → 空名单");
 
         System.out.println("ALL UPCH TESTS PASS (" + checks + " checks)");
     }

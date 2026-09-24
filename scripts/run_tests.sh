@@ -5,6 +5,8 @@
 set -e
 cd "$(dirname "$0")/.."
 export LANG=C.UTF-8 LC_ALL=C.UTF-8
+echo "== ci_sync_test（删除分支 → 清资产 / 清 App 名单 / 清 Release 索引，GitHub API 故障不能误删）"
+python3 -m unittest discover -s test -p ci_sync_test.py -v
 for cand in "$PWD/tools/jdk17/bin" /var/tmp/jdk17/bin "$JAVA_HOME/bin"; do
   if [ -n "$cand" ] && [ -x "$cand/javac" ]; then export PATH="$cand:$PATH"; break; fi
 done

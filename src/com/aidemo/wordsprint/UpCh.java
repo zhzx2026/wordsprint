@@ -82,8 +82,8 @@ public final class UpCh {
     }
 
     /**
-     * 从 update.json 文本里抠出 {@code "channels":["a","b"]} —— publish_ci.sh 每次构建都会把
-     * ci 上现存的全部分支坑位 id 写进 ci 根 update.json。手抠而不是 org.json：
+     * 从 update.json 文本里抠出 {@code "channels":["a","b"]} —— CI 在构建及删除分支时
+     * 只把远端仍存在、且 manifest / APK 齐全的坑位写进根 update.json。手抠而不是 org.json：
      * 主机 JVM 没有 android 的 org.json，这条逻辑要能在主机测试里跑。
      * 只认双引号字符串；key 不存在 / 数组为空 / 截断都返回已抠到的部分（空 list 合法）。
      */
@@ -105,6 +105,12 @@ public final class UpCh {
             else if (ch == ']') break;
         }
         return out;
+    }
+
+    /** 有效的空名单表示分支都删了；只有网络请求失败（null）才沿用上次的结果。 */
+    public static List<String> fetchedOrCached(List<String> fetched, List<String> cached) {
+        if (fetched != null) return fetched;
+        return cached == null ? new ArrayList<String>() : cached;
     }
 
 }

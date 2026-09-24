@@ -36,7 +36,7 @@
 | 分支 | 是什么 | 谁写 | 允许出现什么 | 版本号 | tag / Release | 生命周期 |
 |---|---|---|---|---|---|---|
 | **`main`** | 正式线，仓库的门面；线上 App 的源码就是它 | 只有「**转正 PR 的合并**」这一个入口 | 全部源码 / 文档 / 测试 / 词库 | **永远 stable `X.0`** | 只有它会打 tag、建 Release | 永久 |
-| **Release `ci`（prerelease）** | **测试包聚合位**：不是分支、不出现在分支列表里；`--prerelease` 保证 `releases/latest`（stable OTA）永远跳过它 | 只有 CI 里的 `scripts/publish_ci.sh`（`gh release upload --clobber` + 每次重写正文索引） | 资产白名单 4 类：`wordsprint.apk`、`update.json`（根 = 最近一次构建）、`wordsprint-<分支id>.apk`、`update-<分支id>.json`（各分支坑位） | 无「当前版本」概念：同时躺着各分支的号 | 只有这一个预发布，tag `ci` 只当资产锚点 | 资产每次构建被覆盖；撤某坑位 `gh release delete-asset ci update-<id>.json -y`；整条撤 `gh release delete ci -y` |
+| **Release `ci`（prerelease）** | **测试包聚合位**：不是分支、不出现在分支列表里；`--prerelease` 保证 `releases/latest`（stable OTA）永远跳过它 | CI 的 `publish_ci.sh` + `ci_sync.py`（构建后、删除分支时、定时对账） | 资产白名单 4 类：`wordsprint.apk`、`update.json`（根 = 最近一次构建）、`wordsprint-<分支id>.apk`、`update-<分支id>.json`（各分支坑位） | 无「当前版本」概念：只列现存分支有完整测试包的号 | 只有这一个预发布，tag `ci` 只当资产锚点 | 构建时覆盖对应坑位；删除分支后自动清理对应 manifest + APK、重写清单/索引；根资产保留旧版直链兼容 |
 | **`arena/<id>-wordsprint`** | **工作分支**：一条 Arena 会话一条，名字里的短 id 是它的身份证 | 只有该会话自己 | 全仓库（在这改代码、文档、测试） | 开发期**晚绑定**：保持从 main 带下来的号；只在「发包实测前」「转正前」两个时刻 rebase 后 `bump-dev` / `promote` | **永远没有** | 合并进 main 后删除 |
 | `staging/**`、`dev-build` | `staging.yml` 的 push 触发白名单里的**应急分支名** | 手动 | 同工作分支 | 同工作分支 | 没有 | 用完即删 |
 | ~~`dev`~~ | **2026-09-22 已删，不许再建**（用户定的：聚合不放分支上） | — | — | — | — |
@@ -76,10 +76,12 @@
 > ci 的**根资产**（`update.json` / `wordsprint.apk` = 最近一次构建）还在服务器上，但只作直链兼容
 > （旧手机升级过渡用一次），App 不再有它的入口 —— 聚合不出现在任何「最外面」。
 
-- **分支清单 = ci 根 update.json 的 `channels` 数组**（`publish_ci.sh` 每次构建用 ci 上现存的全部
-  `update-<id>.json` 资产重写；App `Update.fetchBranchesAsync` 读它渲染选择行，github.com 与下载同域）。
-  ⚠️ 不要改成 `api.github.com`（用户 2026-09-22「分支都没用，没反应」：手机网络下它经常不通/匿名限流
-  403，清单永远拉不到）。代价是名单晚构建一步：新分支第一次构建后才出现 —— 没包的分支本来也没得选。
+- **分支清单 = ci 根 update.json 的 `channels` 数组**：`ci_sync.py` 只把「远端分支仍存在」且
+  `update-<id>.json` / `wordsprint-<id>.apk` 成对的坑位写进去，并同步 Release 正文索引；
+  `publish_ci.sh` 构建后对账，`sync_ci.yml` 在**删除分支时立即对账**（每天定时兜底）。已删分支的
+  manifest / APK 一起清理，App 刷新后不再显示；没有任何现存分支时写 `channels: []`（不回退缓存）。
+  App `Update.fetchBranchesAsync` 仍读 github.com 的根资产，不直读 `api.github.com`（手机网络下经常
+  不通/匿名限流 403）。新分支第一次构建后才出现 —— 没包的分支本来也没得选。
 - **默认认领自己的分支**：构建标识 `BuildInfo.STAMP` 第一段 = 分支 id（build.sh 编译期生成），
   没显式选过分支时 App 自动认它（`Prefs.ownBranchId`）—— 装哪条分支的包就默认盯哪条。
 - **为什么包挂在预发布 Release 上而不是分支里**：Release 资产走 github.com 直链（免登录、
@@ -228,8 +230,11 @@ gh api "/repos/$REPO/check-runs/$ID" --jq .output.summary
   所以同一轮里反复构建不会重复弹窗，换了新号才会。
 - **锁定分支**：根资产是「最近一次构建」、**任何分支都会刷新它** → 多会话并行时，更新源务必在
   「分支」档锁本分支（App 直连 GitHub 选，见 §3），否则「装 A 分支的包、拿到 B 分支的包」。
-- 撤某分支坑位：`gh release delete-asset ci update-<id>.json -y`（apk 资产同理）；
-  整条撤：`gh release delete ci -y && git push origin --delete ci`（下次构建自动重建）。
+- 分支删除后由 `sync_ci.yml` 自动撤该分支的 **manifest + APK**，并更新 App 清单与 Release 正文；
+  不用再手删单个资产（只删 manifest 不会刷新 `channels`）。漏触发时在 Actions 手动运行
+  `sync-ci-branches`，或执行 `gh workflow run sync_ci.yml`；构建前要临时修复可在 staging 手动勾
+  `sync_only`（修复尚未合入 main 时用现有的 `label=ci-sync-only` 输入），不构建、不碰正式版。
+  整条撤：`gh release delete ci -y`（须用户确认）。
 
 ### 8.3 测完怎么回退 / 怎么反馈
 

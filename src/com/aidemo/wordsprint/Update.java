@@ -196,8 +196,8 @@ public class Update {
     public static java.util.List<String> lastBranches() { return lastBranches; }
 
     /**
-     * 拉分支清单：读 ci 根 update.json 的 `channels` 数组（publish_ci.sh 每次构建都会用 ci 上
-     * 现存的全部 update-&lt;id&gt;.json 资产重写它）。域名与下载同（github.com），能下包就一定能拉清单
+     * 拉分支清单：读 ci 根 update.json 的 `channels` 数组（CI 在构建及删除分支时同步，
+     * 仅含远端存在且测试包齐全的坑位）。域名与下载同（github.com），能下包就一定能拉清单
      * —— 用户 2026-09-22「分支都没用，没反应」的教训：api.github.com 在手机网络下经常不通/匿名
      * 限流 403，清单永远拉不到。失败时回落上次结果，err 照实回调给界面，不静默。
      * 名单只含「出过测试包」的分支：新分支第一次构建后才进名单（没包的分支本来就没得选）。
@@ -215,9 +215,8 @@ public class Update {
                 } catch (Throwable t) {
                     err = t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage();
                 }
-                if (ids != null && !ids.isEmpty()) lastBranches = ids;
-                else if (lastBranches != null) ids = lastBranches;   // 这回没拉到：亮上次的，别清空
-                final java.util.List<String> ok = ids == null ? new java.util.ArrayList<String>() : ids;
+                if (ids != null) lastBranches = ids;                // 成功读到 [] = 分支全删，不能回退到幽灵名单
+                final java.util.List<String> ok = UpCh.fetchedOrCached(ids, lastBranches); // 只有网络失败才用上次的
                 final String e = err;
                 a.runOnUiThread(new Runnable() {
                     @Override public void run() { cb.onRes(ok, e); }
