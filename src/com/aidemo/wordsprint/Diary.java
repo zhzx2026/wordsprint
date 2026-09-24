@@ -164,6 +164,56 @@ public class Diary {
         return out;
     }
 
+    /**
+     * 进度码合入一天（v7.1+，只增不减）：各项计数取两边最大值，revDone/testDone/custom 取或，
+     * 目标取最大值（对方目标更高就跟高的 —— 跨设备同步时“目标”是意图，不是计数，取大不取小）。
+     *
+     * @param counts 是否合入计数（新词/温习/用时/完成标记）。今天和未来的天传 false：
+     *               沿用 {@code DiaryStore.importDay} 的老规矩，不把“今天”刷爆；
+     *               目标不受此限制（目标是配置，今天也能同步）。
+     * @return 是否有变化（调用方据此决定落不落盘、计不计数）
+     */
+    public boolean mergeDay(String key, int learned, int goal, int rev, int test,
+                            int sec, int revSec, int testSec,
+                            boolean revDone, boolean testDone, boolean custom, boolean counts) {
+        if (!isDate(key) || !validDate(key)) return false;
+        if (learned <= 0 && rev <= 0 && test <= 0 && sec <= 0 && revSec <= 0 && testSec <= 0
+                && goal <= 0 && !revDone && !testDone && !custom) return false;
+        Day d = days.get(key);
+        if (d == null) {
+            d = new Day();
+            d.d = key;
+            d.goal = DEF_GOAL;
+            days.put(key, d);
+        }
+        boolean ch = false;
+        if (counts) {
+            if (learned > d.learned) { d.learned = learned; ch = true; }
+            if (rev > d.rev) { d.rev = rev; ch = true; }
+            if (test > d.test) { d.test = test; ch = true; }
+            if (sec > d.sec) { d.sec = sec; ch = true; }
+            if (revSec > d.revSec) { d.revSec = revSec; ch = true; }
+            if (testSec > d.testSec) { d.testSec = testSec; ch = true; }
+            if (revDone && !d.revDone) { d.revDone = true; ch = true; }
+            if (testDone && !d.testDone) { d.testDone = true; ch = true; }
+        }
+        // 目标：对方这天真学过（或单独设过目标）才参与取大 —— 纯空行不配抬我的目标
+        if ((custom || learned > 0 || rev > 0 || test > 0) && goal > d.goal) { d.goal = goal; ch = true; }
+        if (custom && !d.custom) { d.custom = true; ch = true; }
+        return ch;
+    }
+
+    /** isDate 只看形状（2026-13-45 也能过），这里再卡一遍月份/天数的范围（进度码里可能是脏数据） */
+    private static boolean validDate(String key) {
+        try {
+            int m = Integer.parseInt(key.substring(5, 7));
+            int day = Integer.parseInt(key.substring(8, 10));
+            return m >= 1 && m <= 12 && day >= 1 && day <= 31;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     // ---------- 序列化（行式，纯文本，好读好修） ----------
     // 每行：date \t learned \t goal \t rev \t test \t sec \t revSec \t testSec \t flags
     // flags: 1=revDone 2=testDone 4=custom

@@ -26,7 +26,7 @@ javac -encoding UTF-8 -nowarn -d test/out -cp libs/zxing-core.jar \
   "$D"/*.java test/T.java test/EngineTest.java test/QRHostTest.java test/CodeHostTest.java test/PackTest.java \
   test/SharePayloadTest.java test/ScaleTest.java test/GesTest.java test/WrongBookTest.java test/ShareGeomTest.java \
   test/HeatRampTest.java test/BookEditTest.java test/VersTest.java test/UpChTest.java test/ProfilesTest.java \
-  test/DlProgTest.java
+  test/DlProgTest.java test/TransferExtTest.java
 
 CP=test/out:libs/zxing-core.jar
 echo "== EngineTest（刷词引擎 + 回炉区间断言）"
@@ -35,6 +35,8 @@ echo "== QRHostTest（渲染→解码→合并全链路）"
 java -cp "$CP" QRHostTest
 echo "== CodeHostTest（进度码复制/粘贴容错）"
 java -cp "$CP" CodeHostTest
+echo "== TransferExtTest（进度码扩展区：错题/日记/设置 + 新老互读）"
+java -cp "$CP" TransferExtTest
 echo "== PackTest（wdb.dat 解析）"
 java -cp "$CP" PackTest
 echo "== SharePayloadTest（战绩分享负载 ↔ 在线页解码 / 二维码可扫）"

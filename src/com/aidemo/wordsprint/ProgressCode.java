@@ -72,20 +72,34 @@ public class ProgressCode {
         int[] starts = candidateStarts(raw);
         o.stage = "找码";
         String lastWhy = "";
+        // 空码（0 本书 0 天 0 扩展，还没被截断）不算成功：先记下来继续找别的起点，
+        // 实在没有有内容的才报“空”（v7.1 之前这里直接按成功返回，CodeHostTest #9 是假阳性过的）。
+        // 注意：被截断的码即使只剩 0 条完整记录也算成功（truncated=true，照收不报错），
+        // 别跟“干净但空”的码混在一起。
+        boolean sawEmpty = false;
+        int emptyChars = 0;
         for (int s : starts) {
             // 紧清洗：遇到"空白后不接 base64"的杂字符就收尾（正文里的中文句号之类不会污染码身）
             String tight = cleanFrom(raw, s, false);
             Try t = attempt(tight, lenient);
-            if (t.d != null) return accept(o, t, "紧清洗", s);
+            if (t.d != null && (!t.d.isEmpty() || t.truncated)) return accept(o, t, "紧清洗", s);
+            if (t.d != null) { sawEmpty = true; emptyChars = t.bodyChars; }
             // 松清洗：整段只留 base64（对付码中间被插入 (1/2)、换行、引号的情况）
             String loose = cleanFrom(raw, s, true);
             if (loose.length() > t.bodyChars) {
                 t = attempt(loose, lenient);
-                if (t.d != null) return accept(o, t, "松清洗", s);
+                if (t.d != null && (!t.d.isEmpty() || t.truncated)) return accept(o, t, "松清洗", s);
+                if (t.d != null) { sawEmpty = true; emptyChars = t.bodyChars; }
             }
             if (t.bodyChars > o.chars) { o.chars = t.bodyChars; lastWhy = t.why; }
         }
         if (o.decoded != null) return o;
+        if (sawEmpty) {
+            o.chars = Math.max(o.chars, emptyChars);
+            o.stage = "空码";
+            o.detail = describe(o, raw);
+            throw new IOException("这个进度码是空的：对方手机上还没学过（0 本词书、0 天记录），先刷几个词再导出。\n· " + describe(o, raw));
+        }
 
         o.stage = lastWhy.length() > 0 ? lastWhy : "没找到可用的码";
         o.detail = describe(o, raw);
@@ -123,9 +137,17 @@ public class ProgressCode {
         StringBuilder sb = new StringBuilder();
         sb.append("原文 ").append(o.totalChars).append(" 字符 · 有效 ").append(o.chars).append(" 字符");
         sb.append(" · ").append(o.stage);
-        if (o.decoded != null)
+        if (o.decoded != null) {
             sb.append(" · 词书 ").append(o.decoded.books.size()).append(" 本 · 打卡 ")
               .append(o.decoded.days.size()).append(" 天").append(o.truncated ? "（末尾被截，已尽力恢复）" : "");
+            if (!o.decoded.wrongs.isEmpty())
+                sb.append(" · 错题 ").append(o.decoded.wrongEntries()).append(" 个");
+            if (!o.decoded.diary.isEmpty())
+                sb.append(" · 日记 ").append(o.decoded.diary.size()).append(" 天");
+            if (o.decoded.settings != null) sb.append(" · 含设置");
+            if (o.decoded.profileName != null && o.decoded.profileName.length() > 0)
+                sb.append(" · 来自「").append(o.decoded.profileName).append("」");
+        }
         if (raw != null) {
             sb.append("\n开头：").append(tail(raw, 0, 28));
             sb.append("\n结尾：").append(tail(raw, Math.max(0, raw.length() - 14), raw.length()));
@@ -380,6 +402,8 @@ public class ProgressCode {
             int nd = in.readUnsignedByte();
             if (nd > 30000) throw new IOException("进度码结构不对（打卡天数 " + nd + " 不合理）");
             for (int i = 0; i < nd; i++) d.days.add(new Transfer.DayRec(in.readInt(), in.readUnsignedShort()));
+            // v7.1+ 扩展区（错题本/完整日记/设置/档案名）：读一半断了，已读完的段照收 + 标截断
+            if (Transfer.readExt(in, d, lenient)) o.truncated = true;
         } catch (EOFException e) {
             if (!lenient) throw new IOException("进度码不完整");
             o.truncated = true;
