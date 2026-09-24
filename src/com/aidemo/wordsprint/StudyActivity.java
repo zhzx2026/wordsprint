@@ -37,6 +37,9 @@ public class StudyActivity extends Activity {
     private java.util.BitSet wrongs;                 // 在册错词（从 WrongBook 派生，给计数/队列用）
     private WrongBook wb;                            // 错题本本体（订正次数在这里）
     private boolean finishedAll;
+    private boolean resumed;                    // 本次进来是「接着上次那张卡」（组内现场恢复成功）
+    private boolean loading;                    // 正在装现场：这一小段里 onShow 不回写快照
+    private String pendingResume;               // 待恢复的本组现场（只在第一次开组时用一次）
     private long startTs;
     private long lastTick;
 
@@ -67,7 +70,7 @@ public class StudyActivity extends Activity {
         if (book == null) { finish(); return; }
         mode = getIntent().getIntExtra("mode", getIntent().getBooleanExtra("review", false) ? MODE_WRONG : MODE_WORD);
         reviewMode = mode == MODE_WRONG;
-        final boolean redo = getIntent().getBooleanExtra("redo", false);
+        final boolean redo = getIntent().getBooleanExtra("redo", false);   // 「重刷整本」：不看旧现场，从组头重切
         wb = prefs.wrongBook(book.id);
         wrongs = wb.dueIds();
 
@@ -155,19 +158,31 @@ public class StudyActivity extends Activity {
                 reviewMode ? 0 : prefs.next(book.id),
                 prefs.groupSize(book.id), prefs.lag(book.id), redo,
                 new Engine.Listener() {
-                    @Override public void onShow(int wordIdx) { fill(wordIdx); }
+                    @Override public void onShow(int wordIdx) {
+                        fill(wordIdx);
+                        persistScene();             // 每张卡都落盘：闪退/杀后台之后重开还是这一张（修「意外退出重头开始」）
+                    }
                     @Override public void onGroupEnd(int newPos, boolean masteredAll) {
-                        if (mode == MODE_WORD) prefs.setNext(book.id, newPos);
+                        if (mode == MODE_WORD) {
+                            prefs.setNext(book.id, newPos);
+                            prefs.saveSession(book.id, null);      // 组打完：现场作废，下次从新指针开组
+                        }
                         prefs.touchBook(book.id);
                         showResult(false, masteredAll);
                     }
-                    @Override public void onBookEmpty() { showResult(true, engine.allMastered()); }
+                    @Override public void onBookEmpty() {
+                        if (mode == MODE_WORD) prefs.saveSession(book.id, null);
+                        showResult(true, engine.allMastered());
+                    }
                     @Override public boolean isMastered(int i) { return mastered.get(i); }
                     @Override public void onMastered(int i) {
                         prefs.saveMastered(book.id, mastered);
                         if (mode == MODE_WORD) prefs.addToday(1);      // 新生词才算「今日已刷」
                     }
                 });
+        // 上次没打完的那一组：闪退 / 强行停止 / 被系统杀后台都会留下这份现场，重开就接回去。
+        // 勾了「重刷整本」(redo) 或走错词订正（reviewMode）时不看它 —— 前者要从组头重来，后者不推进组。
+        pendingResume = (reviewMode || redo) ? null : prefs.session(book.id);
         startGroup();
         lastTick = SystemClock.elapsedRealtime();
         Ui.finishSetup(this);
@@ -202,10 +217,41 @@ public class StudyActivity extends Activity {
                 return;
             }
             engine.startQueue(arr);
-        } else {
-            engine.startGroup();
+        } else if (!restoreScene()) {
+            engine.startGroup();                       // 没有现场（或现场读不上）→ 从组指针正常切一组
         }
+        pendingResume = null;                          // 现场只用于「进来第一次开组」，下一组照常重新切
         updateHud();
+        if (resumed) toast(getString(R.string.resume_tip));
+    }
+
+    /**
+     * 把「上次没打完的本组现场」装回来：摆到当时那张卡，回炉表和各项计数一并接上。
+     * 成功返回 true（卡已由 onShow 填好，调用方不用再切组）；返回 false 时引擎没被动过。
+     */
+    private boolean restoreScene() {
+        resumed = false;
+        if (pendingResume == null || engine == null) return false;
+        loading = true;                    // 恢复途中别回写：这时 startTs 还没接上，写了会把「用时」清成 0
+        try {
+            if (!engine.resume(pendingResume)) return false;
+            startTs = SystemClock.elapsedRealtime() - engine.resumedElapsedMs();     // 结算页那条用时跟着续上
+            resumed = true;
+            return true;
+        } catch (Throwable t) {
+            return false;                  // 现场读歪了绝不拖累刷词：当新组开（startGroup 会把状态整个重置）
+        } finally {
+            loading = false;
+        }
+    }
+
+    /**
+     * 落盘本组现场（每出一张卡一次；组打完 / 空组则由 onGroupEnd、onBookEmpty 删掉）。
+     * 走 apply() 异步写，不占翻卡动画那 130ms；一组的队列最多 150 个数字，几百字节而已。
+     */
+    private void persistScene() {
+        if (mode != MODE_WORD || loading || engine == null || book == null) return;
+        prefs.saveSession(book.id, engine.snapshot(SystemClock.elapsedRealtime() - startTs));
     }
 
     private void updateHud() {
@@ -451,7 +497,10 @@ public class StudyActivity extends Activity {
     private void save() {
         if (book == null || engine == null) return;
         prefs.saveMastered(book.id, engine.masteredBitSet());
-        if (mode == MODE_WORD) prefs.setNext(book.id, engine.pos);
+        if (mode == MODE_WORD) {
+            prefs.setNext(book.id, engine.pos);
+            persistScene();                          // 顺带把「组内刷到第几张 + 用时」补落一次
+        }
         prefs.saveWrongBook(book.id, wb);
         prefs.touchBook(book.id);
         tick();

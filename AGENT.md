@@ -229,6 +229,16 @@ gh api "/repos/zhzx2026/wordsprint/git/blobs/$SHA" -H "Accept: application/vnd.g
     （`git rebase origin/main` / `refs/remotes/origin/main` 这类远端跟踪引用不受影响）。
     要根治只能删掉那个误建的 tag/Release —— **那是用户的东西，要删先问用户**（BRANCHING.md §1 残留台账）。
 
+18. **刷词进度必须「每张卡落盘」，别指望 onPause**（用户 2026-09-24「刷词意外退出会重头开始」）。
+    组指针 `b_<id>_n` 只在整组打完 / onPause 写；闪退、强行停止、OEM ROM 杀后台都走不到 onPause，
+    本组刷过的卡只活在内存 → 重开从组头重来。现在 `Engine.snapshot(elapsed)` / `resume(s)`
+    把「剩余队列 + 回炉表 + 计数 + 用时」压成一行存进 `b_<id>_s`（`Prefs.session/saveSession`），
+    `StudyActivity.onShow` 每张卡写一次、组打完删。**别把组内位置混进组指针 `n`**：进度码导出/合并、
+    批量改「从这里继续刷」都按整组对齐 `n`。resume 自愈规则（EngineTest 8~14 组）：
+    `p != pos` 拒收（指针被挪过）、队列里已掌握的词剔掉、当前卡已掌握则顺延、脏快照整份作废、
+    撤销不跨会话。凡是改掌握位图/组指针的入口（clearBook / resetBookProgress / importDecoded /
+    BookPreview 批量改）都要顺手 `saveSession(bid, null)`。
+
 ## 当前状态（2026-09-22 第十一次更新 · 本线最新）
 - 🆕 **更新源第 3 档「分支」（`arena/01a0c983-wordsprint`，dev v6.1 / code 44）**：用户 2026-09-22
   「更新只有两个选项，其他分支怎么分别测试？」—— stable = Release（只有转正才动）、dev 根 = 最近一次构建
@@ -302,6 +312,9 @@ gh api "/repos/zhzx2026/wordsprint/git/blobs/$SHA" -H "Accept: application/vnd.g
   /tmp 工具链被清）：`git fetch` + `reset --hard FETCH_HEAD` 恢复；工具链重装（jdk4py 自带 JRE、
   ecj/android.jar 从 GitHub 重拉）；R stub 搓成脚本 **scripts/gen_r_stub.py**（2026-09-23 起
   typecheck 前先跑它，别再手搓；注意资源名允许驼峰，上一版正则把 wpBg/btnBack 全滤没了）。
+- 🆕 **v7.1 / code 56（arena/01a0d3d5，2026-09-24）意外退出续存**：刷词页每张卡落盘现场（坑 18），
+  重开接着那张继续；EngineTest 7→14 组；全量 src typecheck（ecj -1.8 -bootclasspath android-34.jar，
+  注意 -17 模式下 android.jar 的 java.* 会和 JRE 模块撞 split package，必须走 -1.8 + bootclasspath）。
 - 🆕 **v7.0 转正 PR（2026-09-23）**：用户「Please open a pull request for the changes on this branch」
   ——即启动转正（此前约定：合 PR 即授权）。走 VERSIONING §4 PR 路径：version.sh promote
   （v6.9/53 → **stable v7.0 / code 54**）→ RELEASE_NOTES 重写为 v7.0 九轮总结（合并后 CI 原样进

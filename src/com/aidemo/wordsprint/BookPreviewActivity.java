@@ -297,6 +297,8 @@ public class BookPreviewActivity extends Activity {
             else toast(getString(R.string.pv_none_move, beforeNext + 1));
             return;
         }
+        // 组内现场作废：掌握位图/组指针都被这批改动挪过了，再按旧现场接着刷会跟新设置打架
+        Prefs.of(this).saveSession(book.id, null);
         save();
         adapter.notifyDataSetChanged();
         updateSummary();

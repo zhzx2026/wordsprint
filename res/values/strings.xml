@@ -48,6 +48,7 @@
     <string name="reset_no">取消</string>
     <string name="quit_title">退出本组</string>
     <string name="quit_msg">本组进度已保存，下次继续。</string>
+    <string name="resume_tip">接着上次那张继续</string>
     <string name="quit_yes">退出</string>
     <string name="quit_no">继续刷</string>
     <string name="mastered_tag">已掌握</string>

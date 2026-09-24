@@ -341,6 +341,21 @@ public class Prefs {
 
     public int next(String bid) { return p.getInt(ns(bk(bid, "n")), 0); }
     public void setNext(String bid, int v) { p.edit().putInt(ns(bk(bid, "n")), v).apply(); }
+
+    /**
+     * 本组「现场」快照（{@link Engine#snapshot()} 的产物）：每出一张卡落一次盘，
+     * 闪退 / 强行停止 / 被系统杀后台之后重开就接着这张卡刷，而不是从本组第一张重来。
+     *
+     * 为什么单独存一份而不改 {@link #setNext}：组指针的语义是「下一组从哪开始」，进度码导出/合并、
+     * 批量改「从这里继续刷」都按整组对齐它；组内第几张属于会话现场，混进去会污染那两条链路。
+     * 传 null / "" 即删除现场（组打完、批量改进度之后都这么收场）。
+     */
+    public String session(String bid) { return p.getString(ns(bk(bid, "s")), null); }
+
+    public void saveSession(String bid, String s) {
+        if (s == null || s.isEmpty()) p.edit().remove(ns(bk(bid, "s"))).apply();
+        else p.edit().putString(ns(bk(bid, "s")), s).apply();
+    }
     public int groupSize(String bid) { return p.getInt(ns(bk(bid, "g")), DEF_SIZE); }
     public int order(String bid) { return p.getInt(ns(bk(bid, "o")), 0); }
     /**
@@ -384,14 +399,14 @@ public class Prefs {
 
     public void clearBook(String bid) {
         SharedPreferences.Editor e = p.edit();
-        for (String k : new String[]{"p", "n", "g", "o", "l", "t", "w", "wc"}) e.remove(ns(bk(bid, k)));
+        for (String k : new String[]{"p", "n", "g", "o", "l", "t", "w", "wc", "s"}) e.remove(ns(bk(bid, k)));
         e.apply();
     }
 
-    /** 「重刷整本」：只清掌握位图与组指针，保留分组设置 */
+    /** 「重刷整本」：只清掌握位图与组指针，保留分组设置（组内现场也得跟着丢，否则会从旧现场接着刷） */
     public void resetBookProgress(String bid) {
         SharedPreferences.Editor e = p.edit();
-        e.remove(ns(bk(bid, "p"))).remove(ns(bk(bid, "w"))).remove(ns(bk(bid, "wc")))
+        e.remove(ns(bk(bid, "p"))).remove(ns(bk(bid, "w"))).remove(ns(bk(bid, "wc"))).remove(ns(bk(bid, "s")))
                 .putInt(ns(bk(bid, "n")), 0);
         e.apply();
     }
@@ -555,6 +570,7 @@ public class Prefs {
                 e.putString(ns(bk(b.id, "p")), Base64.encodeToString(bytes, Base64.NO_WRAP | Base64.URL_SAFE));
                 e.putInt(ns(bk(b.id, "n")), pos);
                 e.putLong(ns(bk(b.id, "t")), System.currentTimeMillis());
+                e.remove(ns(bk(b.id, "s")));            // 别机器的「组内现场」不是本机那一半：宁可重切一组
                 e.apply();
                 books++;
             }
