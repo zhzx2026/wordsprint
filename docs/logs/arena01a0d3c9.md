@@ -52,3 +52,18 @@
   checkout 时整个 plugins 目录会被拽下来 ~50MB，能忍）。
 - `android-34/android.jar`：`Sable/android-platforms` 同样 sparse 拿（26MB，一次成）。
 - `/tmp/bin/{javac,java}` 包装脚本 + `PATH=/tmp/bin:$PATH` 跑测试；`refcheck` 不用 Java。
+
+---
+
+# 第二轮（同日）：v8.0 转正 PR
+
+- 用户原话：「Please open a pull request for the changes on this branch」—— 按现行约定
+  （VERSIONING §4：合 PR 到 main 即授权转正），即启动转正。
+- 流程：
+  1. `main` 无新提交（tip 仍是 d8832bb），免 rebase。
+  2. `version.sh promote`：dev v7.1（code 55）→ **stable v8.0（code 57**，
+     取 max+1 时探到其他分支已领到 56）。
+  3. `RELEASE_NOTES.md` 重写为 v8.0 稳定版文案；v7.1 原文归档 `CHANGELOG.md`。
+  4. 提交推分支 → 等 staging CI 绿 → `gh pr create`（base main）。
+  5. 合并后：`auto_release.yml` 校验 stable X.0 → 自动 tag v8.0 → 发正式 Release → 手机 OTA。
+- 合并由用户在浏览器里点（即授权），agent 不代按。
