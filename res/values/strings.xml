@@ -303,6 +303,10 @@
     <string name="wrong_t_near">快掌握</string>
     <string name="wrong_t_ok">已掌握</string>
     <string name="wrong_filter_all">全部</string>
+    <string name="wrong_f_book">词本</string>
+    <string name="wrong_f_star">星级（★ 未掌握 · ★★ 快掌握 · ★★★ 已掌握）</string>
+    <string name="wrong_filter_line">筛选：%1$s · %2$s　共 %3$d · 待订正 %4$d · 已掌握 %5$d</string>
+    <string name="wrong_filter_none">这个筛选下没有词</string>
     <string name="wrong_del">从错题本移除</string>
     <string name="wrong_del_confirm">「%1$s」将从错题本移除。已学进度不受影响，以后再答错还会进来。</string>
     <string name="wrong_del_ok">移除</string>

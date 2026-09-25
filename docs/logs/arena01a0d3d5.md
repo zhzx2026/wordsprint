@@ -27,3 +27,18 @@
   `emacs/.config/emacs/mason/packages/jdtls/plugins`；android-34.jar：Sable/android-platforms sparse `android-34`。
 - **坑**：ecj `-17` + android.jar 在 `-cp` → `java.lang ... conflicts with a package accessible from module <unnamed>`
   （split package）。全量 typecheck 要用 `-1.8 -bootclasspath android-34.jar -cp zxing`。
+
+---
+
+# 第二轮（2026-09-24）：删弹窗 + 错题本筛选（v8.2 / code 59）
+
+用户原话：「删除奇怪的弹窗比如 从上一次开始等 什么还要订正几遍还有错题本第一行用来筛选点开向下展开用户选择词本和⭐个数」
+
+- StudyActivity：删 toast——resume_tip / wrong_still / wrong_cleared / wrong_add_more / wrong_added_book /
+  undo_done / undo_none / quit_msg。只留「错题本是空的 / 没有要订正的」（否则订正页会无声退出）。
+  `toast()` 辅助方法删除。字符串留着不删（无害，改动小）。
+- WrongActivity：顶部「汇总行 + 图例行 + 横滑 chips」→ **一行筛选入口**（bg_card_field，文案 wrong_filter_line，
+  末尾 ▾/▴），点开 `panel`：词本 chips（横滑）+ 星级 chips（全部/★/★★/★★★，TIER_*）。`starFilter` 参与
+  列表过滤与每本计数；清空已掌握按钮只在 tierPass(TIER_MASTERED) 时显示；筛空显示 wrong_filter_none。
+- 沙箱再次重启丢 .git 对象（第三次）：`reset --soft FETCH_HEAD` 对齐后只剩本轮改动；工具链 clone 一度误落
+  仓库根（`cd /tmp` 在子 shell 里没生效），已 `git rm --cached` 并挪走，未入库。

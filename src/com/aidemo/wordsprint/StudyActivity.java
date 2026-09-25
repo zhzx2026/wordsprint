@@ -221,8 +221,7 @@ public class StudyActivity extends Activity {
             engine.startGroup();                       // 没有现场（或现场读不上）→ 从组指针正常切一组
         }
         pendingResume = null;                          // 现场只用于「进来第一次开组」，下一组照常重新切
-        updateHud();
-        if (resumed) toast(getString(R.string.resume_tip));
+        updateHud();                                   // 接上现场时不弹提示（用户 2026-09-24：别弹奇怪的窗）
     }
 
     /**
@@ -355,20 +354,16 @@ public class StudyActivity extends Activity {
         lastWasReview = reviewMode;
         engine.answer(ok);
         if (ok) {
-            boolean inBook = wb.has(w);
-            boolean cleared = wb.correct(w);       // 答对一次就往「已掌握」推一步（要连对 3 次；满了也不出本）
+            wb.correct(w);                         // 答对一次就往「已掌握」推一步（要连对 3 次；满了也不出本）
             prefs.saveWrongBook(book.id, wb);
             wrongs = wb.dueIds();
-            if (inBook && !cleared) toast(getString(R.string.wrong_still, wb.left(w)));
-            else if (cleared) toast(getString(R.string.wrong_cleared));
+            // 「还要订正几次 / 已掌握」这类提示不再弹（用户 2026-09-24）：档位去错题本看 ★ 就行
             if (reviewMode) DiaryStore.reviewed(true);
             sfx.ok();
         } else {
-            boolean was = wb.has(w);
-            int need = wb.miss(w);                 // 错一次就进本；在订正的再错，还差次数 +1
+            wb.miss(w);                            // 错一次就进本；在订正的再错，还差次数 +1
             prefs.saveWrongBook(book.id, wb);
             wrongs = wb.dueIds();
-            toast(was ? getString(R.string.wrong_add_more, need) : getString(R.string.wrong_added_book, need));
             sfx.miss();
         }
         updateHud();
@@ -387,7 +382,7 @@ public class StudyActivity extends Activity {
      */
     private void undoLast() {
         if (engine.busy()) return;                 // 换卡动画还没走完，这一下先忽略
-        if (!engine.canUndo()) { toast(getString(R.string.undo_none)); return; }
+        if (!engine.canUndo()) return;             // 按钮已经变淡了，不必再弹一句
         if (wbSnap != null) {                     // 错题本回到作答前
             wb = wbSnap;
             prefs.saveWrongBook(book.id, wb);
@@ -399,7 +394,6 @@ public class StudyActivity extends Activity {
         engine.undo();                            // 队列/回炉/掌握位/计数全部回退 + 重摆那张卡
         lastTick = SystemClock.elapsedRealtime();
         updateHud();
-        toast(getString(R.string.undo_done));
     }
 
     /** 计时：把「距上次作答」的时间按模式记账（刷词 / 温习） */
@@ -484,10 +478,6 @@ public class StudyActivity extends Activity {
         }
     }
 
-    private void toast(String s) {
-        try { Toast.makeText(this, s, Toast.LENGTH_SHORT).show(); } catch (Throwable ignored) {}
-    }
-
     private void nextGroup() {
         if (reviewMode) { finish(); return; }
         if (finishedAll) { engine.pos = 0; mode = MODE_WORD; }
@@ -510,8 +500,7 @@ public class StudyActivity extends Activity {
     @Override protected void onPause() { super.onPause(); save(); }
     @Override protected void onDestroy() { super.onDestroy(); sfx.shutdown(); }
     @Override public void onBackPressed() {
-        save();
-        if (result.getVisibility() != View.VISIBLE) Toast.makeText(this, R.string.quit_msg, Toast.LENGTH_SHORT).show();
+        save();                                    // 进度每张卡都已落盘，退出不必再提示
         finish();
     }
 }

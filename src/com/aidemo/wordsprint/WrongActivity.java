@@ -32,9 +32,12 @@ public class WrongActivity extends Activity {
     public static final String EXTRA_BOOK = "book";
 
     private LinearLayout box;          // 列表容器
-    private LinearLayout chipRow;      // 筛选 chips（全部 + 有错词的词本）
-    private TextView head;             // 汇总那一行
-    private String filter;             // null = 全部
+    private TextView head;             // 第一行 = 筛选入口（写着当前筛的词本 / 星级 + 计数），点它向下展开面板
+    private LinearLayout panel;        // 展开的筛选面板：两排 chips（词本 / ★ 个数）
+    private LinearLayout bookRow, starRow;
+    private boolean expanded;          // 面板开着没
+    private String filter;             // 词本筛选：null = 全部
+    private int starFilter = -1;       // 星级筛选：-1 全部 · 否则 WrongBook.TIER_*（★=未掌握 ★★=快掌握 ★★★=已掌握）
 
     private int totalIn = 0, totalDue = 0, totalMastered = 0;
 
@@ -67,22 +70,38 @@ public class WrongActivity extends Activity {
         top.setOrientation(LinearLayout.VERTICAL);
         top.setPadding(ph, (int) Ui.dp(this, 12), ph, (int) Ui.dp(this, 4));
 
+        // 第一行：筛选入口（用户 2026-09-24：「错题本第一行用来筛选，点开向下展开，选词本和 ★ 个数」）
         head = new TextView(this);
-        head.setTextSize(12.5f);
-        head.setTextColor(Skin.c(this, R.attr.wpText2));
-        head.setLineSpacing(Ui.dp(this, 3), 1f);
+        head.setTextSize(13f);
+        head.setTextColor(Skin.c(this, R.attr.wpText));
+        head.setBackgroundResource(R.drawable.bg_card_field);
+        int hp = (int) Ui.dp(this, 12);
+        head.setPadding(hp, hp, hp, hp);
+        head.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                expanded = !expanded;
+                panel.setVisibility(expanded ? View.VISIBLE : View.GONE);
+                renderHead();
+            }
+        });
         top.addView(head);
 
-        top.addView(legend(), lm(8, 0));       // ★ 未掌握 · ★★ 快掌握 · ★★★ 已掌握
-
-        chipRow = new LinearLayout(this);
-        chipRow.setOrientation(LinearLayout.HORIZONTAL);
+        panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setVisibility(View.GONE);
+        panel.addView(panelLabel(R.string.wrong_f_book), lm(10, 4));
+        bookRow = new LinearLayout(this);
+        bookRow.setOrientation(LinearLayout.HORIZONTAL);
         HorizontalScrollView hs = new HorizontalScrollView(this);
         hs.setHorizontalScrollBarEnabled(false);
-        hs.setClipToPadding(false);
-        hs.addView(chipRow, new HorizontalScrollView.LayoutParams(
+        hs.addView(bookRow, new HorizontalScrollView.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-        top.addView(hs, lm(10, 0));
+        panel.addView(hs);
+        panel.addView(panelLabel(R.string.wrong_f_star), lm(10, 4));
+        starRow = new LinearLayout(this);
+        starRow.setOrientation(LinearLayout.HORIZONTAL);
+        panel.addView(starRow);
+        top.addView(panel);
         root.addView(top);
 
         ScrollView sv = new ScrollView(this);
@@ -102,32 +121,29 @@ public class WrongActivity extends Activity {
 
     // ---------------- 顶部：汇总 + 图例 + 筛选 ----------------
 
-    /** 三档图例：星越多越熟 —— 用户要求「用五角星代替文字」，那总得有一行说明星的含义 */
-    private View legend() {
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.addView(legendItem("★", R.string.wrong_t_miss, R.attr.wpRed, 0));
-        row.addView(legendItem("★★", R.string.wrong_t_near, R.attr.wpBrand, 10));
-        row.addView(legendItem("★★★", R.string.wrong_t_ok, R.attr.wpGreen, 10));
-        return row;
-    }
-
-    private TextView legendItem(String stars, int labelRes, int colorAttr, float marginStartDp) {
+    private TextView panelLabel(int res) {
         TextView tv = new TextView(this);
-        tv.setText(stars + " " + getString(labelRes));
+        tv.setText(res);
         tv.setTextSize(11.5f);
-        tv.setTextColor(Skin.c(this, colorAttr));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.leftMargin = (int) Ui.dp(this, marginStartDp);
-        tv.setLayoutParams(lp);
+        tv.setTextColor(Skin.c(this, R.attr.wpText2));
         return tv;
     }
 
+    /** 第一行文案：当前筛的词本 · 星级 · 计数，末尾箭头提示能展开 */
+    private void renderHead() {
+        String bookName = getString(R.string.wrong_filter_all);
+        if (filter != null && Db.ready()) { Db.Book bk = Db.I.byId(filter); if (bk != null) bookName = bk.display(); }
+        String star = starFilter < 0 ? getString(R.string.wrong_filter_all) : starText(starFilter);
+        head.setText(getString(R.string.wrong_filter_line, bookName, star, totalIn, totalDue, totalMastered)
+                + (expanded ? "  ▴" : "  ▾"));
+    }
+
+    private boolean tierPass(int tier) { return starFilter < 0 || starFilter == tier; }
+
     private void render() {
         box.removeAllViews();
-        chipRow.removeAllViews();
+        bookRow.removeAllViews();
+        starRow.removeAllViews();
         if (!Db.ready()) { head.setText(""); return; }      // 词库还在异步加载时先空着
         final Prefs p = Prefs.of(this);
         List<Db.Book> withWords = new ArrayList<Db.Book>();
@@ -146,41 +162,53 @@ public class WrongActivity extends Activity {
             for (Db.Book bk : withWords) if (bk.id.equals(filter)) ok = true;
             if (!ok) filter = null;
         }
-        head.setText(getString(R.string.wrong_page_count, totalIn, totalDue, totalMastered));
+        renderHead();
 
         if (totalIn == 0) { box.addView(hint(getString(R.string.wrong_page_empty))); return; }
 
-        addChip(getString(R.string.wrong_filter_all) + " " + totalIn, filter == null, null);
+        addChip(bookRow, getString(R.string.wrong_filter_all) + " " + totalIn, filter == null, null, starFilter);
         for (Db.Book bk : withWords) {
-            addChip(bk.display() + " " + p.wrongBook(bk.id).size(), bk.id.equals(filter), bk.id);
+            addChip(bookRow, bk.display() + " " + p.wrongBook(bk.id).size(), bk.id.equals(filter), bk.id, starFilter);
         }
+        addChip(starRow, getString(R.string.wrong_filter_all), starFilter < 0, filter, -1);
+        addChip(starRow, "★ " + getString(R.string.wrong_t_miss), starFilter == WrongBook.TIER_MISS, filter, WrongBook.TIER_MISS);
+        addChip(starRow, "★★ " + getString(R.string.wrong_t_near), starFilter == WrongBook.TIER_NEAR, filter, WrongBook.TIER_NEAR);
+        addChip(starRow, "★★★ " + getString(R.string.wrong_t_ok), starFilter == WrongBook.TIER_MASTERED, filter, WrongBook.TIER_MASTERED);
 
-        if (totalMastered > 0) box.addView(clearMasteredRow(), lm(2, 8));
+        if (totalMastered > 0 && tierPass(WrongBook.TIER_MASTERED)) box.addView(clearMasteredRow(), lm(2, 8));
 
+        int listed = 0;
         for (final Db.Book bk : withWords) {
             if (filter != null && !filter.equals(bk.id)) continue;
             final WrongBook wb = p.wrongBook(bk.id);
+            List<Integer> ids = new ArrayList<Integer>();
+            for (int idx : wb.toArray()) if (tierPass(WrongBook.tier(wb.left(idx)))) ids.add(idx);   // 未掌握在前（toArray 有序）
+            if (ids.isEmpty()) continue;
             TextView sec = new TextView(this);
-            sec.setText(getString(R.string.wrong_book_line, bk.display(), wb.size()));
+            sec.setText(getString(R.string.wrong_book_line, bk.display(), ids.size()));
             sec.setTextSize(12f);
             sec.setTextColor(Skin.c(this, R.attr.wpText2));
             box.addView(sec, lm(10, 6));
-            for (int idx : wb.toArray()) {              // 未掌握的在前、已掌握的在后（toArray 天然有序）
-                box.addView(row(bk, wb, idx), lm(8, 0));
-            }
+            for (int idx : ids) { box.addView(row(bk, wb, idx), lm(8, 0)); listed++; }
         }
+        if (listed == 0) box.addView(hint(getString(R.string.wrong_filter_none)));
         Fonts.scaleTree(box, this);
     }
 
-    private void addChip(String text, boolean active, final String bookId) {
+    /** 筛选 chip：点了同时定词本 + 星级（两排各自只改自己那一维） */
+    private void addChip(LinearLayout row, String text, boolean active, final String bookId, final int tier) {
         TextView tv = Ui.chip(this, text, active);
         tv.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 filter = bookId;
+                starFilter = tier;
                 render();
             }
         });
-        chipRow.addView(tv);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.rightMargin = (int) Ui.dp(this, 6);
+        row.addView(tv, lp);
     }
 
     private TextView hint(String text) {
