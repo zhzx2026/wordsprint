@@ -42,3 +42,17 @@
   列表过滤与每本计数；清空已掌握按钮只在 tierPass(TIER_MASTERED) 时显示；筛空显示 wrong_filter_none。
 - 沙箱再次重启丢 .git 对象（第三次）：`reset --soft FETCH_HEAD` 对齐后只剩本轮改动；工具链 clone 一度误落
   仓库根（`cd /tmp` 在子 shell 里没生效），已 `git rm --cached` 并挪走，未入库。
+
+---
+
+# 第三轮（2026-09-24）：错题本筛选改成多列独立下拉多选（v8.3 / code 60）
+
+用户原话：「多列独立筛选：每一列都有自己的筛选下拉弹窗……勾选选项……各列筛选互不干扰，可以叠加多个筛选条件。」
+
+- WrongActivity：第一行两个列按钮 `colBook` / `colStar`（bg_card_field，权重 1.4 : 1），各自 `PopupWindow`
+  `showAsDropDown`（透明壳 + outsideTouchable，bg_card_20 卡片，最多 320dp 可滚），行 = `CheckedTextView` 勾选，
+  点一下立即 `render()` 但不关下拉；底部「不限」清该列 / 「收起」。同一时刻只开一个（开新列先 dismiss 旧的），onPause 收起。
+- 状态：`bookSel: LinkedHashSet<String>`、`starSel: LinkedHashSet<Integer>`（空 = 不限），`bookPass && tierPass` 叠加；
+  从词本详情进来预勾那一本；被清空的词本自动从勾选里剔除。「开始订正」按 bookSel 取候选。
+- 列表上方加一行「当前筛选结果」计数（wrong_page_count 复用）。字符串：wrong_f_any/clear/done 新增，wrong_filter_line 删除。
+- 16/16 主机测试绿，typecheck 0 error。沙箱又重启一次（第四次），`reset --soft FETCH_HEAD` 对齐。
