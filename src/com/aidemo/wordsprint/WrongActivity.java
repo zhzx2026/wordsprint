@@ -32,9 +32,12 @@ public class WrongActivity extends Activity {
     public static final String EXTRA_BOOK = "book";
 
     private LinearLayout box;          // 列表容器
-    private LinearLayout chipRow;      // 筛选 chips（全部 + 有错词的词本）
-    private TextView head;             // 汇总那一行
-    private String filter;             // null = 全部
+    private TextView colBook, colStar; // 第一行的两个筛选列按钮（各自弹独立下拉）
+    /** 词本多选（空 = 不限）；星级多选（空 = 不限，元素为 WrongBook.TIER_*）。两列互不干扰、可叠加 */
+    private final java.util.LinkedHashSet<String> bookSel = new java.util.LinkedHashSet<String>();
+    private final java.util.LinkedHashSet<Integer> starSel = new java.util.LinkedHashSet<Integer>();
+    private android.widget.PopupWindow pop;   // 当前开着的那个下拉（同一时刻只开一个）
+    private List<Db.Book> withWords = new ArrayList<Db.Book>();
 
     private int totalIn = 0, totalDue = 0, totalMastered = 0;
 
@@ -52,7 +55,8 @@ public class WrongActivity extends Activity {
         Skin.apply(this);
         Ui.applyWindow(this);
         Db.ensureLoaded(this);
-        filter = getIntent() == null ? null : getIntent().getStringExtra(EXTRA_BOOK);
+        String init = getIntent() == null ? null : getIntent().getStringExtra(EXTRA_BOOK);
+        if (init != null && init.length() > 0) bookSel.add(init);       // 从词本详情进来：词本列先勾上这一本
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -67,22 +71,24 @@ public class WrongActivity extends Activity {
         top.setOrientation(LinearLayout.VERTICAL);
         top.setPadding(ph, (int) Ui.dp(this, 12), ph, (int) Ui.dp(this, 4));
 
-        head = new TextView(this);
-        head.setTextSize(12.5f);
-        head.setTextColor(Skin.c(this, R.attr.wpText2));
-        head.setLineSpacing(Ui.dp(this, 3), 1f);
-        top.addView(head);
-
-        top.addView(legend(), lm(8, 0));       // ★ 未掌握 · ★★ 快掌握 · ★★★ 已掌握
-
-        chipRow = new LinearLayout(this);
-        chipRow.setOrientation(LinearLayout.HORIZONTAL);
-        HorizontalScrollView hs = new HorizontalScrollView(this);
-        hs.setHorizontalScrollBarEnabled(false);
-        hs.setClipToPadding(false);
-        hs.addView(chipRow, new HorizontalScrollView.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-        top.addView(hs, lm(10, 0));
+        // 第一行：多列独立筛选（用户 2026-09-24）——每一列一个按钮，点开只弹**这一列**的候选项（可多选勾选），
+        // 收起后条件保留；再点另一列弹另一个独立下拉，两列条件叠加生效。
+        LinearLayout cols = new LinearLayout(this);
+        cols.setOrientation(LinearLayout.HORIZONTAL);
+        colBook = colButton();
+        colStar = colButton();
+        LinearLayout.LayoutParams c1 = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.4f);
+        LinearLayout.LayoutParams c2 = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        c2.leftMargin = (int) Ui.dp(this, 8);
+        cols.addView(colBook, c1);
+        cols.addView(colStar, c2);
+        colBook.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { openBookMenu(); }
+        });
+        colStar.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { openStarMenu(); }
+        });
+        top.addView(cols);
         root.addView(top);
 
         ScrollView sv = new ScrollView(this);
@@ -102,35 +108,158 @@ public class WrongActivity extends Activity {
 
     // ---------------- 顶部：汇总 + 图例 + 筛选 ----------------
 
-    /** 三档图例：星越多越熟 —— 用户要求「用五角星代替文字」，那总得有一行说明星的含义 */
-    private View legend() {
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.addView(legendItem("★", R.string.wrong_t_miss, R.attr.wpRed, 0));
-        row.addView(legendItem("★★", R.string.wrong_t_near, R.attr.wpBrand, 10));
-        row.addView(legendItem("★★★", R.string.wrong_t_ok, R.attr.wpGreen, 10));
-        return row;
-    }
-
-    private TextView legendItem(String stars, int labelRes, int colorAttr, float marginStartDp) {
+    private TextView colButton() {
         TextView tv = new TextView(this);
-        tv.setText(stars + " " + getString(labelRes));
-        tv.setTextSize(11.5f);
-        tv.setTextColor(Skin.c(this, colorAttr));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.leftMargin = (int) Ui.dp(this, marginStartDp);
-        tv.setLayoutParams(lp);
+        tv.setTextSize(13f);
+        tv.setTextColor(Skin.c(this, R.attr.wpText));
+        tv.setBackgroundResource(R.drawable.bg_card_field);
+        int hp = (int) Ui.dp(this, 12);
+        tv.setPadding(hp, hp, hp, hp);
+        tv.setMaxLines(1);
+        tv.setEllipsize(android.text.TextUtils.TruncateAt.END);
         return tv;
     }
 
+    /** 两个列按钮的文案：没勾 = 「词本：不限」；勾了 = 名字（多于一个就「名字 +N」） */
+    private void renderCols() {
+        String bk;
+        if (bookSel.isEmpty()) bk = getString(R.string.wrong_f_any);
+        else {
+            String first = null; int n = 0;
+            for (String id : bookSel) { Db.Book b = Db.ready() ? Db.I.byId(id) : null; if (b == null) continue; if (first == null) first = b.display(); n++; }
+            bk = first == null ? getString(R.string.wrong_f_any) : (n > 1 ? first + " +" + (n - 1) : first);
+        }
+        colBook.setText(getString(R.string.wrong_f_book) + "：" + bk + "  ▾");
+        String st;
+        if (starSel.isEmpty()) st = getString(R.string.wrong_f_any);
+        else {
+            StringBuilder sb = new StringBuilder();
+            for (int t : new int[]{WrongBook.TIER_MISS, WrongBook.TIER_NEAR, WrongBook.TIER_MASTERED})
+                if (starSel.contains(t)) { if (sb.length() > 0) sb.append(' '); sb.append(starText(t)); }
+            st = sb.toString();
+        }
+        colStar.setText(getString(R.string.wrong_f_star) + "：" + st + "  ▾");
+    }
+
+    private boolean bookPass(String id) { return bookSel.isEmpty() || bookSel.contains(id); }
+    private boolean tierPass(int tier) { return starSel.isEmpty() || starSel.contains(tier); }
+
+    // ---------------- 每列自己的下拉（勾选，多选，独立收起） ----------------
+
+    private void openBookMenu() {
+        if (!Db.ready()) return;
+        final Prefs p = Prefs.of(this);
+        LinearLayout col = menuBody();
+        for (final Db.Book bk : withWords) {
+            col.addView(checkRow(bk.display() + "  " + p.wrongBook(bk.id).size(), bookSel.contains(bk.id),
+                    new Runnable() {
+                        @Override public void run() {
+                            if (!bookSel.remove(bk.id)) bookSel.add(bk.id);
+                            render();
+                        }
+                    }));
+        }
+        showMenu(colBook, col, new Runnable() { @Override public void run() { bookSel.clear(); render(); } });
+    }
+
+    private void openStarMenu() {
+        LinearLayout col = menuBody();
+        int[] tiers = {WrongBook.TIER_MISS, WrongBook.TIER_NEAR, WrongBook.TIER_MASTERED};
+        int[] labels = {R.string.wrong_t_miss, R.string.wrong_t_near, R.string.wrong_t_ok};
+        for (int i = 0; i < tiers.length; i++) {
+            final int t = tiers[i];
+            col.addView(checkRow(starText(t) + "  " + getString(labels[i]), starSel.contains(t), new Runnable() {
+                @Override public void run() {
+                    if (!starSel.remove(Integer.valueOf(t))) starSel.add(t);
+                    render();
+                }
+            }));
+        }
+        showMenu(colStar, col, new Runnable() { @Override public void run() { starSel.clear(); render(); } });
+    }
+
+    private LinearLayout menuBody() {
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        int pd = (int) Ui.dp(this, 6);
+        col.setPadding(pd, pd, pd, pd);
+        return col;
+    }
+
+    /** 一行勾选项：点整行切换；勾了以后条件立刻生效（列表在下面同步刷新），下拉不关 —— 用户可以连着勾几个再收起 */
+    private View checkRow(String text, boolean checked, final Runnable toggle) {
+        final android.widget.CheckedTextView tv = new android.widget.CheckedTextView(this);
+        tv.setText(text);
+        tv.setTextSize(14f);
+        tv.setTextColor(Skin.c(this, R.attr.wpText));
+        tv.setChecked(checked);
+        tv.setCheckMarkDrawable(android.R.drawable.checkbox_off_background);
+        if (checked) tv.setCheckMarkDrawable(android.R.drawable.checkbox_on_background);
+        tv.setBackgroundResource(R.drawable.bg_row_tap);
+        int ph = (int) Ui.dp(this, 12), pv = (int) Ui.dp(this, 11);
+        tv.setPadding(ph, pv, ph, pv);
+        tv.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                tv.toggle();
+                tv.setCheckMarkDrawable(tv.isChecked() ? android.R.drawable.checkbox_on_background
+                        : android.R.drawable.checkbox_off_background);
+                toggle.run();
+            }
+        });
+        return tv;
+    }
+
+    /** 挂在列按钮正下方的独立下拉：底部「不限 / 收起」两个动作；点外面也收起。打开新列时先关掉旧的 */
+    private void showMenu(View anchor, LinearLayout body, final Runnable clear) {
+        dismissMenu();
+        LinearLayout wrap = new LinearLayout(this);
+        wrap.setOrientation(LinearLayout.VERTICAL);
+        wrap.setBackgroundResource(R.drawable.bg_card_20);
+        wrap.setElevation(Ui.dp(this, 10));
+        wrap.addView(Ui.scrollable(body, 320));
+        LinearLayout foot = new LinearLayout(this);
+        foot.setOrientation(LinearLayout.HORIZONTAL);
+        int pd = (int) Ui.dp(this, 8);
+        foot.setPadding(pd, 0, pd, pd);
+        TextView any = footBtn(getString(R.string.wrong_f_clear), R.attr.wpText2);
+        any.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { clear.run(); dismissMenu(); }
+        });
+        TextView done = footBtn(getString(R.string.wrong_f_done), R.attr.wpBrand);
+        done.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { dismissMenu(); }
+        });
+        foot.addView(any, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        foot.addView(done, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        wrap.addView(foot);
+        int w = Math.max(anchor.getWidth(), (int) Ui.dp(this, 220));
+        pop = new android.widget.PopupWindow(wrap, w, ViewGroup.LayoutParams.WRAP_CONTENT, true);
+        pop.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0));   // 透明壳：点外面能关、无白角
+        pop.setOutsideTouchable(true);
+        pop.showAsDropDown(anchor, 0, (int) Ui.dp(this, 6));
+    }
+
+    private TextView footBtn(String text, int colorAttr) {
+        TextView tv = new TextView(this);
+        tv.setText(text);
+        tv.setTextSize(13f);
+        tv.setGravity(Gravity.CENTER);
+        tv.setTextColor(Skin.c(this, colorAttr));
+        tv.setPadding(0, (int) Ui.dp(this, 10), 0, (int) Ui.dp(this, 10));
+        return tv;
+    }
+
+    private void dismissMenu() {
+        if (pop != null) { try { pop.dismiss(); } catch (Throwable ignored) {} pop = null; }
+    }
+
+    @Override protected void onPause() { super.onPause(); dismissMenu(); }
+
     private void render() {
         box.removeAllViews();
-        chipRow.removeAllViews();
-        if (!Db.ready()) { head.setText(""); return; }      // 词库还在异步加载时先空着
+        if (!Db.ready()) { colBook.setText(""); colStar.setText(""); return; }   // 词库还在异步加载时先空着
         final Prefs p = Prefs.of(this);
-        List<Db.Book> withWords = new ArrayList<Db.Book>();
+        withWords = new ArrayList<Db.Book>();
         totalIn = totalDue = totalMastered = 0;
         for (Db.Book bk : Db.I.books()) {
             WrongBook wb = p.wrongBook(bk.id);
@@ -140,47 +269,47 @@ public class WrongActivity extends Activity {
             totalDue += wb.dueCount();
             totalMastered += wb.masteredCount();
         }
-        // 筛选的那本书要是已经被清空了，就退回「全部」
-        if (filter != null) {
-            boolean ok = false;
-            for (Db.Book bk : withWords) if (bk.id.equals(filter)) ok = true;
-            if (!ok) filter = null;
+        // 勾着的词本要是已经被清空了，就把它从勾选里去掉
+        java.util.Iterator<String> it = bookSel.iterator();
+        while (it.hasNext()) {
+            String id = it.next(); boolean ok = false;
+            for (Db.Book bk : withWords) if (bk.id.equals(id)) ok = true;
+            if (!ok) it.remove();
         }
-        head.setText(getString(R.string.wrong_page_count, totalIn, totalDue, totalMastered));
+        renderCols();
 
         if (totalIn == 0) { box.addView(hint(getString(R.string.wrong_page_empty))); return; }
 
-        addChip(getString(R.string.wrong_filter_all) + " " + totalIn, filter == null, null);
-        for (Db.Book bk : withWords) {
-            addChip(bk.display() + " " + p.wrongBook(bk.id).size(), bk.id.equals(filter), bk.id);
-        }
-
-        if (totalMastered > 0) box.addView(clearMasteredRow(), lm(2, 8));
-
+        int shownIn = 0, shownDue = 0, shownOk = 0;
+        List<View> rows = new ArrayList<View>();
         for (final Db.Book bk : withWords) {
-            if (filter != null && !filter.equals(bk.id)) continue;
+            if (!bookPass(bk.id)) continue;
             final WrongBook wb = p.wrongBook(bk.id);
+            List<Integer> ids = new ArrayList<Integer>();
+            for (int idx : wb.toArray()) {              // 未掌握在前（toArray 有序）
+                int t = WrongBook.tier(wb.left(idx));
+                if (!tierPass(t)) continue;
+                ids.add(idx);
+                shownIn++;
+                if (t == WrongBook.TIER_MASTERED) shownOk++; else shownDue++;
+            }
+            if (ids.isEmpty()) continue;
             TextView sec = new TextView(this);
-            sec.setText(getString(R.string.wrong_book_line, bk.display(), wb.size()));
+            sec.setText(getString(R.string.wrong_book_line, bk.display(), ids.size()));
             sec.setTextSize(12f);
             sec.setTextColor(Skin.c(this, R.attr.wpText2));
-            box.addView(sec, lm(10, 6));
-            for (int idx : wb.toArray()) {              // 未掌握的在前、已掌握的在后（toArray 天然有序）
-                box.addView(row(bk, wb, idx), lm(8, 0));
-            }
+            rows.add(sec);
+            for (int idx : ids) rows.add(row(bk, wb, idx));
         }
+        TextView sum = new TextView(this);
+        sum.setText(getString(R.string.wrong_page_count, shownIn, shownDue, shownOk));
+        sum.setTextSize(12f);
+        sum.setTextColor(Skin.c(this, R.attr.wpText2));
+        box.addView(sum, lm(4, 2));
+        if (totalMastered > 0 && tierPass(WrongBook.TIER_MASTERED)) box.addView(clearMasteredRow(), lm(6, 6));
+        if (rows.isEmpty()) { box.addView(hint(getString(R.string.wrong_filter_none))); return; }
+        for (View v : rows) box.addView(v, v instanceof ViewGroup ? lm(8, 0) : lm(10, 6));   // 词行是卡片(ViewGroup)，段头是 TextView
         Fonts.scaleTree(box, this);
-    }
-
-    private void addChip(String text, boolean active, final String bookId) {
-        TextView tv = Ui.chip(this, text, active);
-        tv.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                filter = bookId;
-                render();
-            }
-        });
-        chipRow.addView(tv);
     }
 
     private TextView hint(String text) {
@@ -300,12 +429,7 @@ public class WrongActivity extends Activity {
         if (!Db.ready()) { Db.ensureLoaded(this); toast(getString(R.string.loading_data)); return; }
         final Prefs p = Prefs.of(this);
         final List<Db.Book> due = new ArrayList<Db.Book>();
-        if (filter != null) {
-            Db.Book bk = Db.I.byId(filter);
-            if (bk != null && p.wrongBook(bk.id).dueCount() > 0) due.add(bk);
-        } else {
-            for (Db.Book bk : Db.I.books()) if (p.wrongBook(bk.id).dueCount() > 0) due.add(bk);
-        }
+        for (Db.Book bk : Db.I.books()) if (bookPass(bk.id) && p.wrongBook(bk.id).dueCount() > 0) due.add(bk);
         if (due.isEmpty()) {
             toast(getString(totalIn > 0 ? R.string.no_wrongs_due : R.string.no_wrongs));
             return;

@@ -14,6 +14,9 @@ public class EngineTest {
     }
     static void check(boolean c, String msg){ if(!c) throw new RuntimeException("FAIL: "+msg); }
 
+    /** 课本顺序：order[i] = i（现场那几组断言用，免得跟上面复用的 order 变量纠缠） */
+    static int[] o9(int n){ int[] a = new int[n]; for (int i = 0; i < n; i++) a[i] = i; return a; }
+
     public static void main(String[] a) {
         int n = 10; int[] order = new int[n];
         for (int i=0;i<n;i++) order[i]=i;
@@ -122,6 +125,109 @@ public class EngineTest {
         check(ended, "这一组跑完了");
         check(!e7.canUndo(), "组结束后撤销失效");
 
-        System.out.println("ENGINE OK — 7 组断言全部通过（含撤销）");
+        // 8) 本组现场（意外退出续存）：闪退 / 被系统杀后台之后重开，接的是当时那张卡，不是本组第一张
+        //    （用户 2026-09-24「刷词意外退出会重头开始」；落盘时机见 StudyActivity.persistScene）
+        int n8 = 10; int[] o8 = new int[n8]; for (int i = 0; i < n8; i++) o8[i] = i;
+        BitSet ms8 = new BitSet(n8);
+        for (int i = 0; i < 5; i++) ms8.set(i);          // 上一组（0~4）已掌握，本组从 pos=5 起
+        Sink sk8 = new Sink(ms8);
+        Engine live = new Engine(n8, o8, ms8, 5, 5, 3, false, sk8);
+        ended = false; endPos = -1;
+        live.startGroup();                               // 队列 = 5,6,7,8,9
+        check(live.current() == 5, "现场 8：本组第一张是 5");
+        live.answer(false); live.next();                  // 5 不认识 → due=1+3=4
+        check(live.current() == 6, "现场 8：第二张 6"); live.answer(true); live.next();
+        check(live.current() == 7, "现场 8：第三张 7"); live.answer(true); live.next();
+        check(live.current() == 8, "现场 8：第四张 8（还没答）");
+        String snap = live.snapshot(4321);                 // 界面上就是这一刻 onShow 之后写盘的
+        check(snap != null && snap.startsWith("v=wps1;"), "现场 8：快照带版本号：" + snap);
+        // —— 假装进程被杀，重开一个 Engine（组指针仍是 5：本组没打完，它本来就不该动）——
+        Engine back = new Engine(n8, o8, ms8, 5, 5, 3, false, sk8);
+        check(back.resume(snap), "现场 8：恢复成功");
+        check(back.current() == 8, "现场 8：摆回当时那张卡（8），实际 " + back.current());
+        check(shown == 8, "现场 8：onShow 把那张卡喂给了界面，实际 " + shown);
+        check(back.groupTotal() == 5 && back.doneInGroup() == 3,
+                "现场 8：组内计数接上 3/5，实际 " + back.doneInGroup() + "/" + back.groupTotal());
+        check(back.dueCount() == 1 && back.requeues() == 1, "现场 8：回炉表没丢");
+        check(back.okCount() == 2 && back.answers() == 3 && back.accuracy() == live.accuracy(),
+                "现场 8：结算用的计数一致");
+        check(back.pos == live.pos, "现场 8：组指针一致");
+        check(back.resumedElapsedMs() == 4321, "现场 8：用时也续上，实际 " + back.resumedElapsedMs());
+        check(snap.equals(back.snapshot(4321)), "现场 8：恢复后原样再存一次不漂移（幂等）");
+        check(!back.canUndo(), "现场 8：撤销不跨会话（昨天的卡不许捞回来重选）");
+        // 回炉调度必须照原样跑：8 之后就该轮到 5（due=4 ≤ drawn=4），不是先出 9
+        back.answer(true); back.next();
+        check(back.current() == 5, "现场 8：到期回炉词照常插队，实际 " + back.current());
+        back.answer(true); back.next();
+        check(back.current() == 9, "现场 8：队尾 9");
+        back.answer(true); back.next();
+        check(ended && endPos == 10, "现场 8：这一组正常收尾，组指针推到 10（不重复刷、也不丢组）");
+        check(back.snapshot(0).isEmpty(), "现场 8：组打完没有现场可存 → 上层据此删掉它");
+        // 9) 组内还剩的词被别处标成已掌握（批量改进度 / 扫码导入）→ 剔掉，不重复问
+        BitSet ms9 = new BitSet(n8);
+        for (int i = 0; i < 5; i++) ms9.set(i);
+        Sink sk9 = new Sink(ms9);
+        Engine g9 = new Engine(n8, o9(n8), ms9, 5, 5, 3, false, sk9);
+        g9.startGroup();
+        check(g9.current() == 5, "现场 9：本组第一张 5");
+        String snap9 = g9.snapshot(10);
+        ms9.set(6); ms9.set(7);                            // 用户退出期间在词表里把 6、7 标成已掌握
+        Engine h9 = new Engine(n8, o9(n8), ms9, 5, 5, 3, false, sk9);
+        check(h9.resume(snap9), "现场 9：恢复成功");
+        check(h9.current() == 5, "现场 9：当时那张还没被记住 → 照旧摆回来");
+        check(h9.groupTotal() == 5 && h9.doneInGroup() == 3,
+                "现场 9：被剔掉的 6、7 记成已完成（分母不缩水），实际 " + h9.doneInGroup() + "/" + h9.groupTotal());
+        h9.answer(true); h9.next();
+        check(h9.current() == 8, "现场 9：已掌握的 6、7 跳过，实际 " + h9.current());
+        // 10) 组指针被挪走（批量改「从这里继续刷」「从这段重新刷」/导入合并取更大）→ 半截队列作废，按新指针重切
+        BitSet ms10 = new BitSet(n8);
+        for (int i = 0; i < 5; i++) ms10.set(i);
+        Sink sk10 = new Sink(ms10);
+        Engine i10 = new Engine(n8, o9(n8), ms10, 5, 5, 3, false, sk10);
+        i10.startGroup();                                  // 5~9 那一组的第一张
+        String snap10 = i10.snapshot(0);
+        ended = false; emptyCb = false;
+        Engine j10 = new Engine(n8, o9(n8), ms10, 0, 5, 3, false, sk10);   // 指针已经被挪回 0
+        check(!j10.resume(snap10), "现场 10：现场不是当前这一组的 → 拒收");
+        check(j10.current() == -1, "现场 10：拒收时不弄脏引擎");
+        j10.startGroup();
+        check(j10.groupTotal() == 5 && j10.current() == 5, "现场 10：照常从新指针切出一组");
+        check(!ended && !emptyCb, "现场 10：没被旧现场带歪（既没结算也没被判成空组）");
+        // 11) 脏快照一律拒收，且拒收后引擎照常能用
+        String[] junk = new String[]{ null, "", "随便一句话", "v=wps0;p=5;c=8;q=9",
+                "v=wps1;p=5;q=1,abc", "v=wps1;p=-3", "v=wps1;p=5;u=7x", "v=wps1;p=99;u=1@2",
+                "v=wps1;p=5;q=3;u=4@x;c=2" };
+        for (int i = 0; i < junk.length; i++) {
+            Engine k11 = new Engine(n8, o9(n8), ms9, 5, 5, 3, false, sk9);
+            check(!k11.resume(junk[i]), "现场 11：脏快照拒收 #" + i);
+            k11.startGroup();
+            check(k11.groupTotal() >= 0, "现场 11：拒收后仍能正常开组 #" + i);
+        }
+        // 12) 答完最后一张还没来得及出下一张就闪退 → 那张不再问第二遍，直接走到结算
+        BitSet ms12 = new BitSet(n8);
+        for (int i = 0; i < 5; i++) ms12.set(i);
+        Engine a12 = new Engine(n8, o9(n8), ms12, 5, 5, 3, false, new Sink(ms12));
+        a12.startGroup();
+        String lastSnap = a12.snapshot(1);                 // 第一张（5）的现场
+        a12.answer(true);                                  // 记住 5，但 next() 之前进程没了
+        ended = false; endPos = -1;
+        Engine b12 = new Engine(n8, o9(n8), ms12, 5, 5, 3, false, new Sink(ms12));
+        check(b12.resume(lastSnap), "现场 12：恢复成功（那张已被记住 → 顺延下一张）");
+        check(b12.current() == 6, "现场 12：不会把答过的 5 再问一遍，实际 " + b12.current());
+        for (int g = 0; g < 5 && !ended; g++) { if (b12.current() < 0) break; b12.answer(true); b12.next(); }
+        check(ended && endPos == 10, "现场 12：这一组照样收尾");
+        // 13) 订错词（复习队列）没有「组」可续：既不写现场，也不接受现场
+        BitSet ms13 = new BitSet(n8);
+        Engine r13 = new Engine(n8, o9(n8), ms13, 0, 5, 3, false, new Sink(ms13));
+        r13.startQueue(new int[]{2, 4});
+        check(r13.snapshot(5).isEmpty(), "现场 13：订正队列不产现场");
+        check(!r13.resume(snap), "现场 13：订正会话不吃刷词现场");
+        // 14) 空组 / 已结算的组没有现场可存（上层据此把盘上那份删掉）
+        BitSet ms14 = new BitSet(n8);
+        for (int i = 0; i < n8; i++) ms14.set(i);
+        Engine r14 = new Engine(n8, o9(n8), ms14, 0, 5, 3, false, new Sink(ms14));
+        check(r14.snapshot(0).isEmpty(), "现场 14：没在组里 → 空快照");
+
+        System.out.println("ENGINE OK — 14 组断言全部通过（含撤销 + 意外退出续存）");
     }
 }

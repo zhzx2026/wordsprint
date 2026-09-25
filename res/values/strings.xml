@@ -48,6 +48,7 @@
     <string name="reset_no">取消</string>
     <string name="quit_title">退出本组</string>
     <string name="quit_msg">本组进度已保存，下次继续。</string>
+    <string name="resume_tip">接着上次那张继续</string>
     <string name="quit_yes">退出</string>
     <string name="quit_no">继续刷</string>
     <string name="mastered_tag">已掌握</string>
@@ -302,6 +303,12 @@
     <string name="wrong_t_near">快掌握</string>
     <string name="wrong_t_ok">已掌握</string>
     <string name="wrong_filter_all">全部</string>
+    <string name="wrong_f_book">词本</string>
+    <string name="wrong_f_star">星级</string>
+    <string name="wrong_f_any">不限</string>
+    <string name="wrong_f_clear">不限</string>
+    <string name="wrong_f_done">收起</string>
+    <string name="wrong_filter_none">这个筛选下没有词</string>
     <string name="wrong_del">从错题本移除</string>
     <string name="wrong_del_confirm">「%1$s」将从错题本移除。已学进度不受影响，以后再答错还会进来。</string>
     <string name="wrong_del_ok">移除</string>
