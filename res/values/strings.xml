@@ -15,6 +15,8 @@
     <string name="progress_of">%1$d/%2$d</string>
     <string name="start_brush">开始刷词</string>
     <string name="continue_brush">继续刷词</string>
+    <!-- 词本弹层主按钮：整本已学完时用这个（以前仍然写「继续刷词」，点进去是一张全零的庆祝页） -->
+    <string name="brush_whole_book">重刷整本</string>
     <string name="today_done">今日已刷</string>
     <string name="total_mastered">累计掌握</string>
     <string name="streak_days">连续 %1$d 天</string>
@@ -81,6 +83,10 @@
     <string name="no_wrongs">错题本是空的，继续保持</string>
     <string name="wrong_times">本组已错 %1$d 次</string>
     <string name="back_shelf">返回书架</string>
+    <!-- 错词复习结算页的主按钮：回错题本（以前跟下面那颗「返回书架」文案完全相同，两个一样的按钮上下堆着） -->
+    <string name="back_to_wrong">回错题本</string>
+    <!-- 整本刷完后结算页的主按钮。以前是代码里写死的 "再刷一轮"，而且点了没反应（见 StudyActivity.nextGroup） -->
+    <string name="brush_again">再刷一轮</string>
     <string name="sheet_stats">已学 %1$d · 剩余 %2$d · 错词 %3$d</string>
     <string name="start_brush_group">开始刷词 · 每组 %1$d 词</string>
     <string name="continue_brush_group">继续刷词 · 第 %1$d 组</string>
@@ -349,6 +355,9 @@
     <string name="ges_reset">恢复默认手势</string>
     <string name="ges_reset_done">已恢复默认手势</string>
     <string name="ges_note">点按有个例外：没翻面时先翻面，翻面后再点才执行你绑的动作（谁都先想看一眼答案）。</string>
+    <!-- 同一个动作绑在多个位置时的提示。%1$s = 「查词详情 → 上滑、长按」这样的若干行 -->
+    <string name="ges_dup_hint">重复绑定：%1$s
+两处都会生效，不算错；想让每个手势都不重样，可以把其中一处改成别的动作。</string>
 
     <!-- ===== 设置页（v2.4 分组重排） ===== -->
     <string name="nav_appearance">外观</string>

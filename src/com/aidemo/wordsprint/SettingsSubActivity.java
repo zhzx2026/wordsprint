@@ -138,10 +138,12 @@ public class SettingsSubActivity extends Activity {
     // ---------------- 学习 ----------------
 
     private void buildStudy() {
-        bind(R.id.swSpeak, Prefs.K_SPEAK, true);
-        bind(R.id.swPhonetic, Prefs.K_PHON, true);
-        bind(R.id.swSound, Prefs.K_SOUND, true);
-        bind(R.id.swAnim, Prefs.K_ANIM, true);
+        // 这四个开关是**本机级**的（要不要出声、要不要动画，跟「哪个学习者在用」无关），
+        // 走 bindGlobal：以前按档案存，切档案时用户关掉的朗读会被另一个档案的值顶回来。
+        bindGlobal(R.id.swSpeak, Prefs.K_SPEAK, true);
+        bindGlobal(R.id.swPhonetic, Prefs.K_PHON, true);
+        bindGlobal(R.id.swSound, Prefs.K_SOUND, true);
+        bindGlobal(R.id.swAnim, Prefs.K_ANIM, true);
 
         // 默认每组词数
         final int[] sizes = {20, 30, 50, 80, 100};
@@ -167,23 +169,27 @@ public class SettingsSubActivity extends Activity {
             @Override public void onTap(int idx, TextView chip) { pr.set(Prefs.K_LAG_DEF, lags[idx]); }
         });
 
-        // 每日目标
-        final int[] goals = {50, 100, 150, 200};
+        // 每日目标：档位与首页「设定每日目标」弹窗共用 Diary.GOALS（单一真相源）。
+        // 以前这里 4 档、首页 3 档，README 写的是「50/100/150/200 或自定义」—— 首页那个入口偏偏没有 200。
+        final int[] goals = Diary.GOALS;
         String[] goalLabels = new String[goals.length];
-        int cur = DiaryStore.goalDefault(), sel = -1;
+        int cur = Diary.clampGoal(DiaryStore.goalDefault()), sel = -1;
         for (int i = 0; i < goals.length; i++) {
             goalLabels[i] = goals[i] + " 词";
             if (goals[i] == cur) sel = i;
         }
+        final TextView goalDesc = (TextView) findViewById(R.id.tvGoalDesc);
+        goalDesc.setText(goalDescText(cur));
         Ui.fillRow((LinearLayout) findViewById(R.id.goalChips), goalLabels, sel, new Ui.ChipTap() {
             @Override public void onTap(int idx, TextView chip) {
                 DiaryStore.setGoalDefault(goals[idx]);
-                ((TextView) findViewById(R.id.tvGoalDesc)).setText(
-                        getString(R.string.goal_ok_default, goals[idx]));
+                // 确认信息走 toast；tvGoalDesc 是**功能说明**，不能拿一次性的确认文案把它顶掉 ——
+                // 以前一点 chip，那行说明就永久变成「默认目标已改为 N 词」，直到重开页面才回来，
+                // 用户再想知道这一项是干什么的就无处可看了。这里只把括号里的当前值跟着更新。
+                toast(getString(R.string.goal_ok_default, goals[idx]));
+                goalDesc.setText(goalDescText(goals[idx]));
             }
         });
-        ((TextView) findViewById(R.id.tvGoalDesc)).setText(
-                getString(R.string.goal_pick_desc) + "（" + getString(R.string.goal_title) + " " + cur + " 词）");
 
         // 手势：六个位置各挑一个动作（用户自己定，见 Ges/GesUi）
         final LinearLayout gesBox = (LinearLayout) findViewById(R.id.gesBox);
@@ -250,7 +256,7 @@ public class SettingsSubActivity extends Activity {
         state = (TextView) findViewById(R.id.tvUpdateState);
         refreshState();
         syncBranchRow();                          // 冷启动就选着「分支」时，把坑位行直接亮出来
-        bind(R.id.swUpdate, Prefs.K_UP_AUTO, true);
+        bindGlobal(R.id.swUpdate, Prefs.K_UP_AUTO, true);
         ((TextView) findViewById(R.id.tvAbout)).setText(
                 getString(R.string.about_line, Db.I.books().size(), Db.I.totalWords()));
         try {
@@ -386,11 +392,29 @@ public class SettingsSubActivity extends Activity {
         Update.stopWatch();
     }
 
+    /** 「每日目标」那行的说明文字：功能说明 + 括号里的当前值 */
+    private String goalDescText(int cur) {
+        return getString(R.string.goal_pick_desc) + "（" + getString(R.string.goal_title) + " " + cur + " 词）";
+    }
+
+    /** 跟档案走的开关（学习数据） */
     private void bind(int id, final String key, final boolean def) {
         final Switch sw = (Switch) findViewById(id);
         sw.setChecked(pr.on(key, def));
         sw.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { pr.set(key, sw.isChecked()); }
+        });
+    }
+
+    /**
+     * 本机级开关（跨档案共享）：朗读 / 音标 / 音效 / 动画 / 自动检查更新。
+     * 读写都走 Prefs 的 g* 接口，不加档案前缀 —— 见 Prefs.GLOBALIZED 的注释。
+     */
+    private void bindGlobal(int id, final String key, final boolean def) {
+        final Switch sw = (Switch) findViewById(id);
+        sw.setChecked(pr.gbool(key, def));
+        sw.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { pr.gset(key, sw.isChecked()); }
         });
     }
 

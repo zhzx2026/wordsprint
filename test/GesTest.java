@@ -84,6 +84,26 @@ public class GesTest {
         for (int a : Ges.ACTIONS) if (a == Ges.FAV_RETIRED) hasFav = true;
         check(!hasFav, "设置页的动作清单里不再出现收藏");
 
+        // 8) slotsOf：一个动作绑在哪几个位置（设置页据此提示「重复绑定」）
+        //    重复是**合法**的，出厂默认值本身就重复；所以这里只断言「看得见」，不断言「被清掉」。
+        check(Ges.slotsOf(Ges.DEF, Ges.LOOKUP).length == 2, "默认值里查词绑了两处（上滑、长按）");
+        check(Ges.slotsOf(Ges.DEF, Ges.REVEAL).length == 2, "默认值里看释义绑了两处（下滑、点按）");
+        check(Ges.slotsOf(Ges.DEF, Ges.KNOW).length == 1, "默认值里记住了只绑一处");
+        int[] look = Ges.slotsOf(Ges.DEF, Ges.LOOKUP);
+        check(look[0] == Ges.UP && look[1] == Ges.LONG, "slotsOf 返回的是位置下标且升序");
+        check(Ges.slotsOf(Ges.DEF, Ges.NONE).length == 0, "NONE 不算重复（「不绑定」绑几处都无所谓）");
+        check(Ges.slotsOf(Ges.DEF, Ges.FAV_RETIRED).length == 0, "退休/非法动作号返回空");
+        check(Ges.slotsOf(null, Ges.KNOW).length == 0, "null 映射不炸");
+        // 用户把六个位置全绑成同一个动作：合法、每处都生效，但不该被代码偷偷改掉
+        int[] allSame = Ges.decode("5,5,5,5,5,5");
+        check(Ges.slotsOf(allSame, Ges.LOOKUP).length == Ges.SLOTS, "六处全绑查词 → slotsOf 报六个");
+        check(Ges.with(allSame, Ges.UP, Ges.LOOKUP)[Ges.LONG] == Ges.LOOKUP,
+                "with() 不自动去重：改一处不会把用户没动过的另一处清成 NONE");
+        // 改一处之后，另一处仍然在（这正是「自动去重」会破坏的行为，GesTest 第 6 组也盯着它）
+        int[] moved = Ges.with(Ges.DEF, Ges.LONG, Ges.NONE);
+        check(moved[Ges.LONG] == Ges.NONE && moved[Ges.UP] == Ges.LOOKUP, "把长按改成不绑定，上滑原样不动");
+        check(Ges.slotsOf(moved, Ges.LOOKUP).length == 1, "改完之后查词只剩一处");
+
         System.out.println("ALL GES TESTS PASS (" + checks + " checks)");
     }
 }

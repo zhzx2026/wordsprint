@@ -25,6 +25,13 @@ public class MainActivity extends Activity {
     private BookAdapter adapter;
     private HeatView heat;
     private boolean wasBusy;                 // 上一次回调时「是否正在下载更新」
+    /**
+     * 「首次使用请起个名字」这个提示在本次进程里已经弹过了。
+     * static：Activity 因旋转 / Look 换代 / 从取名页返回而重建时不重置，
+     * 否则 onResume 会把取名页一次次拉回来（用户按返回键就出不去了，见 onResume 里的注释）。
+     * 进程重启后归零 —— 那时还没建档案的话，再提示一次是合理的。
+     */
+    private static boolean profilePrompted;
     private final Runnable watcher = new Runnable() {
         @Override public void run() { refreshDashboard(); }
     };
@@ -52,11 +59,15 @@ public class MainActivity extends Activity {
         bindDashboard(dash);
 
         LinearLayout chips = (LinearLayout) findViewById(R.id.filterChips);
+        // chip 的左右顺序必须跟列表的上下分节顺序一致 —— 列表按 Db.I.books() 的原始顺序分节，
+        // 而词库里的学段序是 小学 → 初中 → 高中 → 考纲 → 大学（已解包 res/raw/wdb.dat 核对）。
+        // 以前 chip 是 …高中 / 大学 / 考纲：点最右边的「考纲」，列表跳到中间那一节；
+        // 点「大学」跳到最后一节 —— 筛选器的顺序和结果的顺序对不上。README 写的也是大纲在前。
         final String[] names = {getString(R.string.stage_all), Db.stageName(Db.STAGE_PRIMARY),
                 Db.stageName(Db.STAGE_JUNIOR), Db.stageName(Db.STAGE_SENIOR),
-                Db.stageName(Db.STAGE_COLLEGE), Db.stageName(Db.STAGE_EXAM)};
+                Db.stageName(Db.STAGE_EXAM), Db.stageName(Db.STAGE_COLLEGE)};
         final int[] stages = {-1, Db.STAGE_PRIMARY, Db.STAGE_JUNIOR, Db.STAGE_SENIOR,
-                Db.STAGE_COLLEGE, Db.STAGE_EXAM};
+                Db.STAGE_EXAM, Db.STAGE_COLLEGE};
         for (int i = 0; i < names.length; i++) {
             final int idx = i;
             TextView chip = Ui.chip(this, names[i], i == 0);
@@ -127,7 +138,9 @@ public class MainActivity extends Activity {
         View dash = findViewById(R.id.goalCard);
         if (dash == null || heat == null) return;
         Diary dy = DiaryStore.diary();
-        Diary.Day t = dy.get(Diary.today(), DiaryStore.goalDefault());
+        // 只读视图：仪表盘每 400ms 跑一次（Update.startWatch 的 watcher），
+        // 用 view 不会往 days 里塞零活动的今天。
+        Diary.Day t = dy.view(Diary.today(), DiaryStore.goalDefault());
 
         ((TextView) findViewById(R.id.goalSub)).setText(
                 getString(R.string.goal_progress, t.learned, t.goal));
@@ -197,7 +210,15 @@ public class MainActivity extends Activity {
         try { android.widget.Toast.makeText(this, s, android.widget.Toast.LENGTH_SHORT).show(); } catch (Throwable ignored) {}
     }
 
-    /** 设定每日目标：50 / 100 / 自定义，并可只改今天 */
+    /**
+     * 设定每日目标：档位 chip 只做「选中」，写盘由底部两个按钮触发（「只改今天」/「设为默认」）。
+     *
+     * 以前点 chip 就立刻 setGoalToday() 写盘 + 弹一句 toast，**弹窗还不关**：
+     * 标题写的是「设定每日目标」、说明写的是「刷够就算完成，首页会打勾」，
+     * 完全没提「这里点一下只改今天」—— 用户想把默认目标改成 100，点了 chip，
+     * 只看到一句一闪而过的 toast，很容易以为默认值已经设好了。
+     * 档位也跟设置页共用 {@link Diary#GOALS}（以前这里 3 档、设置页 4 档，README 说的是 4 档）。
+     */
     private void pickGoal() {
         final LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
@@ -214,15 +235,9 @@ public class MainActivity extends Activity {
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         rlp.topMargin = (int) Ui.dp(this, 12);
         col.addView(row, rlp);
-        final int[] presets = {50, 100, 150};
-        Ui.fillRow(row, new String[]{"50 词", "100 词", "150 词"}, index(cur, presets), new Ui.ChipTap() {
-            @Override public void onTap(int idx, TextView chip) {
-                DiaryStore.setGoalToday(presets[idx]);
-                toast(getString(R.string.goal_ok_today, presets[idx]));
-                refreshDashboard();
-            }
-        });
 
+        // 自定义输入框先建好（chip 点选时要把数字回填进去，让用户看清「将要写进去的是哪个值」），
+        // 但仍然按原来的视觉顺序排在 chip 下面。
         final android.widget.EditText et = new android.widget.EditText(this);
         et.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
         et.setHint(R.string.goal_custom_hint);
@@ -232,19 +247,30 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams elp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         elp.topMargin = (int) Ui.dp(this, 12);
+
+        final int[] presets = Diary.GOALS;
+        final int[] sel = {Diary.clampGoal(cur)};        // 选中的目标值；按钮按下时才写盘
+        String[] labels = new String[presets.length];
+        for (int i = 0; i < presets.length; i++) labels[i] = presets[i] + " 词";
+        Ui.fillRow(row, labels, index(sel[0], presets), new Ui.ChipTap() {
+            @Override public void onTap(int idx, TextView chip) {
+                sel[0] = presets[idx];
+                et.setText(String.valueOf(presets[idx]));
+            }
+        });
         col.addView(et, elp);
 
         Ui.cardDialogPrimary(this, getString(R.string.goal_pick), Ui.scrollable(col, 260),
                 getString(R.string.goal_only_today), new Runnable() {
                     @Override public void run() {
-                        int v = parseGoal(et.getText().toString(), DiaryStore.goalToday());
+                        int v = parseGoal(et.getText().toString(), sel[0]);
                         DiaryStore.setGoalToday(v);
                         toast(getString(R.string.goal_ok_today, v));
                         refreshDashboard();
                     }
                 }, getString(R.string.goal_set_default), new Runnable() {
                     @Override public void run() {
-                        int v = parseGoal(et.getText().toString(), DiaryStore.goalToday());
+                        int v = parseGoal(et.getText().toString(), sel[0]);
                         DiaryStore.setGoalDefault(v);
                         toast(getString(R.string.goal_ok_default, v));
                         refreshDashboard();
@@ -258,8 +284,14 @@ public class MainActivity extends Activity {
         return -1;
     }
 
+    /**
+     * 自定义目标：脏值/空值退回 def，其余一律钳进 {@link Diary} 的合法量程。
+     * 以前这里自己写了一份 5..500，而进度码「采用对方设置」那条路径只有上限 1000、没有下限 ——
+     * 同一件事两处钳位、量程还不一样。现在统一走 Diary.clampGoal（单一真相源）。
+     */
     private static int parseGoal(String s, int def) {
-        try { return Math.max(5, Math.min(500, Integer.parseInt(s.trim()))); } catch (Exception e) { return def; }
+        try { return Diary.clampGoal(Integer.parseInt(s.trim())); }
+        catch (Exception e) { return Diary.clampGoal(def); }
     }
 
     @Override protected void onResume() {
@@ -277,11 +309,20 @@ public class MainActivity extends Activity {
             }
         });
         Db.ensureLoaded(this);
-        if (Prefs.needProfile()) {                       // 首次使用：先起个名字
+        // 首次使用：起个名字。**一次进程只提示一次** —— 以前每次 onResume 都判一遍 needProfile()，
+        // 而取名页在 firstRun 时藏掉了返回按钮、又没拦 onBackPressed，于是：
+        // 按返回 → 取名页 finish → 首页 onResume → needProfile() 仍然为真 → 又把取名页拉起来，
+        // 用户被困在里面出不去（按两次返回看起来像闪退）。想「先看看 App 长什么样再决定」做不到。
+        if (Prefs.needProfile() && !profilePrompted) {
+            profilePrompted = true;
             startActivity(new Intent(this, ProfileActivity.class));
         }
         Prefs p = Prefs.of(this);
-        ((TextView) findViewById(R.id.tvProfile)).setText(p.activeName());
+        // 还没建档案时 activeName() 是空串，顶栏就成了一个空白标题；退回「学习档案」这个占位名，
+        // 顺便让这一栏看起来是可点的（它确实能点，点了就是取名页）。
+        String nm = p.activeName();
+        ((TextView) findViewById(R.id.tvProfile)).setText(
+                nm.isEmpty() ? getString(R.string.set_profile_title) : nm);
         ((TextView) findViewById(R.id.tvSub)).setText(
                 getString(R.string.about_line, Db.I.books().size(), Db.I.totalWords()));
         int streak = p.streak();

@@ -645,21 +645,24 @@ public class Update {
     /** 静默检查一次（节流 60 秒）：查到新版只回报，弹不弹窗由页面决定 */
     private static void silentCheck(Activity a) {
         final Prefs p = Prefs.of(a);
-        if (!p.on(Prefs.K_UP_AUTO, true)) return;
+        // 更新族是**本机级**设置，走 g* 全局读写（见 Prefs.GLOBALIZED 的注释）：
+        // 以前按档案存，切一次档案「自动检查 / 上次检查时间 / 已忽略的版本」就换成另一份，
+        // 于是同一个新版本会每切一次档案就再弹一次窗。
+        if (!p.gbool(Prefs.K_UP_AUTO, true)) return;
         long now = System.currentTimeMillis();
-        if (now - p.l(Prefs.K_UP_LAST, 0) < 60L * 1000) return;
-        p.set(Prefs.K_UP_LAST, now);
+        if (now - p.gl(Prefs.K_UP_LAST, 0) < 60L * 1000) return;
+        p.gset(Prefs.K_UP_LAST, now);
         checkResAsync(a, new Cb2() {
             @Override public void onRes(Res r) {
                 Info info = r.newer ? r.server : null;
                 if (info == null) { if (r.err == null) latest = null; return; }
                 latest = info;
                 if (info.code == lastFoundCode) return;        // 同一个版本不反复打扰
-                if (!info.force && p.i(Prefs.K_UP_SEEN, 0) == info.code) {
+                if (!info.force && p.gi(Prefs.K_UP_SEEN, 0) == info.code) {
                     if (wcb != null) wcb.onFound(info);        // 提醒过了：首页横幅仍然亮着
                     return;
                 }
-                p.set(Prefs.K_UP_SEEN, info.code);
+                p.gset(Prefs.K_UP_SEEN, info.code);
                 lastFoundCode = info.code;
                 if (wcb != null) wcb.onFound(info);
             }

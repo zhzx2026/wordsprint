@@ -278,176 +278,199 @@
         android:paddingStart="22dp"
         android:paddingEnd="22dp">
 
-        <Space
+        <!--
+          内容区可滚动。以前整个覆盖层是「固定高度堆叠 + 三个 weight 撑开的 Space」，一个 ScrollView 都没有：
+          固定部分合计约 830dp（错词卡最多 14 行就占 ≈420dp），而常见手机可用高度只有 640~780dp，
+          横屏更低（约 320~400dp）。weight 只能被压到 0，压不动固定内容 ——
+          于是底部「开始下一组 / 返回书架」两颗按钮被顶出屏幕，而且**滚都滚不到**。
+          现在：内容进 ScrollView（weight=1 + fillViewport，内容短时照旧居中留白，内容长时可以滚），
+          按钮区拎出来做成固定在底部的一栏，永远看得见、点得到。
+        -->
+        <ScrollView
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="0.12"/>
-
-        <FrameLayout
-            android:layout_width="96dp"
-            android:layout_height="96dp"
-            android:background="@drawable/bg_circle_green">
-
-            <ImageView
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:layout_gravity="center"
-                android:src="@drawable/ic_check"
-                android:tint="?attr/wpGreen"
-                android:contentDescription="@null"/>
-        </FrameLayout>
-
-        <TextView
-            android:id="@+id/resultTitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:text="@string/session_done"
-            android:textColor="?attr/wpText"
-            android:textSize="24sp"
-            android:textStyle="bold"/>
-
-        <TextView
-            android:id="@+id/resultSub"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="7dp"
-            android:gravity="center"
-            android:textColor="?attr/wpText2"
-            android:textSize="13sp"/>
-
-        <!-- 2×2 数据卡 -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="22dp"
-            android:orientation="vertical"
-            android:background="@drawable/bg_card_22"
-            android:paddingTop="16dp"
-            android:paddingBottom="16dp">
+            android:layout_weight="1"
+            android:fillViewport="true"
+            android:scrollbars="none"
+            android:overScrollMode="never">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:orientation="vertical"
+                android:gravity="center_horizontal">
 
-                <LinearLayout
-                    android:layout_width="0dp"
+                <Space
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="0.12"/>
+
+                <FrameLayout
+                    android:layout_width="96dp"
+                    android:layout_height="96dp"
+                    android:background="@drawable/bg_circle_green">
+
+                    <ImageView
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_check"
+                        android:tint="?attr/wpGreen"
+                        android:contentDescription="@null"/>
+                </FrameLayout>
+
+                <TextView
+                    android:id="@+id/resultTitle"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
+                    android:layout_marginTop="18dp"
+                    android:text="@string/session_done"
+                    android:textColor="?attr/wpText"
+                    android:textSize="24sp"
+                    android:textStyle="bold"/>
+
+                <TextView
+                    android:id="@+id/resultSub"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="7dp"
+                    android:gravity="center"
+                    android:textColor="?attr/wpText2"
+                    android:textSize="13sp"/>
+
+                <!-- 2×2 数据卡 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="22dp"
                     android:orientation="vertical"
-                    android:gravity="center">
-                    <TextView android:id="@+id/rsFirst" style="@style/StatVal" android:textColor="?attr/wpGreen" android:text="0"/>
-                    <TextView style="@style/StatLbl" android:text="@string/first_learn"/>
+                    android:background="@drawable/bg_card_22"
+                    android:paddingTop="16dp"
+                    android:paddingBottom="16dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center">
+                            <TextView android:id="@+id/rsFirst" style="@style/StatVal" android:textColor="?attr/wpGreen" android:text="0"/>
+                            <TextView style="@style/StatLbl" android:text="@string/first_learn"/>
+                        </LinearLayout>
+
+                        <View android:layout_width="1dp" android:layout_height="match_parent" android:background="?attr/wpLine"/>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center">
+                            <TextView android:id="@+id/rsRetry" style="@style/StatVal" android:textColor="?attr/wpRed" android:text="0"/>
+                            <TextView style="@style/StatLbl" android:text="@string/retry_learn"/>
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginTop="14dp"
+                        android:background="?attr/wpLine"/>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:orientation="horizontal">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center">
+                            <TextView android:id="@+id/rsAcc" style="@style/StatVal" android:text="100%"/>
+                            <TextView style="@style/StatLbl" android:text="@string/accuracy"/>
+                        </LinearLayout>
+
+                        <View android:layout_width="1dp" android:layout_height="match_parent" android:background="?attr/wpLine"/>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:gravity="center">
+                            <TextView android:id="@+id/rsTime" style="@style/StatVal" android:text="0:00"/>
+                            <TextView style="@style/StatLbl" android:text="@string/duration"/>
+                        </LinearLayout>
+                    </LinearLayout>
                 </LinearLayout>
 
-                <View android:layout_width="1dp" android:layout_height="match_parent" android:background="?attr/wpLine"/>
-
+                <!-- 错词列表卡 -->
                 <LinearLayout
-                    android:layout_width="0dp"
+                    android:id="@+id/wrongWrap"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
+                    android:layout_marginTop="12dp"
                     android:orientation="vertical"
-                    android:gravity="center">
-                    <TextView android:id="@+id/rsRetry" style="@style/StatVal" android:textColor="?attr/wpRed" android:text="0"/>
-                    <TextView style="@style/StatLbl" android:text="@string/retry_learn"/>
+                    android:background="@drawable/bg_card_22"
+                    android:padding="15dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/due_label"
+                        android:textColor="?attr/wpText2"
+                        android:textSize="12sp"
+                        android:textStyle="bold"/>
+
+                    <LinearLayout
+                        android:id="@+id/wrongBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"/>
                 </LinearLayout>
+
             </LinearLayout>
+        </ScrollView>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginTop="14dp"
-                android:background="?attr/wpLine"/>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                android:orientation="horizontal">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center">
-                    <TextView android:id="@+id/rsAcc" style="@style/StatVal" android:text="100%"/>
-                    <TextView style="@style/StatLbl" android:text="@string/accuracy"/>
-                </LinearLayout>
-
-                <View android:layout_width="1dp" android:layout_height="match_parent" android:background="?attr/wpLine"/>
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center">
-                    <TextView android:id="@+id/rsTime" style="@style/StatVal" android:text="0:00"/>
-                    <TextView style="@style/StatLbl" android:text="@string/duration"/>
-                </LinearLayout>
-            </LinearLayout>
-        </LinearLayout>
-
-        <!-- 错词列表卡 -->
+        <!-- 固定底栏：不进 ScrollView，上面的内容再长也压不走这两颗按钮 -->
         <LinearLayout
-            android:id="@+id/wrongWrap"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
             android:orientation="vertical"
-            android:background="@drawable/bg_card_22"
-            android:padding="15dp"
-            android:visibility="gone">
+            android:paddingTop="10dp"
+            android:paddingBottom="14dp">
 
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/due_label"
-                android:textColor="?attr/wpText2"
-                android:textSize="12sp"
+                android:id="@+id/btnNext"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:background="@drawable/bg_btn_gradient"
+                android:gravity="center"
+                android:text="@string/next_group"
+                android:textColor="#FFFFFFFF"
+                android:textSize="16sp"
                 android:textStyle="bold"/>
 
-            <LinearLayout
-                android:id="@+id/wrongBox"
+            <TextView
+                android:id="@+id/btnExit"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"/>
+                android:layout_height="46dp"
+                android:gravity="center"
+                android:text="@string/back_shelf"
+                android:textColor="?attr/wpText2"
+                android:textSize="14sp"/>
         </LinearLayout>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="0.28"/>
-
-        <TextView
-            android:id="@+id/btnNext"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:background="@drawable/bg_btn_gradient"
-            android:gravity="center"
-            android:text="@string/next_group"
-            android:textColor="#FFFFFFFF"
-            android:textSize="16sp"
-            android:textStyle="bold"/>
-
-        
-
-        <TextView
-            android:id="@+id/btnExit"
-            android:layout_width="match_parent"
-            android:layout_height="46dp"
-            android:gravity="center"
-            android:text="@string/back_shelf"
-            android:textColor="?attr/wpText2"
-            android:textSize="14sp"/>
-
-        <Space
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="0.1"/>
     </LinearLayout>
+
 
     <com.aidemo.wordsprint.ConfettiView
         android:id="@+id/confetti"

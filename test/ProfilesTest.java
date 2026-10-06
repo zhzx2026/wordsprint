@@ -68,18 +68,31 @@ public class ProfilesTest {
         check(!Profiles.ownedBy("2", "u1_b_x_p"), "反过来也一样");
 
         // 遗留档案（id=0）：无前缀的学习数据键归它，全局设置绝不归它
-        String[] mine = {"b_PEP3A_p", "b_PEP3A_wc", "d_20260915", "s_speak", "s_sound",
-                "diary_v1", "fav_v1", "g_goal", "g_ges", "g_size", "g_heat_span"};
+        String[] mine = {"b_PEP3A_p", "b_PEP3A_wc", "b_PEP3A_r", "d_20260915",
+                "diary_v1", "g_goal", "g_ges", "g_size", "g_lag"};
         for (String k : mine) check(Profiles.ownedBy("0", k), "遗留命名空间里的学习数据键：" + k);
-        String[] globals = {"p_profiles", "p_active", "g_night", "g_skin", "g_font", "g_scale",
-                "g_goal_mode", "u_url", "u_ch", "u_auto", "u_last", "u_seen", "u1_b_PEP3A_p"};
+        // 全局（本机级）设置：主题/字体/配色 + 档案列表 + 更新族 + 朗读/音标/音效/动画族。
+        // 后两族以前按 s_ / ns(u_…) 划给档案，结果「切个档案，自动更新弹窗又弹一次」「删掉档案，
+        // 我关掉的朗读又开了」—— 它们描述的是这台机器上的这个安装包，不是这个学习者。
+        String[] globals = {"p_profiles", "p_active", "g_night", "g_skin", "g_font", "g_scale", "g_look",
+                "g_goal_mode", "u_url", "u_ch", "u_auto", "u_last", "u_seen", "u_br",
+                "s_speak", "s_phon", "s_sound", "s_anim", "u1_b_PEP3A_p"};
         for (String k : globals) check(!Profiles.ownedBy("0", k), "全局设置 / 别人的数据不能跟着遗留档案一起删：" + k);
+        // 化石键：功能已删，新版不再产生，也不该被当成「某个档案的学习数据」
+        String[] fossils = {"fav_v1", "g_heat_span"};
+        for (String k : fossils) check(!Profiles.ownedBy("0", k), "已删功能的化石键不再归属任何档案：" + k);
         check(!Profiles.ownedBy("0", null) && !Profiles.ownedBy(null, "b_x_p"), "null 参数不炸");
 
         // 学习数据键清单本身
-        check(Profiles.isProfileKey("b_x_p") && Profiles.isProfileKey("d_1") && Profiles.isProfileKey("s_sound"),
-                "isProfileKey：b_ / d_ / s_ 家族");
-        check(Profiles.isProfileKey("diary_v1") && Profiles.isProfileKey("fav_v1"), "isProfileKey：日记与收藏");
+        check(Profiles.isProfileKey("b_x_p") && Profiles.isProfileKey("d_1"), "isProfileKey：b_ / d_ 家族");
+        check(Profiles.isProfileKey("diary_v1"), "isProfileKey：日记");
+        check(Profiles.isProfileKey("g_goal") && Profiles.isProfileKey("g_ges")
+                        && Profiles.isProfileKey("g_size") && Profiles.isProfileKey("g_lag"),
+                "isProfileKey：按档案存的那几个 g_ 键（g_lag 以前漏了 → 删档案留下孤儿）");
+        check(!Profiles.isProfileKey("s_sound") && !Profiles.isProfileKey("s_speak"),
+                "isProfileKey：朗读/音效族已改全局，不能再按 s_ 前缀整族划给档案");
+        check(!Profiles.isProfileKey("fav_v1") && !Profiles.isProfileKey("g_heat_span"),
+                "isProfileKey：已删功能的化石键不算学习数据");
         check(!Profiles.isProfileKey("g_skin") && !Profiles.isProfileKey("p_profiles"), "isProfileKey：全局键不算学习数据");
         check(!Profiles.isProfileKey("") && !Profiles.isProfileKey(null), "isProfileKey：空值不炸");
 

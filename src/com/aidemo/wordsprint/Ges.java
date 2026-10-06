@@ -81,12 +81,38 @@ public final class Ges {
         try { return Integer.parseInt(s.trim()); } catch (Throwable t) { return def; }
     }
 
-    /** 兜底：把某个位置设成动作（设置页点选用），并顺带处理「同一动作绑两处」的重复 */
+    /**
+     * 兜底：把某个位置设成动作（设置页点选用）。
+     *
+     * 注意：这里**不**自动清掉「同一动作绑在两个位置」的重复 —— 重复是合法的、用户故意的手感
+     * （默认映射里 上滑/长按 都是查词，下滑/点按 都是看释义）。以前自动去重过，结果是
+     * 「我把长按改成查词，上滑就莫名其妙变回不绑定了」——用户没动过的格子被偷偷改掉。
+     * 重复本身不会造成任何歧义（每个位置各自独立判定），所以只在设置页**提示**一行，见 {@link #slotsOf}。
+     */
     public static int[] with(int[] map, int slot, int action) {
         int[] out = map == null ? DEF.clone() : map.clone();
         if (slot >= 0 && slot < SLOTS && known(action)) out[slot] = action;
         return out;
     }
+
+    /**
+     * 哪些位置绑了这个动作（返回位置下标，升序）。纯 java，可主机侧单测。
+     *
+     * 给设置页用：一个动作绑在两个以上位置时提示一行「查词详情：上滑、长按」，
+     * 让用户**看见**自己配了什么，而不是被代码悄悄改掉（见 {@link #with} 的注释）。
+     * NONE 不算重复（「不绑定」绑几处都无所谓），返回空数组。
+     */
+    public static int[] slotsOf(int[] map, int action) {
+        if (map == null || action == NONE || !known(action)) return new int[0];
+        int c = 0;
+        for (int i = 0; i < SLOTS && i < map.length; i++) if (map[i] == action) c++;
+        int[] out = new int[c];
+        c = 0;
+        for (int i = 0; i < SLOTS && i < map.length; i++) if (map[i] == action) out[c++] = i;
+        return out;
+    }
+
+
 
     /** 仅用于日志/自检：把映射写成 "上1 下2 …" 这种一眼能看的形式 */
     public static String describe(int[] map) {

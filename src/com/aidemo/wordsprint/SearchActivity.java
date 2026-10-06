@@ -28,6 +28,15 @@ public class SearchActivity extends Activity {
     private TextView status;
     private final Handler ui = new Handler(Looper.getMainLooper());
     private Runnable pending;
+    /**
+     * 查询代号：每次 {@link #doSearch} 自增，回主线程时比对，过期结果直接扔。
+     *
+     * 220ms 防抖只能「少起几个线程」，**取消不了已经起飞的那个**。全库检索要扫 16571 个词四趟，
+     * 几十到几百毫秒都可能：输 `ab` 起线程 A、再输 `abc` 起线程 B，B 先回来 A 后回来，
+     * 界面最终显示的就是 `ab` 的结果，而输入框里写着 `abc`。
+     * 同一个仓库里 ExportActivity 早就用 genSeq 做过这件事，这里保持一致。
+     */
+    private int searchSeq = 0;
 
     @Override protected void attachBaseContext(Context base) { super.attachBaseContext(Night.wrap(base)); }
 
@@ -104,13 +113,17 @@ public class SearchActivity extends Activity {
 
     private void doSearch(final String q) {
         final String query = q == null ? "" : q.trim();
+        final int seq = ++searchSeq;               // 这一趟的代号：比它新的查询一出现，这趟的结果就作废
         box.removeAllViews();
         if (query.isEmpty()) { status.setText(R.string.search_tip); return; }
         new Thread(new Runnable() {
             @Override public void run() {
                 final List<Words.Hit> hits = Words.search(query, 60);
                 runOnUiThread(new Runnable() {
-                    @Override public void run() { show(query, hits); }
+                    @Override public void run() {
+                        if (seq != searchSeq || isFinishing()) return;   // 过期结果直接扔
+                        show(query, hits);
+                    }
                 });
             }
         }, "wp-search").start();

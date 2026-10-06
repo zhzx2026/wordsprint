@@ -58,10 +58,13 @@ public class Prefs {
      */
     public int updateChannel() {
         if (p.contains(K_UP_CH)) {
-            int v = p.getInt(K_UP_CH, 0);
+            int v = gi(K_UP_CH, 0);
             return v == 1 ? UpCh.BRANCH : UpCh.sanitize(v);         // 旧「dev」→「分支」（测试包只认分支）
         }
-        String old = p.getString(ns(K_UP_URL), "");                 // 老版本手填过地址的
+        // 老版本手填过地址的：先读全局键，再兜一手档案命名空间里的存量（迁移在 of() 里做，
+        // 但 updateChannel() 有可能在 migrate 之前被调到，这里两个都看一眼更稳）
+        String old = gstr(K_UP_URL, null);
+        if (old == null) old = p.getString(ns(K_UP_URL), "");
         if (old != null && old.contains("/dev")) return UpCh.BRANCH;
         // 没显式选过通道：装的是测试包（X.Y）就默认盯「分支」。
         // （否则刚装完测试包的人点「检查更新」，查到的是正式版 —— 永远「已经是最新版本」）
@@ -78,7 +81,7 @@ public class Prefs {
         }
     }
 
-    public void setUpdateChannel(int ch) { p.edit().putInt(K_UP_CH, UpCh.sanitize(ch)).apply(); }
+    public void setUpdateChannel(int ch) { gset(K_UP_CH, UpCh.sanitize(ch)); }
 
     /**
      * 「分支」通道当前认的分支 id：显式点选过的优先；没选过 → 默认认**本包自己**的分支
@@ -86,12 +89,12 @@ public class Prefs {
      * 用户 2026-09-22「分支都没用」：装了哪条分支的包还得再手动点一次同名分支，纯属多余。
      */
     public String upBranch() {
-        String saved = UpCh.sanitizeSlot(p.getString(ns(K_UP_BR), ""));
+        String saved = UpCh.sanitizeSlot(gstr(K_UP_BR, ""));
         if (!saved.isEmpty()) return saved;
         return ownBranchId();
     }
 
-    public void setUpBranch(String id) { p.edit().putString(ns(K_UP_BR), UpCh.sanitizeSlot(id)).apply(); }
+    public void setUpBranch(String id) { gset(K_UP_BR, UpCh.sanitizeSlot(id)); }
 
     /** 本包出自哪条分支（构建标识第一段；双装包/解析失败返回空 —— 双装包应用内更新本来就关着） */
     private static String ownBranchId() {
@@ -154,6 +157,7 @@ public class Prefs {
             I = new Prefs(c.getApplicationContext());
             DiaryStore.attach(c);
             loadProfiles(I);
+            migrateGlobalKeys(I);               // 档案命名空间里的「本机级」设置搬到全局（见方法注释）
         }
         return I;
     }
@@ -168,11 +172,17 @@ public class Prefs {
         if (activeId == null) activeId = inferActive(pr, profs);
     }
 
-    /** 老数据第一次启动：如果本机已有进度（b_ / d_ 键），自动建一个占用遗留命名空间的档案 */
+    /**
+     * 老数据第一次启动：如果本机已有进度（b_ / d_ 键），自动建一个占用遗留命名空间的档案。
+     *
+     * 探针**不能**用 s_speak：那一族现在是全局键（见 {@link #GLOBALIZED}），
+     * 全新安装只要动过一次「朗读」开关就会留下 s_speak → 被误判成「有老进度」→
+     * 凭空多出一个「我」档案把用户的设置界面搞成多档案模式。只认 b_/d_ 这两个真正的进度家族。
+     */
     private static String inferActive(Prefs pr, Profiles ps) {
         boolean legacy = false;
         for (String k : pr.p.getAll().keySet()) {
-            if (k.startsWith("b_") || k.startsWith("d_") || k.startsWith("s_speak")) { legacy = true; break; }
+            if (k.startsWith("b_") || k.startsWith("d_")) { legacy = true; break; }
         }
         if (!ps.isEmpty()) return ps.list.get(0).id;
         if (legacy) {
@@ -198,7 +208,7 @@ public class Prefs {
     public boolean orphanLegacy() {
         if (profiles().byId(Profiles.LEGACY_ID) != null) return false;
         for (String k : p.getAll().keySet()) {
-            if (k.startsWith("b_") || k.startsWith("d_") || k.startsWith("s_speak")) return true;
+            if (k.startsWith("b_") || k.startsWith("d_")) return true;   // s_speak 已改成全局键，不再当探针
         }
         return false;
     }
@@ -216,6 +226,7 @@ public class Prefs {
         activeId = id;
         pr.p.edit().putString(K_ACTIVE, id).apply();
         DiaryStore.forget();                    // ← 只丢缓存（不再写盘），下次读的是新档案
+        invalidateDistinct();                   // 掌握词数缓存是「当前档案」的，切档案必须重算
     }
 
     /** 建档案并切过去（useLegacy=true 时占用遗留命名空间 → 老进度归它） */
@@ -264,6 +275,7 @@ public class Prefs {
             e.putString(K_ACTIVE, activeId);
         }
         e.putString(K_PROFILES, profiles().encode()).apply();
+        invalidateDistinct();
         return true;
     }
 
@@ -292,15 +304,70 @@ public class Prefs {
     public long l(String key, long def) { return p.getLong(ns(key), def); }
     public void set(String key, long v) { p.edit().putLong(ns(key), v).apply(); }
 
-    /** 全局（跨档案）读写：主题、字体、配色、档案列表这类 */
+    /**
+     * 全局（跨档案）读写：主题、字体、配色、档案列表，以及**本机级**的更新/朗读偏好。
+     *
+     * 为什么更新与朗读这几个开关必须是全局的：它们描述的是「这台机器上的这个安装包」，
+     * 不是「这个学习者」。以前一半走 ns()（u_url / u_auto / u_last / u_seen / u_br）
+     * 一半直接读裸键（u_ch），于是：
+     *   ① 切档案 → 更新通道没变但「自动检查」「上次检查时间」「已忽略的版本」全被换成另一份
+     *      → 同一个新版本弹窗会**每切一次档案就再弹一次**；
+     *   ② 新建档案 → 自动更新回到默认开，用户在旧档案里关掉的设置白关了；
+     *   ③ 朗读/音标/音效同理：给妹妹建的档案不该继承「不朗读」，但也不该让哥哥的开关被妹妹改掉。
+     * 现在这一族统一走 g* 接口，存量值由 {@link #migrateGlobalKeys} 一次性搬出来。
+     */
     public int gi(String key, int def) { return p.getInt(key, def); }
     public void gset(String key, int v) { p.edit().putInt(key, v).apply(); }
+    public boolean gbool(String key, boolean def) { return p.getBoolean(key, def); }
+    public void gset(String key, boolean v) { p.edit().putBoolean(key, v).apply(); }
+    public long gl(String key, long def) { return p.getLong(key, def); }
+    public void gset(String key, long v) { p.edit().putLong(key, v).apply(); }
+    public String gstr(String key, String def) { return p.getString(key, def); }
+    public void gset(String key, String v) { p.edit().putString(key, v).apply(); }
+
+    /** 从档案命名空间搬出来、改成全局的那些键（见 {@link #migrateGlobalKeys}） */
+    private static final String[] GLOBALIZED = {
+            K_SPEAK, K_PHON, K_SOUND, K_ANIM,
+            K_UP_URL, K_UP_AUTO, K_UP_LAST, K_UP_SEEN, K_UP_BR
+    };
+
+    /**
+     * 一次性迁移：老版本把上面这几项写在 {@code u<id>_} 命名空间里，改成全局读之后
+     * 直接读会读不到 → 用户明明关掉的朗读/自动更新又变回开着。
+     *
+     * 规则：裸键已存在就不动（遗留档案 ns 为空，本来就写在裸键上）；否则**优先取当前档案**
+     * 的那份，取不到再退而求其次扫任意一个档案的值。类型按原值照搬，不做转换。
+     */
+    private static void migrateGlobalKeys(Prefs pr) {
+        SharedPreferences sp = pr.p;
+        java.util.Map<String, ?> all = sp.getAll();
+        String activeNs = nsPrefix();
+        SharedPreferences.Editor e = null;
+        for (String raw : GLOBALIZED) {
+            if (sp.contains(raw)) continue;
+            Object v = all.get(activeNs + raw);
+            if (v == null) {
+                String suffix = "_" + raw;
+                for (String k : all.keySet()) {
+                    if (k.startsWith("u") && k.endsWith(suffix)) { v = all.get(k); break; }
+                }
+            }
+            if (v == null) continue;
+            if (e == null) e = sp.edit();
+            if (v instanceof Boolean) e.putBoolean(raw, (Boolean) v);
+            else if (v instanceof Integer) e.putInt(raw, (Integer) v);
+            else if (v instanceof Long) e.putLong(raw, (Long) v);
+            else if (v instanceof Float) e.putFloat(raw, (Float) v);
+            else if (v instanceof String) e.putString(raw, (String) v);
+        }
+        if (e != null) e.apply();
+    }
 
     // ---------- per-book ----------
     public static String bk(String bid, String k) { return "b_" + bid + "_" + k; }
 
     public java.util.BitSet mastered(String bid, int n) { return bitsOf(bid, "p", n); }
-    public void saveMastered(String bid, java.util.BitSet bs) { putBits(bid, "p", bs); }
+    public void saveMastered(String bid, java.util.BitSet bs) { putBits(bid, "p", bs); invalidateDistinct(); }
 
     /**
      * 错题本：规则见 {@link WrongBook}（错一次就进；连对 3 次算已掌握但**不出本**，要手动删；
@@ -356,8 +423,44 @@ public class Prefs {
         if (s == null || s.isEmpty()) p.edit().remove(ns(bk(bid, "s"))).apply();
         else p.edit().putString(ns(bk(bid, "s")), s).apply();
     }
-    public int groupSize(String bid) { return p.getInt(ns(bk(bid, "g")), DEF_SIZE); }
+    /**
+     * 这本书每组几个词。没单独设过 → 用**设置里的全局默认**（K_SIZE_DEF）。
+     *
+     * 以前默认写死 DEF_SIZE(50)：用户在「设置 → 学习 → 默认每组词数」改成 20，
+     * 打开一本没调过的书仍然是 50 —— 那个设置项等于没有。
+     */
+    public int groupSize(String bid) { return p.getInt(ns(bk(bid, "g")), i(K_SIZE_DEF, DEF_SIZE)); }
+
+    /** 刷词顺序：0 = 课本顺序 · 1 = 随机（见 {@link Order}） */
     public int order(String bid) { return p.getInt(ns(bk(bid, "o")), 0); }
+
+    /**
+     * 这本书的洗牌种子（随机顺序下用）。
+     *
+     * 为什么必须持久化：随机顺序以前是每次进刷词页 {@code new Random()} 重洗一遍，
+     * 而组指针 pos 是**上一次排列**里的下标 —— 排列一变，pos 指向的就是完全不同的词。
+     * 后果是随机模式下「进度续存」「下一组第 N 组」「批量改进度·从这里继续刷」全部失效，
+     * 用户看到的进度和实际刷到的词对不上账。
+     * 现在种子按书存下来，同一本书在刷完之前排列稳定；刷完一整轮想换花样时由上层显式换种子
+     * （见 {@link #rotateOrderSeed}）。0 表示「还没设过」，所以 newSeed() 保证非 0。
+     */
+    public long orderSeed(String bid) { return p.getLong(ns(bk(bid, "r")), 0L); }
+
+    /** 取种子，没有就现生成一个并存下（刷词页每本书调一次） */
+    public long ensureOrderSeed(String bid) {
+        long v = orderSeed(bid);
+        if (v != 0L) return v;
+        v = Order.newSeed();
+        p.edit().putLong(ns(bk(bid, "r")), v).apply();
+        return v;
+    }
+
+    /** 换一个新种子（刷完整本 / 重刷整本之后，让下一轮是另一种顺序） */
+    public long rotateOrderSeed(String bid) {
+        long v = Order.newSeed();
+        p.edit().putLong(ns(bk(bid, "r")), v).apply();
+        return v;
+    }
     /**
      * 回炉间隔：**全局设置**（设置 → 学习，K_LAG_DEF）。
      * 用户 2026-09-23：「打开词表后，这个回炉间隔在设置中设置，不要在这里设置」——
@@ -365,9 +468,17 @@ public class Prefs {
      */
     public int lag(String bid) { return p.getInt(ns(K_LAG_DEF), DEF_LAG); }
 
+    /**
+     * 存这本书的分组设置。
+     *
+     * **不再顺手把 size 写进 K_SIZE_DEF**：那是「设置 → 学习 → 默认每组词数」，
+     * 语义是「没单独设过的书用多少」。以前每调一本书就把全局默认改成这本书的值，
+     * 于是「默认」永远等于「最后调过的那本书」，用户设的默认值活不过一次词本弹层；
+     * 而且和 groupSize() 读默认值那条链一起构成了「改了没用 / 用了又被打回去」的死循环。
+     * 想改全局默认只有两个入口：设置页，以及进度码「采用对方设置」。
+     */
     public void saveSetup(String bid, int size, int order) {
         p.edit().putInt(ns(bk(bid, "g")), size).putInt(ns(bk(bid, "o")), order).apply();
-        set(K_SIZE_DEF, size);
     }
 
     public static final String K_SIZE_DEF = "g_size";
@@ -399,7 +510,8 @@ public class Prefs {
 
     public void clearBook(String bid) {
         SharedPreferences.Editor e = p.edit();
-        for (String k : new String[]{"p", "n", "g", "o", "l", "t", "w", "wc", "s"}) e.remove(ns(bk(bid, k)));
+        for (String k : new String[]{"p", "n", "g", "o", "l", "r", "t", "w", "wc", "s"}) e.remove(ns(bk(bid, k)));
+        distinctCache = -1;
         e.apply();
     }
 
@@ -407,8 +519,10 @@ public class Prefs {
     public void resetBookProgress(String bid) {
         SharedPreferences.Editor e = p.edit();
         e.remove(ns(bk(bid, "p"))).remove(ns(bk(bid, "w"))).remove(ns(bk(bid, "wc"))).remove(ns(bk(bid, "s")))
+                .remove(ns(bk(bid, "r")))       // 洗牌种子也丢掉 → 下一轮是全新的顺序
                 .putInt(ns(bk(bid, "n")), 0);
         e.apply();
+        distinctCache = -1;
     }
 
     // ---------- global stats（今日计数 = Diary 的镜像，老键继续保留以兼容进度码） ----------
@@ -431,9 +545,25 @@ public class Prefs {
 
     public int todayCount() { return countDay(today()); }
 
-    public void addToday(int x) {
-        p.edit().putInt(ns("d_" + today()), countDay(today()) + x).apply();
-        DiaryStore.learned(x);
+    /** 今天的新词计数 +x（x 可为负 = 撤销） */
+    public void addToday(int x) { addToday(today(), x); }
+
+    /**
+     * 指定那天的新词计数 +x。
+     *
+     * 两个坑，一起补上：
+     * ① **day 得是「这次作答发生时的那一天」**。跨零点还在刷的话，撤销要撤昨天那笔；
+     *    写「今天」会把还是 0 的今天减成负数，昨天那笔却原封不动留着（两头都错）。
+     * ② **下限钳到 0**。d_ 是日记的镜像键，两边各有写入路径（进度码导入「只增不减」地写 d_，
+     *    撤销却同时减两边），一旦对不上账就会出现负数 → 首页显示「今日已刷 -3」，
+     *    而 Diary.active() 判这天没学过 → 打卡勾消失、连续天数被截断。计数不该有负值这种状态。
+     */
+    public void addToday(String day, int x) {
+        String d = (day == null || day.isEmpty()) ? today() : day;
+        int v = countDay(d) + x;
+        if (v < 0) v = 0;
+        p.edit().putInt(ns("d_" + d), v).apply();
+        DiaryStore.learned(d, x);
     }
 
     /** 连续打卡：以 Diary 为准（含温习/自测也算打卡） */
@@ -603,6 +733,7 @@ public class Prefs {
                 if (r != null && r.date > 0) daySet.add(r.date);
             }
         }
+        invalidateDistinct();
         return new int[]{books, added, daySet.size(), wrongBooks, wrongNew};
     }
 
@@ -663,10 +794,33 @@ public class Prefs {
         } catch (Throwable ignored) {}
     }
 
+    /** {@link #totalMastered} 的缓存（-1 = 未算过）；任何会改动掌握位图的地方都要清掉 */
+    private static int distinctCache = -1;
+
+    private static void invalidateDistinct() { distinctCache = -1; }
+
+    /**
+     * 累计掌握多少个词 —— **去重后**的。
+     *
+     * 以前是把 24 本书的掌握位图基数直接相加。而词库是按学段编排的，同一个词会在
+     * 小学 / 初中 / 高中 / 考纲 / 大学里反复出现（人教版那 20 本尤甚）：
+     * 用户实际认得约 5000 个词，首页却显示 8800 —— 而这个数字还会印到分享卡片上
+     * （ShareCard.java:54），等于对外报了一个自己都没法解释的战绩。
+     *
+     * 按词面去重才是「认识多少个词」。开销：24 本书 × 位图 + 一次 HashSet，
+     * 16571 个词条目；结果缓存起来，改动掌握位图时才失效（首页/个人页/分享卡都会连着读几次）。
+     */
     public int totalMastered() {
         if (!Db.ready()) return 0;
-        int t = 0;
-        for (Db.Book b : Db.I.books()) t += mastered(b.id, b.n).cardinality();
-        return t;
+        if (distinctCache >= 0) return distinctCache;
+        Set<String> seen = new HashSet<String>();
+        for (Db.Book b : Db.I.books()) {
+            java.util.BitSet bs = mastered(b.id, b.n);
+            for (int i = bs.nextSetBit(0); i >= 0 && i < b.n; i = bs.nextSetBit(i + 1)) {
+                try { seen.add(b.word(i)); } catch (Throwable ignored) { return 0; }
+            }
+        }
+        distinctCache = seen.size();
+        return distinctCache;
     }
 }

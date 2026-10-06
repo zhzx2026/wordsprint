@@ -38,12 +38,12 @@ public class SoundFx {
     }
 
     public void ok() {
-        if (!prefs.on(Prefs.K_SOUND, true)) return;
+        if (!prefs.gbool(Prefs.K_SOUND, true)) return;
         try { if (tg != null) tg.startTone(ToneGenerator.TONE_PROP_ACK, 110); } catch (Exception ignored) {}
         tick(18);
     }
     public void miss() {
-        if (!prefs.on(Prefs.K_SOUND, true)) return;
+        if (!prefs.gbool(Prefs.K_SOUND, true)) return;
         try { if (tg != null) tg.startTone(ToneGenerator.TONE_PROP_NACK, 130); } catch (Exception ignored) {}
         tick(32);
     }
@@ -54,7 +54,7 @@ public class SoundFx {
         } catch (Exception ignored) {}
     }
     public void speak(String word) {
-        if (!prefs.on(Prefs.K_SPEAK, true)) return;
+        if (!prefs.gbool(Prefs.K_SPEAK, true)) return;
         try {
             if (ttsReady && tts != null && word != null && word.length() <= 40)
                 tts.speak(word, TextToSpeech.QUEUE_FLUSH, null, "wp");

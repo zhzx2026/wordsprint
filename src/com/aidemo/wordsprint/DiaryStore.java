@@ -80,9 +80,10 @@ public final class DiaryStore {
     public static synchronized void setGoalDefault(int goal) {
         attachIfNeeded();
         ensure();
-        if (sp != null) sp.edit().putInt(Prefs.ns(KEY_GOAL), goal).apply();
+        int g = Diary.clampGoal(goal);
+        if (sp != null) sp.edit().putInt(Prefs.ns(KEY_GOAL), g).apply();
         Diary.Day d = cache.peek(Diary.today());
-        if (d != null && !d.custom) d.goal = goal;
+        if (d != null && !d.custom) d.goal = g;
         save();
         fire();
     }
@@ -91,17 +92,38 @@ public final class DiaryStore {
     public static synchronized void setGoalToday(int goal) {
         attachIfNeeded();
         ensure();
-        Diary.Day d = cache.get(Diary.today(), goal);
-        d.goal = goal;
+        Diary.Day d = cache.getOrCreate(Diary.today(), goalDefault());
+        d.goal = Diary.clampGoal(goal);
         d.custom = true;
         save();
         fire();
     }
 
-    private static Diary.Day today() {
+    /** 今天的可写记录（记账专用） */
+    private static Diary.Day today() { return day(Diary.today()); }
+
+    /**
+     * 指定那天的可写记录。
+     *
+     * 为什么要按天传参而不是每次都写「今天」：跨零点还在刷的话，
+     * 撤销上一张卡要撤的是**昨天那一笔** —— 写「今天」会把还是 0 的今天减成负数，
+     * 昨天那笔却原封不动地留在那儿（两边都错）。见 StudyActivity 的 sessionDay。
+     */
+    private static Diary.Day day(String key) {
         attachIfNeeded();
         ensure();
-        return cache.get(Diary.today(), goalDefault());
+        return cache.getOrCreate(key == null || key.isEmpty() ? Diary.today() : key, goalDefault());
+    }
+
+    /**
+     * 只读视图：**绝不**往日记里建记录。
+     * 展示 / 判定类的调用方一律走这条（以前走 {@code get}，每刷新一次就塞一条零活动的今天，
+     * 让 sortedKeys / bestStreak / exportDiaryFull 每次多遍历一条脏数据）。
+     */
+    private static Diary.Day view(String key) {
+        attachIfNeeded();
+        ensure();
+        return cache.view(key == null || key.isEmpty() ? Diary.today() : key, goalDefault());
     }
 
     // ---------- 订阅 ----------
@@ -118,34 +140,56 @@ public final class DiaryStore {
 
     // ---------- 记账 ----------
 
-    /** 新生词 +n（「第一次记住」才算） */
-    public static synchronized void learned(int n) {
-        Diary.Day d = today();
+    /** 新生词 +n（「第一次记住」才算），记在今天 */
+    public static synchronized void learned(int n) { learned(Diary.today(), n); }
+
+    /**
+     * 新生词 +n（n 可为负 = 撤销），记在 {@code dayKey} 那天。
+     *
+     * **下限钳到 0**：撤销次数比记录多时（连点撤销 / 老数据不一致 / 进度码「只增不减」
+     * 让 d_ 镜像与日记对不上账），负数会让 {@link Diary#active} 判这天「没学过」→
+     * 打卡勾消失、连续天数被截断，而用户明明刷了词。「今天已刷 -3」这种数字也不该存在。
+     */
+    public static synchronized void learned(String dayKey, int n) {
+        Diary.Day d = day(dayKey);
         d.learned += n;
+        if (d.learned < 0) d.learned = 0;
         save();
         fire();
     }
 
-    /** 温习答对一张 */
-    public static synchronized void reviewed(boolean ok) {
-        Diary.Day d = today();
-        if (ok) d.rev++;
+    /** 温习答对一张（今天） */
+    public static synchronized void reviewed(boolean ok) { reviewed(Diary.today(), ok); }
+
+    /** 温习答对一张，记在 {@code dayKey} 那天 */
+    public static synchronized void reviewed(String dayKey, boolean ok) {
+        if (!ok) return;
+        Diary.Day d = day(dayKey);
+        d.rev++;
         save();
         fire();
     }
 
-    /** 撤销一次温习记录 */
-    public static synchronized void undoReviewed() {
-        Diary.Day d = today();
-        if (d.rev > 0) d.rev--;
+    /** 撤销一次温习记录（今天） */
+    public static synchronized void undoReviewed() { undoReviewed(Diary.today()); }
+
+    /** 撤销一次温习记录，撤在 {@code dayKey} 那天 */
+    public static synchronized void undoReviewed(String dayKey) {
+        Diary.Day d = view(dayKey);
+        if (d.rev <= 0) return;                 // 没什么可撤的：别为它凭空建一条记录
+        day(dayKey).rev--;
         save();
         fire();
     }
 
-    /** 计时（秒）：kind 0=刷词 1=温习 2=自测 */
-    public static synchronized void addTime(int kind, long ms) {
-        Diary.Day d = today();
+    /** 计时（秒）：kind 0=刷词 1=温习 2=自测（今天） */
+    public static synchronized void addTime(int kind, long ms) { addTime(Diary.today(), kind, ms); }
+
+    /** 计时（秒），记在 {@code dayKey} 那天 */
+    public static synchronized void addTime(String dayKey, int kind, long ms) {
         int s = (int) Math.max(0, ms / 1000);
+        if (s <= 0) return;
+        Diary.Day d = day(dayKey);
         d.sec += s;
         if (kind == 1) {
             d.revSec += s;
@@ -158,7 +202,7 @@ public final class DiaryStore {
 
     /** 今天的勾选：0 刷词目标 · 1 温习（自测已删，见 StudyActivity 顶部注释） */
     public static synchronized boolean done(int kind) {
-        Diary.Day d = today();
+        Diary.Day d = view(Diary.today());
         switch (kind) {
             case 0: return d.goalDone();
             case 1: return d.revDone;
@@ -168,7 +212,7 @@ public final class DiaryStore {
 
     /** 今天打了几项（刷词目标 / 温习） */
     public static synchronized int doneCount() {
-        Diary.Day d = today();
+        Diary.Day d = view(Diary.today());
         int n = 0;
         if (d.goalDone()) n++;
         if (d.revDone) n++;
@@ -183,7 +227,7 @@ public final class DiaryStore {
         String key = String.format(Locale.US, "%04d-%02d-%02d",
                 yyyymmdd / 10000, yyyymmdd / 100 % 100, yyyymmdd % 100);
         if (key.compareTo(Diary.today()) >= 0) return;
-        Diary.Day d = cache.get(key, goalDefault());   // 新天跟档案默认目标（以前写死 50，导过来的天目标会对不上）
+        Diary.Day d = cache.getOrCreate(key, goalDefault());   // 新天跟档案默认目标（以前写死 50，导过来的天目标会对不上）
         if (d.learned < count) d.learned = count;
         save();
     }

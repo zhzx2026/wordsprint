@@ -30,6 +30,18 @@ public class Engine {
     private final List<int[]> due = new ArrayList<>();
     private final Set<Integer> firstShown = new HashSet<>();
     private int drawn, groupTotal, okCount, answers, firstOk, requeues;
+    /**
+     * 本组在 order 上**实际消耗到的位置**（exclusive）。
+     *
+     * 为什么不能用 {@code pos += groupSize}：`pos` 是 order 的**下标**，`groupSize` 是
+     * 「取到的未掌握词个数」—— 这两个量只有在「一个词都没掌握过」时才相等。
+     * 书里一旦有掌握过的词，startGroup 就会跳过它们、往后多扫若干位置，
+     * 实际消耗的跨度 &gt; groupSize，而旧写法只前进 groupSize → pos 越落越远：
+     *   ① 词本弹层的「下一组第 N 组」失真；
+     *   ② 「批量改进度 · 从这里继续刷」定位不准；
+     *   ③ {@link #resume} 的 `p != pos` 闸门更容易把有效现场误判成「不是这一组」而作废。
+     */
+    private int groupEnd;
     private int current = -1;
     private boolean flipped, busy;
     private long resumeElapsed;                 // 现场里带来的「本组已用毫秒」（结算页的用时才不会被闪重置成 0）
@@ -40,7 +52,7 @@ public class Engine {
     private int[][] snapDue;
     private int[] snapFirst;
     private BitSet snapMastered;
-    private int snapDrawn, snapTotal, snapOk, snapAns, snapFirstOk, snapRequeue, snapCurrent, snapPos;
+    private int snapDrawn, snapTotal, snapOk, snapAns, snapFirstOk, snapRequeue, snapCurrent, snapPos, snapGroupEnd;
     private boolean snapFlipped, snapReview;
 
     public Engine(int n, int[] order, BitSet mastered, int pos,
@@ -68,6 +80,22 @@ public class Engine {
     public java.util.BitSet masteredBitSet() { return mastered; }
     public void setRedoAll(boolean v) { redoAll = v; }
 
+    /**
+     * 从 from 起在 order 上切一组（跳过已掌握，redoAll 时全含），队列写进 {@link #q}。
+     * @return 实际消耗到的位置（exclusive）—— 交给 {@link #groupEnd}，组打完时用它推进 pos
+     */
+    private int slice(int from) {
+        q.clear();
+        int taken = 0, p = from < 0 ? 0 : from;
+        for (; p < order.length && taken < groupSize; p++) {
+            int w = order[p];
+            if (!redoAll && mastered.get(w)) continue;
+            q.addLast(w);
+            taken++;
+        }
+        return p;
+    }
+
     /** 开始本组：从 pos 起在 order 空间取 groupSize 个（跳过已掌握，redoAll 时全含） */
     public void startGroup() {
         snapQ = null;
@@ -75,14 +103,18 @@ public class Engine {
         q.clear(); due.clear(); firstShown.clear();
         drawn = 0; okCount = 0; answers = 0; firstOk = 0; requeues = 0;
         current = -1; busy = false; flipped = false; resumeElapsed = 0;
-        int taken = 0;
-        for (int p = pos; p < order.length && taken < groupSize; p++) {
-            int w = order[p];
-            if (!redoAll && mastered.get(w)) continue;
-            q.addLast(w);
-            taken++;
-        }
+        groupEnd = slice(pos);
         groupTotal = q.size();
+        if (groupTotal == 0 && !redoAll && pos > 0 && !allMastered()) {
+            // 从 pos 往后一个未掌握的词都没有，但全书并没有刷完 → 组指针被挪过头了。
+            // 三条来路都可能：旧版本 pos += groupSize 的漂移、随机模式下批量改进度把词号
+            // 当下标写进来（见 Order.posOfWord）、进度码合并取了更大的值。
+            // 这种情况**不该报「整本刷完」**（那会让用户以为学完了，其实还剩一大截），
+            // 回到 0 重扫一遍：只有全书确实都掌握了才走 onBookEmpty。
+            pos = 0;
+            groupEnd = slice(0);
+            groupTotal = q.size();
+        }
         if (groupTotal == 0) { L.onBookEmpty(); return; }
         next();
     }
@@ -94,6 +126,7 @@ public class Engine {
         q.clear(); due.clear(); firstShown.clear();
         drawn = 0; okCount = 0; answers = 0; firstOk = 0; requeues = 0;
         current = -1; busy = false; flipped = false; resumeElapsed = 0;
+        groupEnd = pos;                      // 复习不推进组指针，groupEnd 也就等于 pos
         if (idxs == null || idxs.length == 0) { L.onBookEmpty(); return; }
         for (int w : idxs) q.addLast(w);
         groupTotal = q.size();
@@ -138,7 +171,10 @@ public class Engine {
         if (ok) {
             okCount++;
             boolean firstTime = firstShown.add(current);
-            if (firstTime && !already) firstOk++;
+            // 分母 answers 每次作答都 +1，所以分子也必须把「重刷整本」里那些本来就掌握过的词算上
+            // —— 以前只算 !already，redoAll 模式下 firstOk 恒为 0，
+            // 结算页于是显示「一次记住 50 · 正确率 0%」这种自相矛盾的结果。
+            if (firstTime && (!already || redoAll)) firstOk++;
             if (!already) {
                 mastered.set(current);
                 L.onMastered(current);
@@ -169,6 +205,7 @@ public class Engine {
         snapMastered = (BitSet) mastered.clone();
         snapDrawn = drawn; snapTotal = groupTotal; snapOk = okCount; snapAns = answers;
         snapFirstOk = firstOk; snapRequeue = requeues; snapCurrent = current; snapPos = pos;
+        snapGroupEnd = groupEnd;
         snapFlipped = flipped; snapReview = review;
     }
 
@@ -188,6 +225,7 @@ public class Engine {
         mastered.or(snapMastered);
         drawn = snapDrawn; groupTotal = snapTotal; okCount = snapOk; answers = snapAns;
         firstOk = snapFirstOk; requeues = snapRequeue; current = snapCurrent; pos = snapPos;
+        groupEnd = snapGroupEnd;
         flipped = snapFlipped; review = snapReview;
         busy = false;
         snapQ = null;
@@ -196,9 +234,10 @@ public class Engine {
 
     private void finishGroup() {
         boolean all = allMastered();
-        if (!review && pos < n) {
-            pos += groupSize;
-            if (pos > n) pos = n;
+        if (!review) {
+            // 推进到「本组实际消耗到的位置」，不是 pos + groupSize（见 groupEnd 的注释）
+            int end = groupEnd > pos ? groupEnd : pos;
+            pos = end > n ? n : end;
         }
         current = -1;
         snapQ = null;                     // 组已结束：这张快照没有可撤销的界面了
@@ -214,7 +253,7 @@ public class Engine {
     // （见 StudyActivity 的 onShow 回调），回来时原样摆回那张卡。
     //
     // 快照格式（一行文本，`;` 分段、`,` 分列）：
-    //   v=wps1;p=组指针;d=drawn;t=组内总张数;o=记住数;a=作答数;k=首答即对数;r=回炉数;c=当前词;e=本组已用毫秒
+    //   v=wps1;p=组指针;g=本组消耗到的位置;d=drawn;t=组内总张数;o=记住数;a=作答数;k=首答即对数;r=回炉数;c=当前词;e=本组已用毫秒
     //   ;q=剩余队列;u=回炉表(词@到期序号);f=本组出过的词
     // 读不上的版本 / 解析失败 / 索引越界一律当「没有现场」处理（resume 返回 false，调用方正常开组）。
 
@@ -232,7 +271,8 @@ public class Engine {
         if (review) return "";
         if (current < 0 && q.isEmpty() && due.isEmpty()) return "";
         StringBuilder sb = new StringBuilder(96);
-        sb.append("v=").append(SNAP_V).append(";p=").append(pos).append(";d=").append(drawn)
+        sb.append("v=").append(SNAP_V).append(";p=").append(pos).append(";g=").append(groupEnd)
+          .append(";d=").append(drawn)
           .append(";t=").append(groupTotal).append(";o=").append(okCount).append(";a=").append(answers)
           .append(";k=").append(firstOk).append(";r=").append(requeues).append(";c=").append(current)
           .append(";e=").append(Math.max(0, elapsedMs));
@@ -303,6 +343,12 @@ public class Engine {
         // 分母取快照里的，别跟着剔除后的队列缩水：被别处标成已掌握的那些词算「本组已完成」
         groupTotal = Math.max(num(kv.get("t"), 0), q.size() + due.size() + (cur < 0 ? 0 : 1));
         current = cur;
+        // groupEnd 决定「这组打完时 pos 推进到哪」（见字段注释）。
+        // g >= 0 是新版现场，原样带回；老现场没有这个字段 —— 这里**故意不升 SNAP_V**：
+        // 升版本号会让用户升级前存下的所有现场直接作废（闪退一次就丢一整轮进度），
+        // 代价远大于下面这点倒推的近似。
+        int g = num(kv.get("g"), -1);
+        groupEnd = g >= 0 ? clampEnd(g) : recomputeGroupEnd(cur);
         review = false;
         flipped = false;
         busy = false;
@@ -315,6 +361,29 @@ public class Engine {
 
     /** {@link #resume} 带回来的「本组已用毫秒」（没恢复成功时是 0） */
     public long resumedElapsedMs() { return resumeElapsed; }
+
+    /** groupEnd 的合法区间：[pos, n]（它是从 pos 起切出来那一段的 exclusive 末尾） */
+    private int clampEnd(int g) {
+        if (g < pos) return pos;
+        return g > n ? n : g;
+    }
+
+    /**
+     * 老现场（无 g 字段）倒推 groupEnd：取「本组还在流转的词」里最靠后的那个的位置 + 1。
+     * 流转中 = 待出队 q + 回炉 due + 当前词 cur，它们必然落在本组消耗过的那段 order 里。
+     * 一个都没有（刚答完整组）就退回 pos —— 那种现场本来就要结束了，近似无害。
+     */
+    private int recomputeGroupEnd(int cur) {
+        int[] inv = Order.inverse(order);
+        int max = posAt(inv, cur);
+        for (int w : q) { int x = posAt(inv, w); if (x > max) max = x; }
+        for (int[] e : due) { int x = posAt(inv, e[0]); if (x > max) max = x; }
+        return clampEnd(max < 0 ? pos : max + 1);
+    }
+
+    private static int posAt(int[] inv, int w) {
+        return (w >= 0 && w < inv.length) ? inv[w] : -1;
+    }
 
     /** 单个整数；脏值/缺字段返回 def */
     private static int num(String s, int def) {
