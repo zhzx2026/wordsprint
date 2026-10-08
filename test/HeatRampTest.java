@@ -180,6 +180,53 @@ public class HeatRampTest {
         check(gridRight(tiny[1], tiny[0], (int) tiny[2]) <= 200f * 3f + 0.01f, "极窄屏也不越界");
         check(tiny[1] >= labelNeed(tiny[0], 3f) - 0.01f, "极窄屏的标签也不能被切");
 
-        System.out.println("ALL HEAT RAMP TESTS PASS (6 个月唯一档 + 居中) (" + checks + " checks)");
+        // ---------------- 触点 → 格子（「点格子看当天明细」的几何换算）----------------
+        // 这个功能曾经是完全死的：HeatView 不是 clickable，ACTION_DOWN 被 View.onTouchEvent
+        // 返回 false → 父 ListView 认定它不处理手势 → 后续 UP 再也不派发过来。
+        // 那种「点了没反应」在纯 View 代码里没人看得见，所以至少把换算钉死：
+        // 修好之后命中的必须确实是用户点的那个格子。
+        {
+            float cell = 10f, gap = 4f, labelW = 20f, labelH = 16f;   // step = 14
+            int cols = 26;                                            // 半年 = 26 周
+            // 网格原点：x = padLeft + xOff + labelW，y = padTop + labelH
+            check(Heat.hitCell(25f, 20f, 0f, 0f, 0f, labelW, labelH, cell, gap, cols) == 0,
+                    "第一格命中 idx 0");
+            check(Heat.hitCell(36f, 47f, 0f, 0f, 0f, labelW, labelH, cell, gap, cols) == 9,
+                    "第 1 列第 2 行命中 idx 1*7+2=9");
+            check(Heat.hitCell(375f, 105f, 0f, 0f, 0f, labelW, labelH, cell, gap, cols) == 181,
+                    "最后一格命中 idx 25*7+6=181（26 周 × 7 天 = 182 格）");
+            // padding / 居中偏移都要算进去
+            check(Heat.hitCell(38f, 24f, 8f, 3f, 5f, labelW, labelH, cell, gap, cols) == 0,
+                    "padLeft=8 / padTop=3 / xOff=5 时原点跟着挪");
+            check(Heat.hitCell(25f, 20f, 8f, 3f, 5f, labelW, labelH, cell, gap, cols) == -1,
+                    "不挪的话这个点就落到网格外了（说明偏移真的参与计算）");
+            // 格间空隙不算命中：gap 有 cell 的 28% 那么宽，算给上一格会「点这格弹出隔壁那天」
+            check(Heat.hitCell(32f, 20f, 0f, 0f, 0f, labelW, labelH, cell, gap, cols) == -1,
+                    "落在格间空隙里不命中");
+            check(Heat.hitCell(25f, 29f, 0f, 0f, 0f, labelW, labelH, cell, gap, cols) == -1,
+                    "纵向空隙同样不命中");
+            // 越界：左右上下、超出周数、超出 7 行
+            check(Heat.hitCell(10f, 20f, 0f, 0f, 0f, labelW, labelH, cell, gap, cols) == -1,
+                    "点在星期标签区不命中");
+            check(Heat.hitCell(19.5f, 20f, 0f, 0f, 0f, labelW, labelH, cell, gap, cols) == -1,
+                    "紧贴网格左边（gx=-0.5）不命中 —— 以前 (int) 向零截断会把它算成第 0 列");
+            check(Heat.hitCell(25f, 10f, 0f, 0f, 0f, labelW, labelH, cell, gap, cols) == -1,
+                    "点在星期标签那一行不命中");
+            check(Heat.hitCell(25f, 15.5f, 0f, 0f, 0f, labelW, labelH, cell, gap, cols) == -1,
+                    "紧贴网格上边（gy=-0.5）不命中，同样不被截断成第 0 行");
+            check(Heat.hitCell(385f, 20f, 0f, 0f, 0f, labelW, labelH, cell, gap, cols) == -1,
+                    "超出 26 周不命中");
+            check(Heat.hitCell(25f, 115f, 0f, 0f, 0f, labelW, labelH, cell, gap, cols) == -1,
+                    "第 8 行（只有 7 天）不命中");
+            check(Heat.hitCell(25f, 102f, 0f, 0f, 0f, labelW, labelH, cell, gap, cols) == 6,
+                    "第 7 行（周日）仍然命中");
+            // 脏参数不炸
+            check(Heat.hitCell(25f, 20f, 0f, 0f, 0f, labelW, labelH, 0f, 0f, cols) == -1, "cell+gap=0 不炸");
+            check(Heat.hitCell(25f, 20f, 0f, 0f, 0f, labelW, labelH, cell, gap, 0) == -1, "cols=0 不炸");
+            check(Heat.hitCell(25f, 20f, 0f, 0f, 0f, labelW, labelH, -1f, -1f, cols) == -1, "负尺寸不炸");
+            check(Heat.hitCell(Float.NaN, 20f, 0f, 0f, 0f, labelW, labelH, cell, gap, cols) == -1, "NaN 坐标不炸");
+        }
+
+        System.out.println("ALL HEAT RAMP TESTS PASS (6 个月唯一档 + 居中 + 触点命中) (" + checks + " checks)");
     }
 }

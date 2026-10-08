@@ -86,7 +86,45 @@ public final class GesUi {
             box.addView(row, new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         }
+        String dup = dupHint(a, map);
+        if (dup != null) {
+            TextView tv = new TextView(a);
+            tv.setText(dup);
+            tv.setTextSize(12f);
+            tv.setTextColor(Skin.c(a, R.attr.wpText2));
+            tv.setLineSpacing(Ui.dp(a, 3), 1f);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            lp.topMargin = (int) Ui.dp(a, 8);
+            box.addView(tv, lp);
+        }
         Fonts.scaleTree(box, a);      // 只缩这一小撮新建的行（整页收口是 onCreate 的事，别在这儿做）
+    }
+
+    /**
+     * 重复绑定提示行；没有重复返回 null（那一行就不出现）。
+     *
+     * 一个动作绑在多个位置是**合法**的、也真的每处都生效（出厂默认值本身就重复：
+     * 上滑/长按都是查词，下滑/点按都是看释义 —— 六个位置只覆盖了 4 个不同动作）。
+     * 所以这里不自动去重：绑新动作时把旧那格清成 NONE，等于「我把长按改成查词，
+     * 上滑就莫名其妙变回不绑定了」—— 用户没动过的格子被代码偷偷改掉，比重复本身糟得多。
+     * 但用户未必意识到自己有两个手势是重复的，所以把事实**说出来**，改不改由他决定。
+     */
+    private static String dupHint(Activity a, int[] map) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < Ges.ACTIONS.length; i++) {
+            int act = Ges.ACTIONS[i];
+            int[] slots = Ges.slotsOf(map, act);
+            if (slots.length < 2) continue;
+            StringBuilder names = new StringBuilder();
+            for (int k = 0; k < slots.length; k++) {
+                if (k > 0) names.append('、');
+                names.append(a.getString(slotLabel(slots[k])));
+            }
+            if (sb.length() > 0) sb.append('\n');
+            sb.append(a.getString(actionShort(act))).append(" → ").append(names);
+        }
+        return sb.length() == 0 ? null : a.getString(R.string.ges_dup_hint, sb.toString());
     }
 
     /** 单选弹窗：列出该位置能绑的动作 */

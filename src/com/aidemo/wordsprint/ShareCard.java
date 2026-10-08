@@ -41,7 +41,7 @@ public final class ShareCard {
         Stats s = new Stats();
         Diary dy = DiaryStore.diary();
         String t = Diary.today();
-        Diary.Day d = dy.get(t, DiaryStore.goalDefault());
+        Diary.Day d = dy.getOrCreate(t, DiaryStore.goalDefault());
         s.diary = dy;
         s.date = t;
         s.name = Prefs.activeName();

@@ -48,10 +48,20 @@ public class Db {
     public int totalWords() {
         int t = 0; for (Book b : books) t += b.n; return t;
     }
+    /**
+     * 出版社 → 书脊/标签配色。
+     *
+     * 两处坑，一起补上：
+     * ① {@code Math.abs(hashCode())} 在 hashCode() == Integer.MIN_VALUE 时**返回负数**
+     *    （abs 溢出仍是 MIN_VALUE）→ 取模得负下标 → ArrayIndexOutOfBoundsException，书架直接崩；
+     *    用 {@code & 0x7fffffff} 抹掉符号位才是安全写法。
+     * ② pub 可能为 null（词库里 4 本「拓展」类的书就没有出版社字段），旧写法直接 NPE。
+     */
     public static int pubColor(String pub) {
         final int[] PAL = {0xFF3D5AF1, 0xFF0E9F5E, 0xFFE8590C, 0xFF7048E8,
                 0xFF1098AD, 0xFFD6336C, 0xFF5C940E, 0xFF495057, 0xFF9A6700};
-        return PAL[(Math.abs(pub.hashCode()) % PAL.length)];
+        int h = pub == null ? 0 : pub.hashCode();
+        return PAL[(h & 0x7fffffff) % PAL.length];
     }
 
     public static String stageName(int s) {

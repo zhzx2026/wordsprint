@@ -93,6 +93,35 @@ public final class Heat {
      * 用户 2026-09-16：「热力图只要 6 个月」—— 3 个月 / 1 年两档已删：一档就不需要选择器，
      * 屏幕上那块地方还给网格本身（窄屏放不下 26 周时会自动缩小格子，见 {@link #layout}）。
      */
+    /**
+     * 触点 → 格子序号（{@code col * 7 + row}）；落在网格外或格间空隙里返回 -1。
+     *
+     * 从 {@link HeatView#onTouchEvent} 里抽出来是为了能主机侧断言。「点格子看当天明细」
+     * 曾经是完全死的：HeatView 不是 clickable，ACTION_DOWN 被 View.onTouchEvent 返回 false
+     * → 父 ListView 认为这个子 View 不处理手势 → 后续 UP 再也不派发过来 → 唯一会回调
+     * OnPick 的那个分支永远进不去。这类「点了没反应」在纯 View 代码里没人看得见，
+     * 至少把几何换算钉死，能保证修好之后命中的确实是用户点的那个格子。
+     *
+     * 顺带修掉原实现的一个 off-by-one：以前用 {@code (int)} 强转，而强转是**向零截断**，
+     * 于是 x 落在星期标签区（网格左边）时算出 -0.4 → 截成 0 → 判成第 0 列，
+     * 点标签会弹出最左边那一天的明细。这里改用 floor。
+     */
+    public static int hitCell(float x, float y, float padLeft, float padTop, float xOff,
+                              float labelW, float labelH, float cell, float gap, int cols) {
+        if (Float.isNaN(x) || Float.isNaN(y)) return -1;      // 脏坐标：(int) NaN 会截成 0，反而命中第一格
+        float step = cell + gap;
+        if (step <= 0f || cols <= 0) return -1;
+        float gx = x - padLeft - xOff - labelW;
+        float gy = y - padTop - labelH;
+        int col = (int) Math.floor(gx / step);
+        int row = (int) Math.floor(gy / step);
+        if (col < 0 || row < 0 || col >= cols || row > 6) return -1;
+        // 落在格间空隙里不算命中：gap 有 cell 的 3.6/13 ≈ 28% 那么宽，
+        // 把空隙也算给上一格会让「点了这格却弹出隔壁那天」变得很常见。
+        if (gx - col * step > cell || gy - row * step > cell) return -1;
+        return col * 7 + row;
+    }
+
     public static final int SPAN_6M = 26;
 
     /** 唯一档即默认档（老代码里读档位的地方统一走它，别再写 0/1/2） */

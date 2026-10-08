@@ -42,7 +42,14 @@ public class ProfileActivity extends Activity {
                 firstRun ? getString(R.string.profile_first_title) : getString(R.string.profile_title));
         ((TextView) findViewById(R.id.tvDesc)).setText(
                 firstRun ? getString(R.string.profile_first_desc) : getString(R.string.profile_hint));
-        findViewById(R.id.btnBack).setVisibility(firstRun ? View.GONE : View.VISIBLE);
+        // 返回按钮**首次使用也要留着**。
+        // 以前 firstRun 时把它 GONE 掉，加上这个 Activity 没拦 onBackPressed，
+        // 而首页 onResume 又「只要 needProfile() 就再拉一次取名页」——
+        // 三条凑在一起就是个死循环：按返回 → finish → 首页又拉起来，用户被困在取名页里出不去，
+        // 唯一的出口是乖乖输一个名字；按两次返回看起来还像闪退（Activity 反复重建）。
+        // 首页那边现在一次进程只提示一次（MainActivity.profilePrompted），这里的返回键也就真的能返回了：
+        // 没建档案也能先看看 App，顶栏显示「用户档案」，随时点它再回来起名。
+        findViewById(R.id.btnBack).setVisibility(View.VISIBLE);
         findViewById(R.id.btnBack).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { finish(); }
         });

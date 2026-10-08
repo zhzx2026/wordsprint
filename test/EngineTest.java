@@ -67,10 +67,14 @@ public class EngineTest {
         check(e2c.current()==7, "c new 7"); e2c.answer(true); e2c.next();
         check(e2c.current()==2, "c requeue at end"); e2c.answer(true); e2c.next();
         check(ended && endPos==4, "c review mode does not advance pos");
-        // 3) 组尾不足：pos=10 → 空 → onBookEmpty
+        // 3) pos=10、ms 空（2b/2c 之间 ms 被清掉过）：按旧实现这里会谎报 onBookEmpty
+        //    → 用户明明 10 个词全没学，却看到「整本刷完」。
+        //    新实现会在这种情况下回扫到 0，把 10 个词都摆出来，不空组。详见测试 18。
         ended=false; emptyCb=false;
         e.startGroup();
-        check(emptyCb && !ended, "book empty callback at end");
+        check(!emptyCb && !ended, "3：pos=10 + ms 空 → 回扫到 0，不报空组");
+        check(e.current() == 0, "3：从 0 开始摆词，实际 " + e.current());
+        check(e.groupTotal() == 5, "3：本组就 5 张（组大小 = 5），实际 " + e.groupTotal());
         // 4) redoAll：包含已掌握，从头
         emptyCb=false;
         Engine e2 = new Engine(n, order, ms, 0, 3, 5, true, sink);
@@ -228,6 +232,129 @@ public class EngineTest {
         Engine r14 = new Engine(n8, o9(n8), ms14, 0, 5, 3, false, new Sink(ms14));
         check(r14.snapshot(0).isEmpty(), "现场 14：没在组里 → 空快照");
 
-        System.out.println("ENGINE OK — 14 组断言全部通过（含撤销 + 意外退出续存）");
+        // ============ 15) 组指针推进：pos 是 order 的**下标**，groupSize 是「取到的词数」============
+        // 书里有掌握过的词时，startGroup 会跳过它们、往后多扫若干位置，实际消耗的跨度 > groupSize。
+        // 以前写 pos += groupSize，于是 pos 越落越远：组号失真、「从这里继续刷」定位不准、
+        // resume 的 p != pos 闸门更容易把有效现场误判成「不是这一组」而作废。
+        {
+            int n15 = 20;
+            BitSet ms15 = new BitSet(n15);
+            for (int i : new int[]{0, 1, 6, 7, 8, 9}) ms15.set(i);
+            ended = false; endPos = -1; emptyCb = false;
+            Engine e15 = new Engine(n15, o9(n15), ms15, 0, 4, 3, false, new Sink(ms15));
+            e15.startGroup();
+            // 0、1 已掌握被跳过 → 这一组实际吃的是 order[2..5]，消耗到位置 6
+            check(e15.groupTotal() == 4, "15：跳过已掌握后仍取满 4 个词");
+            check(e15.current() == 2, "15：第一个词是 2（0、1 已掌握），实际 " + e15.current());
+            for (int g = 0; g < 4 && !ended; g++) { if (e15.current() < 0) break; e15.answer(true); e15.next(); }
+            check(ended, "15：这一组能收尾");
+            check(endPos == 6, "15：pos 推进到**实际消耗末尾** 6，不是 pos+groupSize=4（实际 " + endPos + "）");
+            check(e15.pos == 6, "15：engine.pos 同步为 6");
+            // 紧接着开下一组：从 6 起，而 6..9 已掌握 → 吃 order[10..13]，消耗到 14
+            ended = false; endPos = -1;
+            e15.startGroup();
+            check(e15.current() == 10, "15：下一组从第一个未掌握的词 10 开始，实际 " + e15.current());
+            for (int g = 0; g < 4 && !ended; g++) { if (e15.current() < 0) break; e15.answer(true); e15.next(); }
+            check(ended && endPos == 14, "15：连续两组之后指针不漂移（实际 " + endPos + "）");
+        }
+
+        // ============ 16) 「重刷整本」的正确率不能恒为 0 ============
+        // 分母 answers 每次作答都 +1，分子以前只算「本来没掌握过的词」→ redoAll 下 firstOk 恒 0，
+        // 结算页显示「一次记住 5 · 正确率 0%」这种自相矛盾的结果。
+        {
+            int n16 = 10;
+            BitSet ms16 = new BitSet(n16);
+            for (int i = 0; i < n16; i++) ms16.set(i);           // 整本都已掌握
+            ended = false; endPos = -1;
+            Engine e16 = new Engine(n16, o9(n16), ms16, 0, 5, 3, true, new Sink(ms16));
+            e16.startGroup();
+            check(e16.groupTotal() == 5, "16：redoAll 时已掌握的词也纳入本组");
+            for (int g = 0; g < 5 && !ended; g++) { if (e16.current() < 0) break; e16.answer(true); e16.next(); }
+            check(e16.answers() == 5 && e16.okCount() == 5, "16：五次作答全对");
+            check(e16.accuracy() == 100, "16：正确率 100%，不是 0%（实际 " + e16.accuracy() + "）");
+            check(ended && endPos == 5, "16：重刷一轮也照常推进指针");
+            // 对照：非 redoAll 时全掌握 → 空组
+            ended = false; emptyCb = false;
+            Engine e16b = new Engine(n16, o9(n16), ms16, 0, 5, 3, false, new Sink(ms16));
+            e16b.startGroup();
+            check(emptyCb && !ended, "16：不开 redoAll 时整本已掌握 → onBookEmpty（不会假装有组可刷）");
+        }
+
+        // ============ 17) 组指针消耗位置进快照：闪退恢复后照样推进到 6 ============
+        {
+            int n17 = 20;
+            BitSet ms17 = new BitSet(n17);
+            for (int i : new int[]{0, 1, 6, 7, 8, 9}) ms17.set(i);
+            Engine e17a = new Engine(n17, o9(n17), ms17, 0, 4, 3, false, new Sink(ms17));
+            e17a.startGroup();
+            e17a.answer(true);                                  // 记住 2
+            e17a.next();                                        // 摆到 3，队列剩 4、5
+            String snap17 = e17a.snapshot(1234);
+            check(!snap17.isEmpty(), "17：组内产出现场");
+            check(snap17.contains(";g=6;"), "17：现场里带着消耗位置 g=6（" + snap17 + "）");
+            check(snap17.startsWith("v=wps1;"), "17：快照版本没变（升版本会让老现场全部作废）");
+            BitSet ms17b = new BitSet(n17);
+            for (int i : new int[]{0, 1, 2, 6, 7, 8, 9}) ms17b.set(i);   // 快照那一刻的掌握状态
+            ended = false; endPos = -1;
+            Engine e17b = new Engine(n17, o9(n17), ms17b, 0, 4, 3, false, new Sink(ms17b));
+            check(e17b.resume(snap17), "17：现场恢复成功");
+            check(e17b.current() == 3, "17：接回第 3 张，实际 " + e17b.current());
+            check(snap17.equals(e17b.snapshot(1234)), "17：恢复后原样再存一次不漂移（幂等）");
+            for (int g = 0; g < 4 && !ended; g++) { if (e17b.current() < 0) break; e17b.answer(true); e17b.next(); }
+            check(ended && endPos == 6, "17：闪退恢复之后指针仍推进到 6（实际 " + endPos + "）");
+
+            // 17b) 升级前存下的老现场没有 g 字段 → 倒推，而不是整份作废
+            String noG = snap17.replaceAll(";g=-?[0-9]+", "");
+            check(!noG.contains(";g=") && noG.startsWith("v=wps1;"), "17b：造出一份没有 g 的老现场");
+            BitSet ms17c = new BitSet(n17);
+            for (int i : new int[]{0, 1, 2, 6, 7, 8, 9}) ms17c.set(i);
+            ended = false; endPos = -1;
+            Engine e17c = new Engine(n17, o9(n17), ms17c, 0, 4, 3, false, new Sink(ms17c));
+            check(e17c.resume(noG), "17b：老现场照样能恢复（不升 SNAP_V，用户升级前存的进度不作废）");
+            check(e17c.current() == 3, "17b：接回同一张卡，实际 " + e17c.current());
+            for (int g = 0; g < 4 && !ended; g++) { if (e17c.current() < 0) break; e17c.answer(true); e17c.next(); }
+            check(ended && endPos == 6, "17b：倒推出来的消耗位置也是 6（实际 " + endPos + "）");
+        }
+
+        // ============ 18) 组指针被挪过头时不能谎报「整本刷完」 ============
+        // 三条来路都可能：旧版本 pos += groupSize 的漂移、随机模式下批量改进度把词号当下标写进来、
+        // 进度码合并取了更大的值。以前 startGroup 从 pos 往后扫不到词就直接 onBookEmpty，
+        // 用户看到「恭喜！整本书已刷完」，其实还剩一大截没学。
+        {
+            int n18 = 10;
+            BitSet ms18 = new BitSet(n18);
+            for (int i = 0; i < 5; i++) ms18.set(i);             // 只学完前 5 个
+            ended = false; endPos = -1; emptyCb = false;
+            Engine e18 = new Engine(n18, o9(n18), ms18, 10, 5, 3, false, new Sink(ms18));
+            check(e18.pos == 10, "18：指针被挪到了末尾");
+            e18.startGroup();
+            check(!emptyCb, "18：还剩 5 个词没学 → 绝不能报「整本刷完」");
+            check(e18.pos == 0, "18：回扫时把指针拉回 0（实际 " + e18.pos + "）");
+            check(e18.groupTotal() == 5 && e18.current() == 5, "18：切到的正是剩下的 5 个词，从 5 开始");
+            for (int g = 0; g < 5 && !ended; g++) { if (e18.current() < 0) break; e18.answer(true); e18.next(); }
+            check(ended && endPos == 10, "18：这一轮打完，指针落到 10");
+            // 18b) 真刷完了才该报空：把 ms18 补满 → onBookEmpty
+            //     注意：pos=3 同样会触发漂移回扫，但回扫后发现 0..9 全掌握 → 真没词了。
+            for (int i = 5; i < n18; i++) ms18.set(i);
+            ended = false; emptyCb = false;
+            Engine e18b = new Engine(n18, o9(n18), ms18, 3, 5, 3, false, new Sink(ms18));
+            e18b.startGroup();
+            check(emptyCb && !ended, "18b：补满掌握后回扫也是空 → 这次才报 onBookEmpty");
+        }
+
+        // ============ 19) 复习队列不吃刷词现场，也不推进指针（回归）============
+        {
+            int n19 = 12;
+            BitSet ms19 = new BitSet(n19);
+            Engine e19 = new Engine(n19, o9(n19), ms19, 7, 4, 3, false, new Sink(ms19));
+            e19.startQueue(new int[]{1, 3});
+            check(e19.pos == 7, "19：复习不动组指针");
+            ended = false; endPos = -1;
+            e19.answer(true); e19.next();
+            e19.answer(true); e19.next();
+            check(ended && endPos == 7, "19：复习收尾后指针仍是 7（groupEnd 跟着 pos）");
+        }
+
+        System.out.println("ENGINE OK — 19 组断言全部通过（含撤销 + 意外退出续存 + 组指针推进 + 重刷正确率）");
     }
 }

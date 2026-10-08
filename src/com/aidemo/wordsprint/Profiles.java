@@ -90,21 +90,28 @@ public class Profiles {
      * 学习数据键：跟着档案走的那一批。删档案时要按这个清单把数据**真的**清掉，
      * 而全局键（主题/配色/字体/更新源/档案列表本身）绝不能碰。
      *
-     *   b_…       每本书的进度（掌握位图 / 组指针 / 错题本 / 上次打开时间）
+     *   b_…       每本书的进度（掌握位图 / 组指针 / 分组设置 / 洗牌种子 / 错题本 / 组内现场 / 上次打开时间）
      *   d_…       每天的刷词数（老键，进度码还用它）
-     *   s_…       语音/音标/音效/动画这些学习开关
      *   diary_v1  每日日志（热力图、连续打卡、目标）
-     *   fav_v1    收藏
      *   g_goal    默认每日目标
      *   g_ges     手势映射
-     *   g_size    每本默认分组大小
-     *   g_heat_span 热力图展示跨度
+     *   g_size    默认每组词数
+     *   g_lag     回炉间隔
+     *
+     * 这一份清单必须跟 Prefs 里「哪些键走 ns()」严格一致 —— 多列一个就会误删全局设置，
+     * 少列一个就会在删档案时留下孤儿数据（下一个占用遗留命名空间的档案会把它捡走）。
+     * 三处历史上对不上账的地方：
+     *   · g_lag 一直在按档案存，却没列进来 → 删掉遗留档案后回炉间隔残留给下一个人；
+     *   · s_speak / s_phon / s_sound / s_anim 描述的是**这台机器**（要不要出声、要不要动画），
+     *     已改成全局键（Prefs.GLOBALIZED），再按 s_ 前缀整族划给档案就是误删设置；
+     *   · fav_v1（收藏功能 2026-09-14 已整体删除）与 g_heat_span（热力图跨度选择器已删）
+     *     是化石键，新版不再产生，列在这儿只会让「清单」看起来比实际大。
      */
     public static boolean isProfileKey(String key) {
         if (key == null || key.isEmpty()) return false;
-        if (key.startsWith("b_") || key.startsWith("d_") || key.startsWith("s_")) return true;
-        return key.equals("diary_v1") || key.equals("fav_v1") || key.equals("g_goal")
-                || key.equals("g_ges") || key.equals("g_size") || key.equals("g_heat_span");
+        if (key.startsWith("b_") || key.startsWith("d_")) return true;
+        return key.equals("diary_v1") || key.equals("g_goal") || key.equals("g_ges")
+                || key.equals("g_size") || key.equals("g_lag");
     }
 
     /**

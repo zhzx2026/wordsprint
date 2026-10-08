@@ -15,9 +15,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 
 public class StudyActivity extends Activity {
     /**
@@ -42,6 +40,16 @@ public class StudyActivity extends Activity {
     private String pendingResume;               // 待恢复的本组现场（只在第一次开组时用一次）
     private long startTs;
     private long lastTick;
+    /**
+     * 本次会话固定记在哪一天（onCreate 时取一次）。
+     *
+     * 以前每个计数点都现取系统时间：23:59:58 点「记住了」记到 D 日、00:00:02 点「上一个」
+     * 却从 D+1 日减 1 → D 日多一个词、D+1 日变成负数，再叠加下限问题就把打卡勾和连续天数一起毁掉。
+     * 一次刷词会话（含它自己的撤销）属于同一天，用时也不会被劈成两半。
+     */
+    private String sessionDay;
+    /** 设置里的「翻转动画」开关（本机级）。见 {@link #dur} */
+    private boolean animOn = true;
 
     private View card, actions, result, colMain, meaningBox;
     private TextView tvWord, tvPhonetic, tvHint, tvMeaning, tvPos, tvGroupPill, tvWrongPill;
@@ -65,6 +73,8 @@ public class StudyActivity extends Activity {
         Db.ensureLoaded(this);
         prefs = Prefs.of(this);
         sfx = new SoundFx(this);
+        sessionDay = Diary.today();
+        animOn = prefs.gbool(Prefs.K_ANIM, true);
         String bid = getIntent().getStringExtra("book");
         book = Db.I.byId(bid);
         if (book == null) { finish(); return; }
@@ -153,6 +163,25 @@ public class StudyActivity extends Activity {
             @Override public void onClick(View v) { save(); finish(); }
         });
 
+        buildEngine(redo);
+        // 上次没打完的那一组：闪退 / 强行停止 / 被系统杀后台都会留下这份现场，重开就接回去。
+        // 勾了「重刷整本」(redo) 或走错词订正（reviewMode）时不看它 —— 前者要从组头重来，后者不推进组。
+        pendingResume = (reviewMode || redo) ? null : prefs.session(book.id);
+        // finishSetup 必须在 startGroup() **之前**：它会对整棵 content 树跑一次字号缩放，
+        // 而 startGroup() 已经通过 onShow → fill() 给 tvWord 设过「按倍率加过一档」的字号了 ——
+        // 顺序反过来就是拿加过档的值再乘一次倍率，本次会话第一张卡的单词比后面每张都大
+        // （大屏自适应下能到 1.06 × 1.45 ≈ 1.54 倍），从第二张起又突然变小。
+        Ui.finishSetup(this);
+        startGroup();
+        lastTick = SystemClock.elapsedRealtime();
+    }
+
+    /**
+     * 建引擎。onCreate 与「再刷一轮」共用 —— 抽出来的理由是随机顺序：
+     * {@code order} 是**构造时**按当时的洗牌种子定下来的，只换种子不重建引擎，
+     * 会让「正在用的排列」和「存下来的种子」对不上，下一组的 pos 就指到另一副牌的位置去了。
+     */
+    private void buildEngine(boolean redo) {
         final java.util.BitSet mastered = prefs.mastered(book.id, book.n);
         engine = new Engine(book.n, buildOrder(), mastered,
                 reviewMode ? 0 : prefs.next(book.id),
@@ -177,27 +206,22 @@ public class StudyActivity extends Activity {
                     @Override public boolean isMastered(int i) { return mastered.get(i); }
                     @Override public void onMastered(int i) {
                         prefs.saveMastered(book.id, mastered);
-                        if (mode == MODE_WORD) prefs.addToday(1);      // 新生词才算「今日已刷」
+                        // 新生词才算「今日已刷」。温习（错词订正）走 DiaryStore.reviewed，不重复计数
+                        if (mode == MODE_WORD) prefs.addToday(sessionDay, 1);
                     }
                 });
-        // 上次没打完的那一组：闪退 / 强行停止 / 被系统杀后台都会留下这份现场，重开就接回去。
-        // 勾了「重刷整本」(redo) 或走错词订正（reviewMode）时不看它 —— 前者要从组头重来，后者不推进组。
-        pendingResume = (reviewMode || redo) ? null : prefs.session(book.id);
-        startGroup();
-        lastTick = SystemClock.elapsedRealtime();
-        Ui.finishSetup(this);
     }
 
+    /**
+     * 这本书的刷词顺序。随机模式**按存下来的种子**洗（见 {@link Order}）：
+     * 以前每次进刷词页都 {@code new Random()} 重洗一遍，而组指针 pos 是上一次排列里的下标 ——
+     * 排列一变，pos 指向的就是完全不同的词，随机模式下「进度续存 / 下一组第几组 /
+     * 批量改进度·从这里继续刷」全部失效。种子按书持久化，刷完一整轮才由 nextGroup() 换一副。
+     */
     private int[] buildOrder() {
-        int[] arr = new int[book.n];
-        for (int i = 0; i < book.n; i++) arr[i] = i;
-        if (mode == MODE_WORD && prefs.order(book.id) == 1) {
-            List<Integer> list = new ArrayList<Integer>();
-            for (int i = 0; i < arr.length; i++) list.add(arr[i]);
-            Collections.shuffle(list, new Random());
-            for (int i = 0; i < list.size(); i++) arr[i] = list.get(i);
-        }
-        return arr;
+        boolean shuffle = mode == MODE_WORD && prefs.order(book.id) == 1;
+        long seed = shuffle ? prefs.ensureOrderSeed(book.id) : 0L;
+        return Order.build(book.n, shuffle, seed);
     }
 
     private void startGroup() {
@@ -271,7 +295,7 @@ public class StudyActivity extends Activity {
         tvWord.setTextSize(Fonts.wordSize(this, book.word(w).length()));
         tvMeaning.setText(book.mean(w));
         String ph = book.ph(w);
-        boolean showPh = prefs.on(Prefs.K_PHON, true) && !ph.isEmpty();
+        boolean showPh = prefs.gbool(Prefs.K_PHON, true) && !ph.isEmpty();
         tvPhonetic.setText(ph.isEmpty() ? "" : "/" + ph + "/");
         tvPhonetic.setVisibility(showPh ? View.VISIBLE : View.GONE);
         meaningBox.animate().cancel();
@@ -287,8 +311,8 @@ public class StudyActivity extends Activity {
         actions.setVisibility(View.INVISIBLE);
         colMain.setAlpha(0f);
         colMain.setTranslationY(Ui.dp(this, 16));
-        colMain.animate().alpha(1f).translationY(0f).setDuration(200).start();
-        if (prefs.on(Prefs.K_SPEAK, true)) sfx.speak(book.word(w));
+        colMain.animate().alpha(1f).translationY(0f).setDuration(dur(200)).start();
+        if (prefs.gbool(Prefs.K_SPEAK, true)) sfx.speak(book.word(w));
     }
 
     /** 按当前映射拼一句提示（用户自己改过映射后，这句话要跟着变） */
@@ -309,8 +333,12 @@ public class StudyActivity extends Activity {
         if (engine.current() < 0 || engine.busy()) return;
         int action = slot >= 0 && slot < map.length ? map[slot] : Ges.NONE;
         if (slot == Ges.TAP && !engine.flipped()) {
+            // 未翻面时的点按**只翻面**，不管用户在这一格绑了什么（这也是 ges_note 文案说的行为）。
+            // 这里以前多写了一句 `if (action == Ges.REVEAL) return;` 紧跟着一个无条件 return ——
+            // 两个 return 之间没有任何语句，那个 if 恒等于「直接 return」，是死代码；
+            // 而且从写法看原意是「翻面之后接着执行绑定的动作」，被后面那个 return 掐掉了。
+            // 意图按文案定：只翻面。死分支删掉，别让下一个人再猜一遍。
             reveal();
-            if (action == Ges.REVEAL) return;              // 就是「翻面」本身，已经做完了
             return;
         }
         switch (action) {
@@ -328,20 +356,41 @@ public class StudyActivity extends Activity {
     private void reveal() {
         engine.markFlipped();
         tvHint.animate().cancel();
-        tvHint.animate().alpha(0f).setDuration(110)
-              .withEndAction(new Runnable() {
-                  @Override public void run() { tvHint.setVisibility(View.GONE); }
-              }).start();
+        long hd = dur(110);
+        if (hd == 0) {
+            tvHint.setAlpha(0f);
+            tvHint.setVisibility(View.GONE);
+        } else {
+            tvHint.animate().alpha(0f).setDuration(hd)
+                  .withEndAction(new Runnable() {
+                      @Override public void run() { tvHint.setVisibility(View.GONE); }
+                  }).start();
+        }
         meaningBox.setVisibility(View.VISIBLE);
         meaningBox.setAlpha(0f);
         meaningBox.setTranslationY(Ui.dp(this, 14));
-        meaningBox.animate().alpha(1f).translationY(0f).setDuration(230).start();
+        meaningBox.animate().alpha(1f).translationY(0f).setDuration(dur(230)).start();
         actions.setVisibility(View.VISIBLE);
         actions.setAlpha(0f);
         actions.setTranslationY(Ui.dp(this, 18));
-        actions.animate().alpha(1f).translationY(0f).setStartDelay(70).setDuration(200).start();
-        if (prefs.on(Prefs.K_SPEAK, true)) sfx.speak(book.word(engine.current()));
+        actions.animate().alpha(1f).translationY(0f).setStartDelay(dur(70)).setDuration(dur(200)).start();
+        // 这里**不再朗读一遍**：fill() 出新卡时已经念过了，而 SoundFx.speak 用的是 QUEUE_FLUSH ——
+        // 第二次调用会把第一次**掐断重念**，用户听到的是「半个词 + 一个完整的词」。
+        // 「想再听一遍」是显式动作：映射里 REVEAL 那一格在已翻面时会走 fire() 的 sfx.speak。
     }
+
+    /**
+     * 动画时长：设置里「翻转动画」关掉时一律 0。
+     *
+     * 这个开关以前**只写不读**（全仓库只有 SettingsSubActivity 那一行 bind）—— 用户关掉它，
+     * reveal 的 230ms 淡入、answer 的 130ms 平移、colMain 的 200ms 位移、结算页的 pop_in 全都照跑，
+     * 是一个看起来能设、实际完全无效的开关。
+     *
+     * 关成 0 而不是「不调 animate()」：最终状态和 withEndAction 还得靠 animate 推进，
+     * 时长 0 等于瞬间到位，逻辑路径一条都不用改。只有「0 时长时 withEndAction 不保证同一帧跑」
+     * 的两处（换卡后要 engine.next()、提示语要 GONE）显式走了同步分支。
+     */
+    private long dur(long ms) { return animOn ? ms : 0L; }
 
     private void answer(final boolean ok) {
         if (engine.current() < 0 || engine.busy()) return;
@@ -349,7 +398,11 @@ public class StudyActivity extends Activity {
         tick();                                    // 把这段停留时间记到今天的时长里
         // 撤销用：先把「这次作答会改到的东西」拍下来（错题本 / 是否首次记住 / 模式）
         wbSnap = wb.copy();
-        lastFresh = ok && !engine.masteredBitSet().get(w);
+        // **必须带模式判定**：「今日已刷」只在 MODE_WORD 下 +1（见 onMastered），
+        // 而撤销以前是无条件 -1。于是在错词复习里点「记住了」再点「上一个」，
+        // 就会凭空减掉一个从没加过的数 → 今日已刷变负 → Diary.active() 判这天没学过
+        // → 打卡勾消失、连续天数被截断，而用户明明刷了词。
+        lastFresh = ok && mode == MODE_WORD && !engine.masteredBitSet().get(w);
         lastOk = ok;
         lastWasReview = reviewMode;
         engine.answer(ok);
@@ -358,7 +411,7 @@ public class StudyActivity extends Activity {
             prefs.saveWrongBook(book.id, wb);
             wrongs = wb.dueIds();
             // 「还要订正几次 / 已掌握」这类提示不再弹（用户 2026-09-24）：档位去错题本看 ★ 就行
-            if (reviewMode) DiaryStore.reviewed(true);
+            if (reviewMode) DiaryStore.reviewed(sessionDay, true);
             sfx.ok();
         } else {
             wb.miss(w);                            // 错一次就进本；在订正的再错，还差次数 +1
@@ -367,7 +420,14 @@ public class StudyActivity extends Activity {
             sfx.miss();
         }
         updateHud();
-        card.animate().alpha(0f).translationX(ok ? 70f : -70f).setDuration(130).withEndAction(new Runnable() {
+        long cd = dur(130);
+        if (cd == 0) {
+            card.setTranslationX(0f);
+            card.setAlpha(1f);
+            engine.next();
+            return;
+        }
+        card.animate().alpha(0f).translationX(ok ? 70f : -70f).setDuration(cd).withEndAction(new Runnable() {
             @Override public void run() {
                 card.setTranslationX(0f);
                 card.setAlpha(1f);
@@ -388,8 +448,8 @@ public class StudyActivity extends Activity {
             prefs.saveWrongBook(book.id, wb);
             wrongs = wb.dueIds();
         }
-        if (lastFresh) prefs.addToday(-1);        // 刚记成「首次掌握」的那一个词撤回来
-        if (lastWasReview && lastOk) DiaryStore.undoReviewed();
+        if (lastFresh) prefs.addToday(sessionDay, -1);        // 刚记成「首次掌握」的那一个词撤回来
+        if (lastWasReview && lastOk) DiaryStore.undoReviewed(sessionDay);
         wbSnap = null;
         engine.undo();                            // 队列/回炉/掌握位/计数全部回退 + 重摆那张卡
         lastTick = SystemClock.elapsedRealtime();
@@ -402,7 +462,7 @@ public class StudyActivity extends Activity {
         long ms = now - lastTick;
         lastTick = now;
         if (ms <= 0 || ms > 5 * 60 * 1000) return;      // 中途离开很久的间隔不计
-        DiaryStore.addTime(reviewMode ? 1 : 0, ms);
+        DiaryStore.addTime(sessionDay, reviewMode ? 1 : 0, ms);
     }
 
     private void showResult(boolean bookDoneNow, boolean masteredAll) {
@@ -418,16 +478,22 @@ public class StudyActivity extends Activity {
         ((TextView) findViewById(R.id.resultSub)).setText(sub);
         ((TextView) findViewById(R.id.rsFirst)).setText(String.valueOf(Math.max(0, engine.okCount() - engine.requeues())));
         ((TextView) findViewById(R.id.rsRetry)).setText(String.valueOf(engine.requeues()));
-        ((TextView) findViewById(R.id.rsAcc)).setText(engine.accuracy() + "%");
+        // 一次都没作答（整本已学完点进来 / 空组）时显示「—」。
+        // Engine.accuracy() 在 answers == 0 时返回 100（「没错就是全对」的算术约定），
+        // 但界面上「一次记住 0 · 正确率 100%」是自相矛盾的：那不是全对，那是没数据。
+        ((TextView) findViewById(R.id.rsAcc)).setText(
+                engine.answers() == 0 ? "—" : engine.accuracy() + "%");
         long sec = Math.max(1, (SystemClock.elapsedRealtime() - startTs) / 1000);
         ((TextView) findViewById(R.id.rsTime)).setText((sec / 60) + ":" + String.format("%02d", sec % 60));
+        // 错词复习时这颗按钮以前也写「返回书架」，跟下面那颗灰色 btnExit 一模一样、
+        // 上下堆着两个同文案按钮，用户不知道该点哪个。现在它真的回错题本（见 nextGroup）。
         ((TextView) findViewById(R.id.btnNext)).setText(
-                reviewMode ? getString(R.string.back_shelf)
-                : finishedAll ? "再刷一轮" : getString(R.string.next_group));
+                reviewMode ? getString(R.string.back_to_wrong)
+                : finishedAll ? getString(R.string.brush_again) : getString(R.string.next_group));
         buildWrongList();
         if (result.getVisibility() != View.VISIBLE) {
             result.setVisibility(View.VISIBLE);
-            result.startAnimation(AnimationUtils.loadAnimation(this, R.anim.pop_in));
+            if (animOn) result.startAnimation(AnimationUtils.loadAnimation(this, R.anim.pop_in));
         }
         confetti.start();
         updateHud();
@@ -476,11 +542,43 @@ public class StudyActivity extends Activity {
             lp.topMargin = (int) Ui.dp(this, 8);
             box.addView(ok, lp);
         }
+        // 这些行是运行时 new 出来的，而整页收口（Ui.finishSetup）现在跑在 startGroup() **之前**
+        // （顺序反了会让第一张卡的单词被放大两次，见 onCreate 的注释）——
+        // 所以新建的这一小撮自己补一次缩放/字体，跟 GesUi.render 的做法一致。
+        Fonts.scaleTree(box, this);
     }
 
+    /**
+     * 结算页那颗主按钮。三个分支，以前只有第三个是对的：
+     *
+     * · **错词复习**：以前 {@code finish()} 直接掉回首页，想接着订正下一本得重新导航一遍；
+     *   现在真的把错题本打开（筛选落在这本书上）。
+     * · **整本刷完**（finishedAll）：以前只写了 {@code engine.pos = 0} —— 既没清掌握位图、
+     *   也没开 redoAll，startGroup() 一张都切不到 → onBookEmpty() → **又弹同一个庆祝页 + 又放一次彩带**。
+     *   连点几次都一样，唯一的出口是下面那行灰色小字。这颗最显眼的渐变大按钮等于点了没反应。
+     *   现在是真的一轮：redoAll（把已掌握的词也纳入）、组指针归零、丢掉上一轮的组内现场，
+     *   随机顺序下再换一副新牌（换种子必须连引擎一起重建，见 buildEngine 的注释）。
+     * · **普通一组打完**：照常切下一组。
+     */
     private void nextGroup() {
-        if (reviewMode) { finish(); return; }
-        if (finishedAll) { engine.pos = 0; mode = MODE_WORD; }
+        if (reviewMode) {
+            save();
+            WrongActivity.open(this, book.id);
+            finish();
+            return;
+        }
+        if (finishedAll) {
+            finishedAll = false;
+            resumed = false;
+            mode = MODE_WORD;
+            wbSnap = null;
+            prefs.saveSession(book.id, null);            // 上一轮的现场不能带进新一轮
+            prefs.setNext(book.id, 0);                   // 组指针归零
+            if (prefs.order(book.id) == 1) prefs.rotateOrderSeed(book.id);
+            buildEngine(true);                           // redoAll：整本重刷，含已掌握的词
+            startGroup();
+            return;
+        }
         startGroup();
     }
 

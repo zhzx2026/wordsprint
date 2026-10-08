@@ -111,9 +111,19 @@ public final class Fonts {
             Typeface tf = t.getTypeface();
             boolean mono = tf != null && tf.equals(Typeface.MONOSPACE);
             if (!mono) {
-                // 「不是默认/无衬线体」的（例如代码里显式 BOLD 过的）按粗体处理
-                boolean bold = !(tf == null || tf.equals(Typeface.DEFAULT) || tf.equals(Typeface.SANS_SERIF));
-                t.setTypeface(typeface(t.getContext() == null ? c : t.getContext(), bold));
+                Context ctx = t.getContext() == null ? c : t.getContext();
+                int bw = builtinWeight(tf);
+                if (bw >= 0) {
+                    // 已经是我们的内置字体 → 保留它**自己的字重档位**，只跟着当前家族设置走。
+                    // 以前一律按「非系统默认体 = 粗体」重推断，于是刷词页那张大字卡精心挑的
+                    // Poppins SemiBold（wordTypeface）被悄悄覆盖成 Bold —— 字重变了一档，
+                    // 而且 StudyActivity.onCreate 里的设置白写了。
+                    t.setTypeface(familyAt(ctx, bw));
+                } else {
+                    // 「不是默认/无衬线体」的（例如代码里显式 BOLD 过的）按粗体处理
+                    boolean bold = !(tf == null || tf.equals(Typeface.DEFAULT) || tf.equals(Typeface.SANS_SERIF));
+                    t.setTypeface(typeface(ctx, bold));
+                }
             }
             if (k > 1.001f) {
                 // 幂等三步：① 首次见到这个 TextView（或别处刚改过字号）→ 以「当前值」为原始字号；
@@ -127,6 +137,36 @@ public final class Fonts {
             android.view.ViewGroup g = (android.view.ViewGroup) v;
             for (int i = 0; i < g.getChildCount(); i++) walk(g.getChildAt(i), c, k);
         }
+    }
+
+    /**
+     * 内置字体里的「字重档位」：0 常规 · 1 半粗（只有 Poppins 有）· 2 粗；-1 = 不是我们的内置字体。
+     * getResources().getFont() 返回的是同一份缓存实例，所以用引用比较就够了。
+     */
+    private static int builtinWeight(Typeface tf) {
+        if (tf == null) return -1;
+        if (tf == pop || tf == alt) return 0;
+        if (tf == popSb) return 1;
+        if (tf == popBd || tf == altBd) return 2;
+        return -1;
+    }
+
+    /**
+     * 按**当前**家族设置取某个字重档。半粗只有 Poppins 有，
+     * 切到 Quicksand / 系统字体时退到粗（跟 {@link #wordTypeface} 的回落规则一致）。
+     */
+    private static Typeface familyAt(Context c, int weight) {
+        load(c);
+        int f = Prefs.of(c).font();
+        boolean heavy = weight >= 1;
+        if (f == Prefs.FONT_SYSTEM) return heavy ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT;
+        if (f == Prefs.FONT_QUICKSAND) {
+            if (!heavy) return alt != null ? alt : Typeface.DEFAULT;
+            return altBd != null ? altBd : (alt != null ? alt : Typeface.DEFAULT_BOLD);
+        }
+        if (weight == 1 && popSb != null) return popSb;
+        if (heavy) return popBd != null ? popBd : (pop != null ? pop : Typeface.DEFAULT_BOLD);
+        return pop != null ? pop : Typeface.DEFAULT;
     }
 
     /** 刷词页单词字号：按最短边算，屏幕越大越大 */

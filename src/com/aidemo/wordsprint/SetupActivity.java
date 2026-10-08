@@ -29,6 +29,12 @@ public class SetupActivity extends Activity {
 
     private TextView tvCta, tvStats;
     private RingProgress ring;
+    private android.widget.Switch redoSw;
+    /**
+     * 「整本已学完 → 自动把重刷开关打开」只做一次。
+     * refresh() 每点一次 chip 就会跑，如果每次都掰一遍，用户手动关掉之后一调组词数又被打开。
+     */
+    private boolean redoAutoDone;
 
     @Override protected void attachBaseContext(Context base) { super.attachBaseContext(Night.wrap(base)); }
 
@@ -94,10 +100,11 @@ public class SetupActivity extends Activity {
                 });
 
 
-        final android.widget.Switch redoSw = (android.widget.Switch) findViewById(R.id.swRedo);
+        redoSw = (android.widget.Switch) findViewById(R.id.swRedo);
+        final android.widget.Switch redoSwF = redoSw;
         View redoRow = findViewById(R.id.rowRedo);
         redoRow.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { redoSw.toggle(); }
+            @Override public void onClick(View v) { redoSwF.toggle(); }
         });
 
         findViewById(R.id.btnStart).setOnClickListener(new View.OnClickListener() {
@@ -187,8 +194,18 @@ public class SetupActivity extends Activity {
         int wrong = p.wrongs(book.id, book.n).cardinality();
         int pct = book.n == 0 ? 0 : done * 100 / book.n;
         ring.setProgress(pct, Skin.c(this, R.attr.wpText), Skin.c(this, R.attr.wpText2));
-        // 主按钮现在是并排里的一个（宽度约六成），文案写短：组号挪到统计行
-        tvCta.setText(done == 0 ? getString(R.string.start_brush) : getString(R.string.continue_brush));
+        // 主按钮现在是并排里的一个（宽度约六成），文案写短：组号挪到统计行。
+        // 整本已学完时**不能**还写「继续刷词」：点进去 Engine.startGroup() 一张都切不到 →
+        // onBookEmpty() → 一张全零的庆祝页（一次记住 0 · 正确率 — · 用时 0:00），
+        // 而首页列表里同一本书明明已经标着「N 词 ✓ 已学完」，两处说法对不上。
+        // 顺带把「包含已掌握（重新刷整本）」开关自动打开 —— 不打开的话进去必然是空组。
+        boolean allDone = book.n > 0 && done >= book.n;
+        tvCta.setText(allDone ? getString(R.string.brush_whole_book)
+                : done == 0 ? getString(R.string.start_brush) : getString(R.string.continue_brush));
+        if (allDone && !redoAutoDone) {
+            redoAutoDone = true;
+            if (redoSw != null) redoSw.setChecked(true);
+        }
         tvStats.setText(getString(R.string.sheet_stats_group, done, book.n - done, wrong,
                 p.next(book.id) / Math.max(1, size) + 1));
         sizeRowHighlight();

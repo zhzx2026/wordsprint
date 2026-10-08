@@ -43,6 +43,8 @@ public class BookPreviewActivity extends Activity {
 
     private Db.Book book;
     private BitSet ms;
+    /** 这本书的刷词顺序（缓存）：组指针存的是**顺序里的位置**，要换算成词号才能给用户看，见 {@link #order} */
+    private int[] orderArr;
     private ListView list;
     private Adapter adapter;
     private TextView tvSummary, tvEmpty;
@@ -174,6 +176,7 @@ public class BookPreviewActivity extends Activity {
         super.onResume();
         if (book == null) return;
         ms = Prefs.of(this).mastered(book.id, book.n);   // 刷词回来可能变了
+        orderArr = null;                                 // 刷词页可能刚换过洗牌种子（刷完一整轮）
         adapter.notifyDataSetChanged();
         updateSummary();
     }
@@ -181,7 +184,32 @@ public class BookPreviewActivity extends Activity {
     private void updateSummary() {
         int done = ms.cardinality();
         int pct = book.n == 0 ? 0 : done * 100 / book.n;
-        tvSummary.setText(getString(R.string.pv_summary, done, book.n, pct, Prefs.of(this).next(book.id)));
+        tvSummary.setText(getString(R.string.pv_summary, done, book.n, pct,
+                wordAtPos(Prefs.of(this).next(book.id)) + 1));
+    }
+
+    /**
+     * 这本书的刷词顺序（懒建 + 缓存）。
+     *
+     * 为什么这一页也要懂顺序：组指针（{@code b_<id>_n}）存的是**顺序里的位置**，
+     * 而这一页给用户看的、以及用户输进来的范围都是**词号**。课本顺序下两者相同，
+     * 随机顺序下差得很远 —— 不换算的话：
+     *   ① 底部「下次从第 N 词接着刷」报的数跟词表对不上（翻到第 N 行是另一个词）；
+     *   ② 「从这里继续刷」把词号当位置写进指针 → 刷词页从洗牌后的第 N 位开始，
+     *      用户指着第 100 个词说话，实际刷到的是随机某个词。
+     */
+    private int[] order() {
+        if (orderArr != null) return orderArr;
+        Prefs pr = Prefs.of(this);
+        boolean shuffle = pr.order(book.id) == 1;
+        orderArr = Order.build(book.n, shuffle, shuffle ? pr.ensureOrderSeed(book.id) : 0L);
+        return orderArr;
+    }
+
+    /** 组指针位置 → 词号（越界时原样返回，别把摘要搞成 0） */
+    private int wordAtPos(int pos) {
+        int[] o = order();
+        return pos >= 0 && pos < o.length ? o[pos] : pos;
     }
 
     private void save() {
@@ -280,21 +308,32 @@ public class BookPreviewActivity extends Activity {
         final int beforeNext = Prefs.of(this).next(book.id);
         boolean mark = action == 0, move = action >= 2;
 
+        // 「掌握位改了几个」和「指针挪没挪」是两件事，必须分开算：
+        // 以前共用一个 changed[0]，于是选「从这段重新刷」而这段本来就全是未掌握时
+        // changed[0] == 0 → 走「没动」分支 → 可指针**已经写盘了**，
+        // toast 却拿旧值说「下次本来就从第 N 个词开始，没动」，还 return 掉了
+        // updateSummary() / notifyDataSetChanged() / 撤销弹窗 ——
+        // 页面底部继续显示旧指针，用户既被误导「没动」又失去了撤销机会，而数据确实变了。
         final int[] changed = {0};
         if (mark || action == 1) {
             changed[0] = BookEdit.apply(ms, r, mark);
             if (changed[0] > 0) toast(getString(R.string.pv_done, changed[0], r.from + 1, r.to + 1));
         }
+        boolean moveChanged = false;
         if (move) {
             // 2 = 从这里继续刷：指针指到段首，已掌握的自动跳过（= 从没刷过的开始）
             // 3 = 从这段重新刷：指针指到段首 + 这段清成未掌握（整段重来）
             if (action == 3) changed[0] += BookEdit.apply(ms, r, false);
-            Prefs.of(this).setNext(book.id, r.from);
-            toast(getString(R.string.pv_done_move, r.from + 1));
+            int target = Order.posOfWord(order(), r.from);   // 词号 → 顺序位置（课本顺序下就是 r.from 本身）
+            moveChanged = target != beforeNext;
+            Prefs.of(this).setNext(book.id, target);
+            if (moveChanged) toast(getString(R.string.pv_done_move, r.from + 1));
         }
-        if (changed[0] == 0) {
+        if (changed[0] == 0 && !moveChanged) {
             if (action <= 1) toast(getString(mark ? R.string.pv_none_mark : R.string.pv_none_unmark));
-            else toast(getString(R.string.pv_none_move, beforeNext + 1));
+            else toast(getString(R.string.pv_none_move, wordAtPos(beforeNext) + 1));
+            updateSummary();                                 // 就算真没动，也保证底部摘要和列表是最新的
+            adapter.notifyDataSetChanged();
             return;
         }
         // 组内现场作废：掌握位图/组指针都被这批改动挪过了，再按旧现场接着刷会跟新设置打架
@@ -307,7 +346,8 @@ public class BookPreviewActivity extends Activity {
         LinearLayout col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         TextView tv = new TextView(this);
-        tv.setText(move ? getString(R.string.pv_done_move, r.from + 1)
+        tv.setText(move && changed[0] == 0
+                ? getString(R.string.pv_done_move, r.from + 1)
                 : getString(R.string.pv_undo_tip, changed[0], r.from + 1, r.to + 1));
         tv.setTextSize(13f);
         tv.setTextColor(Skin.c(this, R.attr.wpText2));
@@ -318,7 +358,9 @@ public class BookPreviewActivity extends Activity {
                     @Override public void run() {
                         ms = before;
                         save();
+                        // beforeNext 本来就是「顺序位置」，原样写回去即可
                         Prefs.of(BookPreviewActivity.this).setNext(book.id, beforeNext);
+                        Prefs.of(BookPreviewActivity.this).saveSession(book.id, null);
                         adapter.notifyDataSetChanged();
                         updateSummary();
                         toast(getString(R.string.pv_undone));

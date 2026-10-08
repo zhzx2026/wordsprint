@@ -75,7 +75,23 @@ public class HeatView extends View {
         invalidate();
     }
 
-    public void setOnPick(OnPick p) { pick = p; }
+    /**
+     * 挂上「点格子看当天明细」的回调。
+     *
+     * {@code setClickable} 那一行不是可有可无的：View.onTouchEvent 对一个非 clickable、
+     * 非 long-clickable 的 View 在 ACTION_DOWN 时**返回 false** → 父 ListView 认定这个子 View
+     * 不处理手势，mFirstTouchTarget 保持 null → 后续 MOVE / UP 全被 ListView 自己消费，
+     * 再也不派发下来 → onTouchEvent 里唯一会调 pick.onPick 的 ACTION_UP 分支永远进不去。
+     * 而首页那个 header 是 addHeaderView(dash, null, false)（data=null、不可选），
+     * ListView 自己的 onItemClick 也会因为 Row.book == null 直接 return —— 两条路都断，
+     * README 宣传的「点格子看当天明细」是完全死的。
+     *
+     * 滚动不受影响：ListView 一旦在 MOVE 里判定为滚动就会 onInterceptTouchEvent 把事件收走。
+     */
+    public void setOnPick(OnPick p) {
+        pick = p;
+        setClickable(p != null);
+    }
 
     /** 当前排布需要多宽（自适应之后就是「刚好放得下」的宽度） */
     public int neededWidth() { return (int) (labelW + cols * (cell + gap) + gap); }
@@ -143,12 +159,14 @@ public class HeatView extends View {
     }
 
     @Override public boolean onTouchEvent(MotionEvent e) {
-        if (e.getAction() != MotionEvent.ACTION_UP || pick == null) return super.onTouchEvent(e);
-        int col = (int) ((e.getX() - getPaddingLeft() - xOff - labelW) / (cell + gap));
-        int row = (int) ((e.getY() - getPaddingTop() - labelH) / (cell + gap));
-        if (col < 0 || row < 0 || col >= cols || row > 6) return true;
-        int idx = col * 7 + row;
-        if (idx < cellDays.size()) {
+        int act = e.getAction();
+        // DOWN 必须自己吃下来（返回 true），否则父 ListView 不会再把后面的 UP 派给我们。
+        // 没有监听者时返回 false = 交还给 ListView，滚动/点击行为跟以前一模一样。
+        if (act == MotionEvent.ACTION_DOWN) return pick != null;
+        if (act != MotionEvent.ACTION_UP || pick == null) return super.onTouchEvent(e);
+        int idx = Heat.hitCell(e.getX(), e.getY(), getPaddingLeft(), getPaddingTop(), xOff,
+                labelW, labelH, cell, gap, cols);
+        if (idx >= 0 && idx < cellDays.size()) {
             String day = cellDays.get(idx);
             if (day != null && !day.isEmpty()) pick.onPick(day, diary.peek(day));
         }

@@ -35,11 +35,38 @@ public class Diary {
         public boolean revDone, testDone;   // 温习 是否已勾选（按天）；testDone 只留给老数据解码（自测功能 2026-09-16 已删）
         public boolean custom;              // 目标是否被单独改过
 
-        public int total() { return learned + rev + test; }
+        /**
+         * 当天总张数 —— 热力图分档、打卡判定都看它。
+         *
+         * ⚠️ **不含 {@code test}**：自测功能 2026-09-16 已整体删除，`test`/`testSec`/`testDone`
+         * 只作为老数据（升级 / 进度码导入）的解码字段保留。以前 `total()` 把它算进去，
+         * 于是老版本导过来的日记能凭一个**在新版里根本不存在的功能**点亮热力图格子、
+         * 甚至维持连续打卡 —— 用户没有任何入口去核查或改变这个数。
+         */
+        public int total() { return learned + rev; }
         /** 今日「刷词」目标达成 —— 每日学习指标里那个勾 */
         public boolean goalDone() { return goal > 0 && learned >= goal; }
         public boolean goalPct100() { return goal <= 0 || learned >= goal; }
         public int pct() { return goal <= 0 ? 100 : Math.min(100, learned * 100 / goal); }
+    }
+
+    /**
+     * 每日目标的合法量程与预设档位（**单一真相源**）。
+     *
+     * 以前有两条写入路径各钳各的：首页弹窗 `parseGoal` 是 5..500，
+     * 而 `Prefs.applySettings`（扫别人的进度码点「采用」）只有 `Math.min(1000, …)` 没有下限
+     * —— 于是一张脏码能把默认目标写成 1，而 `goal <= 0` 时 `pct()` 返回 100、`goalDone()` 恒 false，
+     * 界面会出现「进度条满了但没有勾」这种自相矛盾的状态。
+     * 现在所有写入点（首页弹窗 / 设置页 / 进度码采用）统一走 {@link #clampGoal}。
+     */
+    public static final int GOAL_MIN = 5, GOAL_MAX = 500;
+
+    /** 预设档位：首页「设定每日目标」弹窗与设置 → 学习共用同一份（以前一个 3 档、一个 4 档） */
+    public static final int[] GOALS = {50, 100, 150, 200};
+
+    /** 把任意整数收进合法量程（脏值/越界/0/负数一律夹紧，绝不写坏） */
+    public static int clampGoal(int g) {
+        return g < GOAL_MIN ? GOAL_MIN : (g > GOAL_MAX ? GOAL_MAX : g);
     }
 
     /** 温习「算完成」的门槛（分钟）；自测门槛（张） */
@@ -86,16 +113,36 @@ public class Diary {
 
     // ---------- 查询 ----------
 
-    /** 取当天记录（不存在则按默认目标新建，但不落盘 —— 只有真学了才会写进去） */
-    public Day get(String key, int defGoal) {
+    /**
+     * 取当天记录，**没有就建一条塞进 {@link #days}**（写路径专用）。
+     *
+     * 这个方法以前叫 `get()`，而首页仪表盘、战绩图这些「只想看一眼」的地方也在调它
+     * —— 于是每次刷新都往 `days` 里塞一条零活动的今天，`sortedKeys()` / `bestStreak()` /
+     * `exportDiaryFull()` 每次都要多遍历一条脏数据（`encode()` 靠过滤条件才没把它写盘）。
+     * 只读的调用方一律改用 {@link #view}。
+     */
+    public Day getOrCreate(String key, int defGoal) {
         Day d = days.get(key);
         if (d == null) {
             d = new Day();
             d.d = key;
-            d.goal = defGoal;
+            d.goal = clampGoal(defGoal);
             days.put(key, d);
         }
         return d;
+    }
+
+    /**
+     * 只读取某天（**不塞进 {@link #days}**）：没有记录时返回一条游离的默认值对象。
+     * 仪表盘 / 战绩图 / 分享负载都走这条，看完就走，不给模型留垃圾。
+     */
+    public Day view(String key, int defGoal) {
+        Day d = days.get(key);
+        if (d != null) return d;
+        Day z = new Day();
+        z.d = key;
+        z.goal = clampGoal(defGoal);
+        return z;
     }
 
     public Day peek(String key) { return days.get(key); }
@@ -119,13 +166,20 @@ public class Diary {
         return s;
     }
 
-    /** 历史最高连续打卡（含每段完整区间） */
+    /**
+     * 历史最高连续打卡（含每段完整区间）。
+     *
+     * 没打卡的那天必须把 cur **归零**：以前只是 `continue` 而保留 cur，
+     * 于是「学了 → 空一天（这天在 days 里有记录但 total()==0）→ 又学」会被算成连续 3 天 ——
+     * 那个空白天当了桥。days 里会有这种记录（老数据解码、进度码导入、
+     * 只有已删除的「自测」计数的一天），所以这不是理论问题。
+     */
     public int bestStreak() {
         List<String> keys = sortedKeys();
         int best = 0, cur = 0;
         String prev = null;
         for (String k : keys) {
-            if (!active(k)) { prev = k; continue; }
+            if (!active(k)) { cur = 0; prev = k; continue; }
             cur = (prev != null && diffDays(prev, k) == 1) ? cur + 1 : 1;
             if (cur > best) best = cur;
             prev = k;
@@ -198,7 +252,7 @@ public class Diary {
             if (testDone && !d.testDone) { d.testDone = true; ch = true; }
         }
         // 目标：对方这天真学过（或单独设过目标）才参与取大 —— 纯空行不配抬我的目标
-        if ((custom || learned > 0 || rev > 0 || test > 0) && goal > d.goal) { d.goal = goal; ch = true; }
+        if ((custom || learned > 0 || rev > 0 || test > 0) && goal > d.goal) { d.goal = clampGoal(goal); ch = true; }
         if (custom && !d.custom) { d.custom = true; ch = true; }
         return ch;
     }
@@ -243,7 +297,7 @@ public class Diary {
             try {
                 Day d = new Day();
                 d.d = f[0];
-                d.learned = num(f[1]); d.goal = num(f[2]); d.rev = num(f[3]); d.test = num(f[4]);
+                d.learned = num(f[1]); d.goal = clampGoal(num(f[2])); d.rev = num(f[3]); d.test = num(f[4]);
                 d.sec = num(f[5]); d.revSec = num(f[6]); d.testSec = num(f[7]);
                 int flags = num(f[8]);
                 d.revDone = (flags & 1) != 0;
