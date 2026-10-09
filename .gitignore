@@ -33,3 +33,6 @@ test/scratch/*.png
 /sweep_codes.txt
 /o3.txt
 /*.png
+
+# CI 探针调试输出（一次性 artifact，已在 2026-10 清理）
+ci_probe_out/
