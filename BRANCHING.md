@@ -14,11 +14,13 @@
 ```
 ① 迭代期（每个 Arena 会话一条分支，随便做、不发版）
 
-   arena/<id>-wordsprint ──push──▶ staging.yml ─┬─▶ Actions Artifacts（zip，装机实测备用）
-      （源码+文档+测试）                        └─▶ 预发布 Release `ci` 的资产（不是分支！v6.2 起）：
-                                                     wordsprint.apk + update.json            ← 根资产：最近一次构建（仅直链兼容，App 已无入口）
-                                                     update-<分支id>.json + wordsprint-<id>.apk ← App 更新源第 2 档「分支」（该分支自己的包）
-                                                     正文 = 自动维护的「分支 × 版本」索引表
+   arena/<id>-wordsprint ──push──▶ staging.yml ─┬─▶ Actions Artifacts（zip，解压得 apk）
+      （源码+文档+测试）                        │     ★ 标准装机路径：**双装新 App**（包名 .sbs.<分支id>，
+      │                                        │       手动安装、桌面多一个图标、与正式包数据隔离、更新关闭）
+      │                                        └─▶ [仅 SBS=0 时] 预发布 Release `ci` 的资产（更新式包，备用）：
+      │                                              wordsprint.apk + update.json            ← 根资产：最近一次构建（仅直链兼容）
+      │                                              update-<分支id>.json + wordsprint-<id>.apk ← App 更新源「分支」档坑位
+      │                                              正文 = 自动维护的「分支 × 版本」索引表
 
 ② 转正期（用户确认后才做，只做一次）
 
@@ -36,7 +38,7 @@
 | 分支 | 是什么 | 谁写 | 允许出现什么 | 版本号 | tag / Release | 生命周期 |
 |---|---|---|---|---|---|---|
 | **`main`** | 正式线，仓库的门面；线上 App 的源码就是它 | 只有「**转正 PR 的合并**」这一个入口 | 全部源码 / 文档 / 测试 / 词库 | **永远 stable `X.0`** | 只有它会打 tag、建 Release | 永久 |
-| **Release `ci`（prerelease）** | **测试包聚合位**：不是分支、不出现在分支列表里；`--prerelease` 保证 `releases/latest`（stable OTA）永远跳过它 | CI 的 `publish_ci.sh` + `ci_sync.py`（构建后、删除分支时、定时对账） | 资产白名单 4 类：`wordsprint.apk`、`update.json`（根 = 最近一次构建）、`wordsprint-<分支id>.apk`、`update-<分支id>.json`（各分支坑位） | 无「当前版本」概念：只列现存分支有完整测试包的号 | 只有这一个预发布，tag `ci` 只当资产锚点 | 构建时覆盖对应坑位；删除分支后自动清理对应 manifest + APK、重写清单/索引；根资产保留旧版直链兼容 |
+| **Release `ci`（prerelease）** | **更新式测试包聚合位**（备用路径 —— 标准测试包是双装新 App，不走这里）：不是分支、不出现在分支列表里；`--prerelease` 保证 `releases/latest`（stable OTA）永远跳过它 | CI 的 `publish_ci.sh` + `ci_sync.py`（构建后、删除分支时、定时对账） | 资产白名单 4 类：`wordsprint.apk`、`update.json`（根 = 最近一次构建）、`wordsprint-<分支id>.apk`、`update-<分支id>.json`（各分支坑位） | 无「当前版本」概念：只列现存分支有完整测试包的号 | 只有这一个预发布，tag `ci` 只当资产锚点 | 构建时覆盖对应坑位；删除分支后自动清理对应 manifest + APK、重写清单/索引；根资产保留旧版直链兼容 |
 | **`arena/<id>-wordsprint`** | **工作分支**：一条 Arena 会话一条，名字里的短 id 是它的身份证 | 只有该会话自己 | 全仓库（在这改代码、文档、测试） | 开发期**晚绑定**：保持从 main 带下来的号；只在「发包实测前」「转正前」两个时刻 rebase 后 `bump-dev` / `promote` | **永远没有** | 合并进 main 后删除 |
 | `staging/**`、`dev-build` | `staging.yml` 的 push 触发白名单里的**应急分支名** | 手动 | 同工作分支 | 同工作分支 | 没有 | 用完即删 |
 | ~~`dev`~~ | **2026-09-22 已删，不许再建**（用户定的：聚合不放分支上） | — | — | — | — |
@@ -65,14 +67,16 @@
 
 ---
 
-## 3. 手机端的三档更新源（分工）
+## 3. 手机端的更新源（正式版 OTA；测试包装机不走这里）
 
 | 档位 | 地址 | 谁在读 | 内容 | 什么时候变 |
 |---|---|---|---|---|
 | **stable（正式 OTA）** | `https://github.com/zhzx2026/wordsprint/releases/latest/download/update.json`（App 内置，`R.string.update_default_src`） | 所有正式版 App，进首页自动查一次 + 前台每 60 秒查一次 | 最近一次**转正**的 Release | 只在转正时前进 |
-| **分支（第 2 档）** | 选中的分支 = `https://github.com/zhzx2026/wordsprint/releases/download/ci/update-<分支id>.json`（App 内直接选，**不用手填**） | 装的是测试包（`X.Y`）的 App 默认盯它（分支没选时报「还没选分支」）；想单独盯某条分支的人：设置 → 关于与更新 → 更新源 →「分支」 | 该分支自己的 `update-<id>.json` / `wordsprint-<id>.apk` | 只有该分支自己刷新 |
+| **分支（第 2 档）** | 选中的分支 = `https://github.com/zhzx2026/wordsprint/releases/download/ci/update-<分支id>.json`（App 内直接选，**不用手填**） | **更新式测试包**（`X.Y`，SBS=0 出的那种）默认盯它（分支没选时报「还没选分支」）；双装包更新是关的，用不上这档 | 该分支自己的 `update-<id>.json` / `wordsprint-<id>.apk` | 只有该分支自己刷新（SBS=0 构建时） |
 
 > **App 只有这两档**（用户 2026-09-22「安装界面 dev 还在」→ dev 档整个退役）。
+> **双装测试包（`.sbs.*`）的应用内更新是关的**（它是独立 App）——测试装机走 §8 的「双装新 App」，
+> 本节只服务正式版 OTA 与「更新式测试包」（SBS=0）这两个场景。
 > ci 的**根资产**（`update.json` / `wordsprint.apk` = 最近一次构建）还在服务器上，但只作直链兼容
 > （旧手机升级过渡用一次），App 不再有它的入口 —— 聚合不出现在任何「最外面」。
 
@@ -124,15 +128,15 @@
 | 3 | **版本号晚绑定** | 开发期不动 `AndroidManifest.xml`；只在「发包实测前」「转正前」先 `git fetch && git rebase origin/main` 再 `bump-dev` / `promote` | 谁都从 main 的老号出发，不会一开工就撞 |
 | 4 | **取号自动避让** | `scripts/version.sh` 的 `max_code()` 扫「本地 / main / **所有 `arena/**` 远端分支**」，`code = max + 1` | 后开工的自动跳过别人领过的号 |
 | 5 | **CI 撞号门禁** | `staging.yml` → `version.sh check-unique`：同 `versionCode` 已被**分叉的**另一条 arena 分支占用 → 直接 fail，提示 rebase + 重新 bump；同 `versionName` 不同 code 只警告 | 撞号由机器拦下，不靠人记 |
-| 6 | **通道分坑位 + 包可辨识** | Release ci 资产 `update-<id>.json` / `wordsprint-<id>.apk`；artifact 名 `wordsprint-staging-v<ver>-<id>-r<run号>`；`SBS=1` 出同机双装包（包名带后缀、数据隔离） | 多台手机/多个包同时测不串 |
+| 6 | **包可辨识 + 数据隔离** | artifact 名 `wordsprint-staging-v<ver>-<id>-r<run号>-sbs`；**默认双装包**（包名 `.sbs.<id>` = 独立新 App、数据隔离、卸载重装数据还在——数据在公共目录 `Documents/刷单词/`）；`SBS=0` 才出更新式包（刷 Release ci 坑位 `update-<id>.json`） | 多台手机/多个包同时测不串；测试包再也不会误伤正式包数据 |
 | 7 | **文档零冲突** | 会话流水账只写 `docs/logs/<分支id>.md`；`AGENT.md` 只留长期规则与结论 | 文档不会互相覆盖 |
 
 ### 5.2 时间线（两条会话并行时实际长什么样）
 
 ```
 时间 ──▶
-A 分支 : 开工 ──开发── rebase+bump v6.2(45) ── push → CI 绿（check-unique ✓）── App「分支」档锁 A 实测 ─ 用户确认 ─ promote 7.0(46) ─ PR ─┐
-B 分支 :   开工 ──开发── rebase+bump v6.2(45) ─ push → CI **红**（撞号）→ rebase+bump v6.3(46) → 绿 ── 锁 B 实测 ─ promote…           │
+A 分支 : 开工 ──开发── rebase+bump v6.2(45) ── push → CI 绿（check-unique ✓）── 装 A 的双装包实测 ─ 用户确认 ─ promote 7.0(46) ─ PR ─┐
+B 分支 :   开工 ──开发── rebase+bump v6.2(45) ─ push → CI **红**（撞号）→ rebase+bump v6.3(46) → 绿 ── 装 B 的双装包实测 ─ promote…           │
 main   : v6.0(43) ────────────────────────────────────────────────────────────────────────────────────────────── 合并 ─▶ v7.0
 ci     : … update-<A>.json v6.2 ─ … update-<B>.json v6.3 ─ …   （根资产 = 最近一次构建，谁构建谁刷新；正文自动维护版本索引表）
 ```
@@ -181,69 +185,33 @@ gh api "/repos/$REPO/check-runs/$ID" --jq .output.summary
 
 ---
 
-## 7. 现状快照（2026-09-21 实测）
+## 7. 历史注记（2026-09-21「main 上的 dev 5.1」收口事件）
 
-| 对象 | 状态 |
-|---|---|
-| `main` @ `5f29f20`（PR #10 合并） | 收口前：manifest = 5.1 / code 42（dev 号）、README 写「v5.1（dev）」—— 合并时没走 `promote`，main 上留了一个未转正的 dev 版本 |
-| 最近 Release **（收口前）** | `v5.0`（code 41，2026-09-17）→ 手机 OTA 拿到的还是 v5.0，比 main 落后一版 |
-| **收口后（2026-09-21）** | `main` = **stable v6.0 / code 43**；PR #11 合并 → `auto_release.yml` 打 tag `v6.0` + 发 Release（`wordsprint.apk` 915,865B + `update.json`）；`releases/latest` → v6.0；手机 OTA 收到 v6.0 |
-| 测试通道（2026-09-22 起） | **预发布 Release `ci`**（dev 聚合分支同日删除）：根资产 = 最近一次构建；`update-<id>.json` = 各分支坑位；现查：`gh api "/repos/zhzx2026/wordsprint/releases/tags/ci" --jq '.assets[].name'`。正式发布**不刷新**它 —— 见 §8 的「通道刷新规则」 |
-| Pages | 来源 = `main` / `/`（2026-09-22 切换），地址 `https://zhzx2026.github.io/wordsprint/`，页面底部「App 版本一览」实时读 GitHub API |
-| 其它分支 | 远端只有 `main` + 正在干活的工作分支（`dev` 已删，工作分支合并后即删） |
+当时 PR #10 合并时没走 `promote`，main 上留下未转正的 dev 5.1（线上 Release 还是 v5.0）。
+2026-09-21 用户确认后 `version.sh promote` → **stable v6.0（code 43）** → 合 PR → `auto_release.yml`
+打 tag + 发 Release → 手机 OTA 收到 v6.0，main 回到「只有 stable」的正轨。
+**教训（现行规则）：转正 PR 里必须已经 `promote` 成 `X.0`**，否则 `auto_release.yml` 跳过并留 `::error::`，
+main 上就会挂着一个 dev 号（§5.3 红线 5）。
 
-**处理结果（2026-09-21，用户确认后执行）**
+## 8. 测试包装机实测 SOP（用户 2026-10-10 定版）
 
-`bash scripts/version.sh promote` → **stable v6.0（code 43）** → 合 PR 进 main → `auto_release.yml` 打 tag `v6.0` + 发 Release
-→ `releases/latest` 指向它 → 手机 OTA 收到 v6.0。**收口完成：main 回到「只有 stable」的正轨，main 与线上 Release 一致。**
+**标准路径 = 双装新 App（每次出包都走这条）：**
 
-（备选方案留档：① 暂不发布、等下一轮一起转正 —— main 会领先线上 Release；② 回退 main 到 v5.0 —— 要 force push，不推荐。
-两种都不要用，只是记录当时为什么选「立即转正」。）
-
-### 可选改进（等用户点头再动 App 代码）
-
-- ~~dev 内置源按分支走~~：**已随 2026-09-22 通道重做解决** —— 「分支」档在 App 里直连 GitHub 选分支、锁坑位，
-  多会话并行不再互相覆盖（不再需要把坑位地址编进包里的方案）。
-
----
-
-## 8. 测试版（dev 包）怎么测 —— 装机实测 SOP
-
-### 8.1 三种装法，按需要选
-
-| 方式 | 怎么做 | 什么时候用 | 进度 |
+| 方式 | 怎么做 | 什么时候用 | 数据 |
 |---|---|---|---|
-| **A. App 内更新**（推荐） | 设置 →「关于与更新」→ **更新源**选「**分支**」→ 点本分支的坑位 →「检查」→「立即更新」 | 日常迭代实测，最省事；App 直连 GitHub，**不用手填任何地址** | **保留**（同签名覆盖安装） |
-| **B. Actions artifact 手动装** | GitHub → Actions → `staging` → 本分支最新一条 run → 页面底部 **Artifacts** → 下载 `wordsprint-staging-v<ver>-<分支id>-r<run号>.zip` → 解压得 apk → 手机允许「未知来源」→ 安装 | 分支还没出过包（App 里标「·无包」）、或 CI 里挂过双装包时 | 保留（覆盖安装） |
-| **C. 同机双装包**（对比测试） | `SBS=1 bash scripts/staging_build.sh`（或 workflow_dispatch 勾 `side_by_side`）→ 只能走 B 手动装 | 想「旧版 / 新版在同一台手机上并排对比」 | 隔离（包名带 `.sbs.<分支id>` 后缀，跨版本不能覆盖，应用内更新对它是关的） |
+| **A. 双装新 App（默认、推荐）** | `bash scripts/staging_build.sh` → GitHub → Actions → `staging` → 本分支最新 run → **Artifacts** → 下载 `wordsprint-staging-v<ver>-<分支id>-r<run号>-sbs.zip` → 解压得 apk → 手机允许「未知来源」→ **直接安装** | 日常迭代实测。装完桌面上多一个「刷单词」图标（包名 `.sbs.<分支id>`），与正式包**并存**、互不干扰 | **隔离**：双装包有自己的数据；用户数据在公共目录 `Documents/刷单词/`（卸载重装还在） |
+| **B. 更新式测试包（备用）** | `SBS=0 bash scripts/staging_build.sh` → 同样取 artifact（无 `-sbs` 后缀）→ 覆盖安装；或在正式包里「设置 → 关于与更新 → 更新源 → 分支 → 本分支 → 立即更新」 | 只有想验证「覆盖安装 / OTA 链路本身」时才用 | 保留（同包名覆盖安装） |
 
-**装对了没有？** 看 设置 页脚那行构建标识：`v6.0 · arena01a0c46d·8a104e2`（版本 · 分支id·短sha）。
-和 CI 摘要里写的对不上，就是装错包了（多会话并行时最常见的错就是装到了别人坑位的包）。
+**装对了没有？** 看 设置 页脚那行构建标识：`v9.1 · arena01a0c46d·8a104e2·sbs`（版本 · 分支id·短sha·双装标记）。
+和 CI 摘要里写的对不上，就是装错包了（多会话并行时最常见的错就是装到了别人分支的包）。
 
-### 8.2 通道刷新规则（决定你「检查更新」能看到什么）
+**双装包的性质**（用户定版）：它是**新的 App，不是更新**——桌面上两个「刷单词」图标并存（正式包 + 测试包），
+**数据隔离**；应用内更新对双装包无效（更新前先认清包名/构建标识）。同机对比旧版新版 = 正式包当旧版、双装包当新版。
 
-- **ci 通道（根资产 + 各分支资产）只由 `staging.yml` 刷新** —— 也就是「每次构建」时更新
-  （`scripts/publish_ci.sh` 上传资产 + 重写 Release 正文索引）。
-  正式发布（`auto_release.yml` / `release.yml`）**不碰 ci 通道**（预发布，`releases/latest` 永远跳过）。
-- 所以装机实测的正确姿势：**每轮改动都跑一次 staging 构建**，再在手机上「检查更新」。
-- 判断「有没有新版」只看 `update.json` 里的 `versionCode` 是否**严格大于**本机 code（显示名不参与），
-  所以同一轮里反复构建不会重复弹窗，换了新号才会。
-- **锁定分支**：根资产是「最近一次构建」、**任何分支都会刷新它** → 多会话并行时，更新源务必在
-  「分支」档锁本分支（App 直连 GitHub 选，见 §3），否则「装 A 分支的包、拿到 B 分支的包」。
-- 分支删除后由 `sync_ci.yml` 自动撤该分支的 **manifest + APK**，并更新 App 清单与 Release 正文；
-  不用再手删单个资产（只删 manifest 不会刷新 `channels`）。漏触发时在 Actions 手动运行
-  `sync-ci-branches`，或执行 `gh workflow run sync_ci.yml`；构建前要临时修复可在 staging 手动勾
-  `sync_only`（修复尚未合入 main 时用现有的 `label=ci-sync-only` 输入），不构建、不碰正式版。
-  整条撤：`gh release delete ci -y`（须用户确认）。
+**回退**：双装包直接卸载即可（不影响正式包；它自己的数据在 `Documents/刷单词/`，重装同 id 的包还在）；
+更新式包要回退就从 [Releases](https://github.com/zhzx2026/wordsprint/releases/latest) 装回最新 stable（同签名，进度不丢）。
 
-### 8.3 测完怎么回退 / 怎么反馈
-
-- **回退**：从 [Releases](https://github.com/zhzx2026/wordsprint/releases/latest) 下最新 stable 覆盖安装（同签名，进度不丢），
-  或把「更新源」改回正式源（留空 = 用内置正式源）。
-- **反馈格式**（对定位问题最有用）：现象 + 复现步骤 + 设置页脚那行 `vX.Y · 分支id·短sha`。
-  有了这行，能直接对上「哪条分支、哪个构建、哪份源码」。
-
----
+**反馈格式**（对定位问题最有用）：现象 + 复现步骤 + 设置页脚那行 `vX.Y · 分支id·短sha`。
 
 ## 9. 每轮收尾检查单（照着走就不会漏）
 
@@ -251,7 +219,7 @@ gh api "/repos/$REPO/check-runs/$ID" --jq .output.summary
 2. `bash scripts/branch_audit.sh` 无 ✗ 项；
 3. 版本号只由 `scripts/version.sh` 改（`bump-dev` / `promote` / `set`），没手写 `sed`；
 4. `RELEASE_NOTES.md` 只写**当前这一版**（上一版已挪进 `CHANGELOG.md`）；
-5. 推自己的 `arena/**` 分支 → `staging.yml` 绿 → 按 §8 装机实测；
+5. 推自己的 `arena/**` 分支 → `staging.yml` 绿 → 按 §8 装机实测（默认双装新 App）；
 6. **用户确认**后转正：`version.sh promote` → 开 PR → 合并（= 授权发布）→ 校验 `releases/latest`；
 7. 合并后：删掉自己的会话分支；`gh release delete-asset ci update-<自己的分支id>.json -y` 清掉自己的坑位（apk 资产同理）。
 
@@ -261,6 +229,7 @@ gh api "/repos/$REPO/check-runs/$ID" --jq .output.summary
 
 | 日期 | 改了什么 |
 |---|---|
+| 2026-10-10 | **装机流程定版（用户拍板）**：测试包默认 = **双装新 App**（不同 id、手动安装、数据隔离），「应用内更新装测试包」降为 SBS=0 备用（§0/§3/§5.1/§8）；新增用户数据**固定位置存储**规则（`Documents/刷单词/`，卸载重装还在，见 AGENT.md）；签名钥匙定位更正为 **GitHub Secret `KEYSTORE_B64`**（CI 还原，不需"异地备份"恐吓）；AGENT.md 清掉全部过时流水账（dev 通道/聚合分支/channels 旧路径等） |
 | 2026-09-22 | **通道重做（用户拍板）**：删 dev 聚合分支；测试包聚合改走**预发布 Release `ci`**（§1/§3）；App「分支」档直连 GitHub `/branches` 选分支（v6.2 / code 45）；Pages 切到 `main`（§4），页面加「App 版本一览」实时卡片；`publish_dev.sh` → `publish_ci.sh`（notes 必须写清内容，正文 <40 字拒发）；§4.1 决策树、§7 快照同步 |
 | 2026-09-21 | 新增 §4.1「dev 能不能删」决策树（Pages 先切源再删；dev 可重建）；§7 补记 v6.0 转正发布结果；§1 残留台账补 `tag main` 的 refname 歧义副作用（AGENT.md 坑 17）；`branch_audit.sh` 的 fetch 改全 refspec |
 | 2026-09-21 | 新建：把原本散在 `VERSIONING.md` §8、`share/README.md`、`AGENT.md` 发版流程里的「分支分工」集中到这一份；顺带给 `publish_dev.sh` 加**产物白名单断言**、新增 `scripts/branch_audit.sh` 体检脚本；新增 §8 测试版装机 SOP、§9 收尾检查单；§7 记录「main 上的 dev 5.1」收口为 **v6.0** 并发 Release |

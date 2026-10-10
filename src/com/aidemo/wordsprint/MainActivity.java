@@ -38,12 +38,19 @@ public class MainActivity extends Activity {
 
     @Override protected void attachBaseContext(Context base) { super.attachBaseContext(Night.wrap(base)); }
 
+    // 用户数据固定位置（卸载重装还在）：Android 10 及以下要一次存储授权；拒绝 = 退回旧行为，不碍用
+    @Override public void onRequestPermissionsResult(int req, String[] perms, int[] grants) {
+        super.onRequestPermissionsResult(req, perms, grants);
+        DataStore.onPermissionResult(this);
+    }
+
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
         Skin.apply(this);
         Ui.applyWindow(this);
         setContentView(R.layout.activity_main);
         Db.ensureLoaded(this);
+        DataStore.requestPermission(this);
 
         findViewById(R.id.btnSettings).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { startActivity(new Intent(MainActivity.this, SettingsActivity.class)); }

@@ -53,6 +53,8 @@
 - 沉浸式深色刷词页 + 纸感白卡；ToneGenerator 轻音效 + 振动反馈；进度位图（BitSet+Base64）持久化
 - **多用户档案**：首次使用起个名字，各档案独立的学习进度/错词/热力图/手势/目标，可新增·切换·改名·删除；
   升级安装时旧进度自动归第一个档案，不丢
+- **用户数据在固定位置，卸载重装还在**：学习进度 / 错题本 / 打卡 / 档案 / 设置全部镜像到手机公共目录
+  `Documents/刷单词/`（文件名带包名，正式包与测试包**各存各的**）——卸载 App 后文件还在，重装回来原样恢复
 
 ## 进度跨设备迁移
 
@@ -78,7 +80,9 @@
 
 - 内置更新源 `github.com/zhzx2026/wordsprint/releases/latest/download/update.json`；
   App 在前台每 60 秒静默查一次、进首页立刻查一次，发现新版首页亮横幅 + 弹窗（同版本只弹一次窗）
-- **测试包按分支更新**：装的是 dev 包（版本号形如 X.Y，Y≥1）就默认盯本包自己的「分支」坑位；
+> **测试包装机不走 OTA**（用户 2026-10-10 定版）：分支测试包是**双装新 App**（不同包名、手动安装、
+  与正式包数据隔离），应用内更新对它无效。下面的「分支」更新源只服务**更新式测试包**（SBS=0，备用）：
+  装的是更新式测试包（版本号形如 X.Y，Y≥1）就默认盯本包自己的「分支」坑位；
   也可在设置里切换正式源 / 其他测试分支。分支列表来自 ci 根 `update.json`，只显示现存且已有
   完整测试包的分支；删除分支后 CI 会清理它的坑位和列表。「已是最新版本」会写清查了哪个通道、
   服务器什么版本、本机什么版本（判断逻辑见 `VersTest` / `UpChTest` 主机测试）
@@ -102,6 +106,7 @@ bash build.sh                    # ⑤ aapt2 → javac → d8 → zipalign → a
 ```
 
 `run_tests.sh` 覆盖：`EngineTest`（刷词引擎 + 回炉区间）、`QRHostTest`（渲染→解码→合并全链路）、
+`DataCodecTest`（用户数据固定位置文件格式：全类型往返 + 行级容错）、
 `CodeHostTest`（进度码复制/粘贴容错，含截断恢复）、`TransferExtTest`（进度码扩展区：错题/日记/设置 + 新老互读）、
 `PackTest`（wdb.dat 解析）、`SharePayloadTest`、
 `ScaleTest`（字号缩放幂等）、`GesTest`（手势映射）、`WrongBookTest`（错题本规则）、
@@ -150,8 +155,10 @@ bash build.sh                    # ⑤ aapt2 → javac → d8 → zipalign → a
 从 [Releases](https://github.com/zhzx2026/wordsprint/releases/latest) 下载 `wordsprint.apk`
 （或直接在 App 内「检查更新」）→ 传送到手机 → 允许「安装未知来源应用」→ 安装。
 同一签名证书，任意旧版本都能**覆盖安装**，学习进度、打卡、错词、档案全部保留。
-测试包另有更省事的路：设置 →「关于与更新」→ 更新源 →「分支」→ 选一条 → 检查 → 立即更新
-（App 直连 GitHub，各分支的包互不干扰；各分支版本一览见[在线页](https://zhzx2026.github.io/wordsprint/share/index.html)）。
+**测试包（开发用）= 双装新 App**：`bash scripts/staging_build.sh` 出包后从 GitHub Actions 的
+Artifacts 下载 apk，手机上直接安装——桌面上多一个「刷单词」图标（包名带 `.sbs.<分支id>` 后缀），
+与正式包并存、**数据隔离**，互不干扰（正式包数据一点不受影响）。
+各分支版本一览见[在线页](https://zhzx2026.github.io/wordsprint/share/index.html)。
 
 ## 目录
 

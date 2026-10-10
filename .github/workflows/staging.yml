@@ -1,7 +1,9 @@
-# 暂存测试包：构建 + artifact + 预发布 Release `ci` 的分支坑位。
+# 装机测试包：构建 + artifact（默认 = 双装新 App，用户 2026-10-10 定的流程）。
 # **不打正式 tag、不发正式 Release、不动 main** —— 转正前先装机实测（AGENT.md 发版铁律）。
 # 版本格式门禁：dev 须 X.Y（Y>=1），stable 须 X.0（见 VERSIONING.md）；旧 1.0.x 三段号直接失败。
-# 用仓库 Secret KEYSTORE_B64（与线上同一个签名证书）→ 这个包可以直接覆盖安装，进度不丢。
+# 签名钥匙在 GitHub Secret `KEYSTORE_B64`（构建时还原，与线上同一个签名证书）。
+# 默认双装包（包名带 .sbs.<分支id> = 不同 id 的新 App，手动安装、数据隔离）；
+# 显式 side_by_side=false 才出「更新式」测试包（覆盖安装 + 刷预发布 Release `ci` 的分支坑位）。
 name: staging
 # ⚠️ workflow_dispatch 要求 workflow 文件存在于**默认分支**，新分支上没法手动触发；
 # 所以这里同时挂 push 触发（push 事件用的是被推分支里的那份 workflow 文件，立刻可用）。
@@ -11,9 +13,9 @@ on:
     inputs:
       label: { description: "备注（只写进构建摘要）；ci-sync-only = 只修复聚合、不构建（兼容旧工作流入口）", required: false, default: "staging" }
       side_by_side:
-        description: "同机双装包（包名加分支后缀，可与正式包并存；只能手动安装）"
+        description: "同机双装包：不同包名的新 App（与正式包并存、数据隔离、手动安装）。默认 true；填 false 才出「更新式」测试包（刷 ci 坑位）"
         required: false
-        default: "false"
+        default: "true"
       sync_only:
         description: "只同步 ci 聚合：移除已删除分支，不构建 APK / 不发布版本"
         required: false
@@ -85,7 +87,8 @@ jobs:
           SDK_ROOT: "${{ runner.temp }}/sdk"
           KS_PASS: "${{ secrets.KS_PASS }}"
           GIT_BRANCH: "${{ github.ref_name }}"
-          SIDE_BY_SIDE: "${{ github.event.inputs.side_by_side == 'true' && '1' || '0' }}"
+          # 默认双装（新 App）；只有显式 side_by_side=false 才出更新式包（用户 2026-10-10 定的流程）
+          SIDE_BY_SIDE: "${{ github.event.inputs.side_by_side == 'false' && '0' || '1' }}"
         run: |
           set +e
           bash build.sh > /tmp/b.log 2>&1; ec=$?
@@ -104,7 +107,7 @@ jobs:
           VER=$(grep -oE 'versionName="[^"]*"' AndroidManifest.xml | sed 's/versionName="//;s/"//')
           VC=$(grep -oE 'versionCode="[0-9]*"' AndroidManifest.xml | sed 's/[^0-9]//g')
           BID=$(bash scripts/branch_id.sh)
-          SBS="${{ github.event.inputs.side_by_side == 'true' && '-sbs' || '' }}"
+          SBS="${{ github.event.inputs.side_by_side == 'false' && '' || '-sbs' }}"
           APK="wordsprint-v${VER}${SBS}.apk"
           [ -f "$APK" ] || APK="wordsprint-v${VER}.apk"
           echo "ver=$VER"  >> "$GITHUB_OUTPUT"
@@ -116,17 +119,20 @@ jobs:
       - name: 摘要
         run: |
           {
-            echo "## 暂存测试包 v${{ steps.meta.outputs.ver }}（code ${{ steps.meta.outputs.vc }}）· 分支 \`${{ steps.meta.outputs.bid }}\`"
+            echo "## 装机测试包 v${{ steps.meta.outputs.ver }}（code ${{ steps.meta.outputs.vc }}）· 分支 \`${{ steps.meta.outputs.bid }}\`"
             echo
             echo "备注：${{ github.event.inputs.label }}；run #${{ github.run_number }}"
             if [ -n "${{ steps.meta.outputs.sbs }}" ]; then
               echo
-              echo "> **同机双装包**：包名带 \`.sbs.${{ steps.meta.outputs.bid }}\` 后缀，可与正式包并存（数据隔离）。"
-              echo "> 只能手动安装（下载 artifact），**应用内更新对它无效**。"
+              echo "> **双装包（默认）= 新 App，不是更新**：包名 \`com.aidemo.wordsprint.sbs.${{ steps.meta.outputs.bid }}\`，"
+              echo "> 手动安装后桌面上多一个「刷单词」图标，与正式包并存、**数据隔离**；应用内更新对它无效。"
+            else
+              echo
+              echo "> **更新式测试包（SBS=0）**：同包名覆盖安装（进度保留），并刷新 ci 坑位 / 分支通道。"
             fi
             echo
             echo "本页底部 **Artifacts** → 下载 \`wordsprint-staging-v${{ steps.meta.outputs.ver }}-${{ steps.meta.outputs.bid }}-r${{ github.run_number }}${{ steps.meta.outputs.sbs }}\`"
-            echo "（是个 zip，解压得到 \`${{ steps.meta.outputs.apk }}\`）→ 覆盖安装（同分支），同签名、进度不丢。"
+            echo "（是个 zip，解压得到 \`${{ steps.meta.outputs.apk }}\`）→ 手机允许「未知来源」→ 安装。"
             echo
             echo "**没有**打 tag、**没有**发 Release：手机不会收到 stable OTA。"
             echo
@@ -165,7 +171,7 @@ jobs:
   # 删除分支事件由 sync_ci.yml 走同一个锁：不会在清理后被尚未结束的旧构建重新写回。
   publish:
     needs: build
-    if: github.event.inputs.side_by_side != 'true'
+    if: github.event.inputs.side_by_side == 'false'
     runs-on: ubuntu-latest
     concurrency:
       group: ci-release-aggregation
