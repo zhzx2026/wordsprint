@@ -142,11 +142,13 @@ public class HeatView extends View {
         setMeasuredDimension(measuredW, hm == MeasureSpec.EXACTLY ? hs : h);
     }
 
+    private final Paints pc = new Paints();
+    private final Paint tp = new Paint(Paint.ANTI_ALIAS_FLAG);
+
     @Override protected void onDraw(Canvas cv) {
         super.onDraw(cv);
         if (diary == null) diary = DiaryStore.diary();
         int[] ramp = ramp(getContext(), Prefs.of(getContext()));
-        Paint tp = new Paint(Paint.ANTI_ALIAS_FLAG);
         // 格子自适应变小后，一/三/五/日 和「9月」这些小字也不能跟着缩到看不清：
         // 用 Heat.labelFont（9.5dp ~ 12dp），和 onMeasure 里 labelWidth 预留的宽度完全一致 ——
         // 两个字宽 = 偏移 + 一个字，所以永远不会切到字
@@ -155,7 +157,7 @@ public class HeatView extends View {
         // 空格子用 ramp[0]（浅灰）——以前用 wpSurface，和卡片底色一样，整张网格「看不见格子」
         paint(cv, diary, today, getPaddingLeft() + xOff, getPaddingTop() + labelH, cell, gap, cols, ramp,
                 Skin.c(getContext(), R.attr.wpText2), ramp[0],
-                Skin.c(getContext(), R.attr.wpText2), tp, cellDays);
+                Skin.c(getContext(), R.attr.wpText2), tp, cellDays, pc);
     }
 
     @Override public boolean onTouchEvent(MotionEvent e) {
@@ -174,6 +176,18 @@ public class HeatView extends View {
     }
 
     // ---------------- 绘制（屏幕与分享图共用） ----------------
+
+    /**
+     * 画笔/矩形复用包（体检 P3-5）：以前 onDraw 每帧 new 2 个 Paint + 1 个 RectF，
+     * 热力图跟着仪表盘每刷必重画，一晚上能分配几万个短命对象，GC 一抖主线程掉帧。
+     * 屏幕侧（HeatView）一份常驻复用；分享图侧（ShareCard）用完即弃，也只是一帧一次。
+     */
+    static final class Paints {
+        final Paint cell = new Paint(Paint.ANTI_ALIAS_FLAG);
+        final Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG);
+        final RectF rect = new RectF();
+        Paints() { ring.setStyle(Paint.Style.STROKE); }
+    }
 
     /**
      * 四档色阶：空 → 品牌色由浅到深。
@@ -199,14 +213,21 @@ public class HeatView extends View {
                               float cell, float gap, int maxCols, int[] ramp,
                               int labelColor, int emptyColor, int monthColor, Paint tp,
                               List<String> cellDaysOut) {
+        return paint(cv, dy, today, left, top, cell, gap, maxCols, ramp,
+                labelColor, emptyColor, monthColor, tp, cellDaysOut, new Paints());
+    }
+
+    static float paint(Canvas cv, Diary dy, String today, float left, float top,
+                       float cell, float gap, int maxCols, int[] ramp,
+                       int labelColor, int emptyColor, int monthColor, Paint tp,
+                       List<String> cellDaysOut, Paints pc) {
         float step = cell + gap;
         int rowToday = rowOf(today);
         String lastMonday = Diary.shift(today, -rowToday);
         String firstMonday = Diary.shift(lastMonday, -(maxCols - 1) * 7);
-        RectF r = new RectF();
-        Paint cellPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        Paint ringPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        ringPaint.setStyle(Paint.Style.STROKE);
+        RectF r = pc.rect;
+        Paint cellPaint = pc.cell;
+        Paint ringPaint = pc.ring;
         ringPaint.setStrokeWidth(Math.max(1f, cell * 0.14f));
         if (cellDaysOut != null) cellDaysOut.clear();
         String prevMonth = null;

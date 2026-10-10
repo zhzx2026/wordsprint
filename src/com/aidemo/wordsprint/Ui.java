@@ -346,8 +346,13 @@ public class Ui {
         private final int maxH;
         CappedScroll(android.content.Context c, int maxPx) { super(c); maxH = maxPx; }
         @Override protected void onMeasure(int wSpec, int hSpec) {
-            if (maxH > 0 && android.view.View.MeasureSpec.getMode(hSpec) != android.view.View.MeasureSpec.EXACTLY)
-                hSpec = android.view.View.MeasureSpec.makeMeasureSpec(maxH, android.view.View.MeasureSpec.AT_MOST);
+            if (maxH > 0 && android.view.View.MeasureSpec.getMode(hSpec) != android.view.View.MeasureSpec.EXACTLY) {
+                // 取「调用方上限」和「屏高 60%」里更小的那个（体检 P4-5）：小屏上弹窗四周还有
+                // 标题/按钮/边距，300dp 的上限可能比剩下的空间还高，弹窗底栏会被挤出屏幕
+                int screenH = getResources().getDisplayMetrics().heightPixels;
+                int cap = screenH > 0 ? Math.min(maxH, (int) (screenH * 0.6f)) : maxH;
+                hSpec = android.view.View.MeasureSpec.makeMeasureSpec(cap, android.view.View.MeasureSpec.AT_MOST);
+            }
             super.onMeasure(wSpec, hSpec);
         }
     }

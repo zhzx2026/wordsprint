@@ -604,8 +604,9 @@ public class Update {
 
     /**
      * 页面 onResume 调它、onPause 调 {@link #stopWatch()}。
-     * 每 400ms 回一次进度（有下载在跑时才有内容），每 60 秒静默查一次更新 ——
-     * 「不够灵敏」就是这么来的：前台一直在问，不用退回桌面再进来。
+     * **下载中**每 400ms 回一次进度；**空闲**时降到每 5 秒醒一次（12 次 ≈ 60 秒静默查一次更新，
+     * 体检 P3-7）—— 以前不管有没有下载都 400ms 空转，前台挂机十分钟就白烧 1500 次唤醒。
+     * 「不够灵敏」的问题不在这：查更新的节拍（60 秒）没变。
      */
     public static void startWatch(Activity a, Watch w) {
         ref = new java.lang.ref.WeakReference<Activity>(a);
@@ -627,8 +628,9 @@ public class Update {
                         && (progressDlg == null || progressHost != act || !progressDlg.isShowing())) {
                     showProgress(act);
                 }
-                if (tick++ % 150 == 0 && !busy) silentCheck(act);     // 150 × 400ms = 60 秒
-                h.postDelayed(this, 400);
+                boolean nowBusy = busy;
+                if (!nowBusy && tick++ % 12 == 0) silentCheck(act);   // 12 × 5s = 60 秒
+                h.postDelayed(this, nowBusy ? 400 : 5000);           // 下载要丝滑，空闲省电（P3-7）
             }
         };
         h.post(loop);

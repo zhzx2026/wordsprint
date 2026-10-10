@@ -32,12 +32,12 @@ public class StudyActivity extends Activity {
     private Engine engine;
     private int mode = MODE_WORD;
     private boolean reviewMode;                 // 错词/收藏复习：不推进组指针
-    private java.util.BitSet wrongs;                 // 在册错词（从 WrongBook 派生，给计数/队列用）
     private WrongBook wb;                            // 错题本本体（订正次数在这里）
     private boolean finishedAll;
     private boolean resumed;                    // 本次进来是「接着上次那张卡」（组内现场恢复成功）
     private boolean loading;                    // 正在装现场：这一小段里 onShow 不回写快照
     private String pendingResume;               // 待恢复的本组现场（只在第一次开组时用一次）
+    private boolean firstOfGroup;               // 本组第一张卡？手势提示只在这一张显示（P2-17）
     private long startTs;
     private long lastTick;
     /**
@@ -57,7 +57,6 @@ public class StudyActivity extends Activity {
     // 撤销用：作答前的错题本快照 / 这张是不是「首次记住」/ 这次答对了吗
     private WrongBook wbSnap;
     private boolean lastFresh, lastOk, lastWasReview;
-    private boolean hintShown;
     private android.widget.ProgressBar progress;
     private ConfettiView confetti;
 
@@ -68,8 +67,8 @@ public class StudyActivity extends Activity {
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
         Skin.apply(this);
-        setContentView(R.layout.activity_study);
         Ui.applyWindow(this);
+        setContentView(R.layout.activity_study);
         Db.ensureLoaded(this);
         prefs = Prefs.of(this);
         sfx = new SoundFx(this);
@@ -82,7 +81,6 @@ public class StudyActivity extends Activity {
         reviewMode = mode == MODE_WRONG;
         final boolean redo = getIntent().getBooleanExtra("redo", false);   // 「重刷整本」：不看旧现场，从组头重切
         wb = prefs.wrongBook(book.id);
-        wrongs = wb.dueIds();
 
         card = findViewById(R.id.card);
         actions = findViewById(R.id.actions);
@@ -110,9 +108,8 @@ public class StudyActivity extends Activity {
             tvGroupPill.setText(R.string.review_mode);
             tvHint.setText(getString(R.string.tap_reveal));
         }
-        if (mode == MODE_WORD && !hintShown) {
-            tvGroupPill.setText(gesHint());                 // 每次进来只在第一张卡提示一句，且按用户自己的映射说
-            hintShown = true;
+        if (mode == MODE_WORD) {
+            tvGroupPill.setText(gesHint());                 // 手势提示只在本组第一张卡出现（见 fill）
         }
 
         findViewById(R.id.btnClose).setOnClickListener(new View.OnClickListener() {
@@ -138,11 +135,13 @@ public class StudyActivity extends Activity {
             @Override public boolean onFling(MotionEvent e1, MotionEvent e2, float vx, float vy) {
                 if (engine.current() < 0 || engine.busy()) return false;
                 float dx = e2.getX() - e1.getX(), dy = e2.getY() - e1.getY();
-                if (Math.abs(dx) > 110 && Math.abs(dx) > Math.abs(dy)) {
+                // 阈值按 dp 换算（体检 P4-5）：原来是裸像素 110/90，密度 2.0 的机器上
+                // 只差 45dp、密度 3.5 上只差 26dp —— 低密度机「轻扫没反应」、高密度机「轻扫就翻」
+                if (Math.abs(dx) > Ui.dp(StudyActivity.this, 48) && Math.abs(dx) > Math.abs(dy)) {
                     fire(dx > 0 ? Ges.RIGHT : Ges.LEFT, gesMap);
                     return true;
                 }
-                if (Math.abs(dy) > 90 && Math.abs(dy) > Math.abs(dx)) {
+                if (Math.abs(dy) > Ui.dp(StudyActivity.this, 40) && Math.abs(dy) > Math.abs(dx)) {
                     fire(dy < 0 ? Ges.UP : Ges.DOWN, gesMap);
                     return true;
                 }
@@ -228,8 +227,9 @@ public class StudyActivity extends Activity {
         startTs = SystemClock.elapsedRealtime();
         result.setVisibility(View.GONE);
         confetti.setVisibility(View.GONE);
+        firstOfGroup = true;                           // 下一次 fill 是本组第一张：亮手势提示
         if (mode == MODE_WRONG) {
-            wrongs = wb.dueIds();                      // 订正队列只看「还要订正」的（已掌握的不再抽到）
+            java.util.BitSet wrongs = wb.dueIds();     // 订正队列只看「还要订正」的（已掌握的不再抽到）
             List<Integer> ids = new ArrayList<Integer>();
             for (int i = wrongs.nextSetBit(0); i >= 0; i = wrongs.nextSetBit(i + 1)) ids.add(i);
             int[] arr = new int[ids.size()];
@@ -289,6 +289,11 @@ public class StudyActivity extends Activity {
 
     private void fill(int w) {
         if (w < 0) return;
+        // 手势提示只挂在本组第一张卡上（体检 P2-17）：以前 hintShown 只在 onCreate 置一次、
+        // tvGroupPill 从不更新，于是一次刷词会话里那句提示一直占着组名的位置。
+        // 其余卡片统一显示「本组」，组内进度看下面的「3 / 50」和进度条就够。
+        tvGroupPill.setText(firstOfGroup && mode == MODE_WORD ? gesHint() : getString(R.string.this_group));
+        firstOfGroup = false;
         tvWord.setVisibility(View.VISIBLE);
         tvMeaning.setVisibility(View.VISIBLE);
         tvWord.setText(book.word(w));
@@ -409,14 +414,12 @@ public class StudyActivity extends Activity {
         if (ok) {
             wb.correct(w);                         // 答对一次就往「已掌握」推一步（要连对 3 次；满了也不出本）
             prefs.saveWrongBook(book.id, wb);
-            wrongs = wb.dueIds();
             // 「还要订正几次 / 已掌握」这类提示不再弹（用户 2026-09-24）：档位去错题本看 ★ 就行
             if (reviewMode) DiaryStore.reviewed(sessionDay, true);
             sfx.ok();
         } else {
             wb.miss(w);                            // 错一次就进本；在订正的再错，还差次数 +1
             prefs.saveWrongBook(book.id, wb);
-            wrongs = wb.dueIds();
             sfx.miss();
         }
         updateHud();
@@ -446,7 +449,6 @@ public class StudyActivity extends Activity {
         if (wbSnap != null) {                     // 错题本回到作答前
             wb = wbSnap;
             prefs.saveWrongBook(book.id, wb);
-            wrongs = wb.dueIds();
         }
         if (lastFresh) prefs.addToday(sessionDay, -1);        // 刚记成「首次掌握」的那一个词撤回来
         if (lastWasReview && lastOk) DiaryStore.undoReviewed(sessionDay);
@@ -473,8 +475,8 @@ public class StudyActivity extends Activity {
         String sub = reviewMode
                 ? getString(R.string.wrong_review_done, wb.dueCount(), wb.remaining())
                 : finishedAll
-                ? book.pub + "《" + book.display() + "》" + book.n + " 词全部拿下"
-                : book.display() + " · 本组全部记住，下一组继续";
+                ? getString(R.string.result_book_done_fmt, book.pub, book.display(), book.n)
+                : getString(R.string.result_group_done_fmt, book.display());
         ((TextView) findViewById(R.id.resultSub)).setText(sub);
         ((TextView) findViewById(R.id.rsFirst)).setText(String.valueOf(Math.max(0, engine.okCount() - engine.requeues())));
         ((TextView) findViewById(R.id.rsRetry)).setText(String.valueOf(engine.requeues()));

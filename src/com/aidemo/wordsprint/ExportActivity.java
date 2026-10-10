@@ -124,8 +124,8 @@ public class ExportActivity extends Activity {
                 android.content.Intent i = new android.content.Intent(android.content.Intent.ACTION_SEND);
                 i.setType("text/plain");
                 i.putExtra(android.content.Intent.EXTRA_TEXT, code);
-                try { startActivity(android.content.Intent.createChooser(i, "分享进度码")); }
-                catch (Throwable t) { toast("没有可用的分享目标"); }
+                try { startActivity(android.content.Intent.createChooser(i, getString(R.string.export_share_chooser))); }
+                catch (Throwable t) { toast(getString(R.string.export_no_share_target)); }
             }
         });
         regenerate();
@@ -229,20 +229,20 @@ public class ExportActivity extends Activity {
                     Prefs.activeName());
             g.code = "WPX1." + Base64.encodeToString(payload, Base64.NO_WRAP | Base64.URL_SAFE);
 
-            StringBuilder st = new StringBuilder("包含 ");
+            StringBuilder st = new StringBuilder(getString(R.string.export_stat_head));
             boolean first = true;
             if (!bs.isEmpty()) {
-                st.append(bs.size()).append(" 本词书 · ").append(words).append(" 个已掌握");
+                st.append(getString(R.string.export_stat_books, bs.size(), words));
                 first = false;
             }
             if (wrongN > 0) {
                 if (!first) st.append(" · ");
-                st.append("错题 ").append(wrongN).append(" 个");
+                st.append(getString(R.string.export_stat_wrong, wrongN));
                 first = false;
             }
             if (!daySet.isEmpty()) {
                 if (!first) st.append(" · ");
-                st.append(daySet.size()).append(" 天记录");
+                st.append(getString(R.string.export_stat_days, daySet.size()));
                 first = false;
             }
             if (set != null) {
@@ -250,7 +250,7 @@ public class ExportActivity extends Activity {
                 st.append(str(R.string.export_with_set));
                 first = false;
             }
-            if (first) st.append("（所选内容为空）");
+            if (first) st.append(getString(R.string.export_stat_empty));
             st.append(" · ").append(getString(R.string.code_len, g.code.length()));
             g.stat = st.toString();
 
@@ -270,7 +270,7 @@ public class ExportActivity extends Activity {
         if (g.err != null) {
             code = null;
             showCode();
-            statView.setText("生成失败：" + g.err);
+            statView.setText(getString(R.string.export_gen_fail, g.err));
             qrCard.setVisibility(View.GONE);
             qrHint.setVisibility(View.GONE);
             return;
@@ -281,8 +281,7 @@ public class ExportActivity extends Activity {
         if (g.qrTooBig || g.qr == null) {
             qrCard.setVisibility(View.GONE);
             qrHint.setVisibility(View.VISIBLE);
-            try { qrHint.setText(getString(R.string.export_qr_big, code.length())); }
-            catch (Throwable ignored) { qrHint.setText("二维码装不下，请复制文本码"); }
+            qrHint.setText(getString(R.string.export_qr_big, code.length()));
         } else {
             qrCard.setVisibility(View.VISIBLE);
             qrHint.setVisibility(View.GONE);
@@ -321,7 +320,8 @@ public class ExportActivity extends Activity {
                 CheckBox cb = new CheckBox(this);
                 int m = pr.mastered(bk.id, bk.n).cardinality();
                 int w = pr.wrongBook(bk.id).size();
-                cb.setText(bk.display() + "（掌握 " + m + "/" + bk.n + (w > 0 ? " · 错 " + w : "") + "）");
+                cb.setText(w > 0 ? getString(R.string.export_book_line_wrong, bk.display(), m, bk.n, w)
+                        : getString(R.string.export_book_line, bk.display(), m, bk.n));
                 cb.setTextSize(13f);
                 cb.setTextColor(Skin.c(this, R.attr.wpText));
                 cb.setChecked(picked.contains(bk.id));
@@ -352,7 +352,7 @@ public class ExportActivity extends Activity {
                 }
             };
             Ui.cardDialog(this, str(R.string.export_books_title), Ui.scrollable(col, 320),
-                    "确定", onOk, str(R.string.cancel));
+                    getString(R.string.btn_ok), onOk, str(R.string.cancel));
         } catch (Throwable ignored) {}
     }
 

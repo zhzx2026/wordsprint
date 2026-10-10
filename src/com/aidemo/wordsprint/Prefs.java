@@ -36,7 +36,6 @@ public class Prefs {
     /** 字号缩放：0 标准 · 1 大屏自适应 · 2 特大 */
     public static final String K_SCALE = "g_scale";
     /** 目标类型默认值：刷词 / 温习 / 自测 */
-    public static final String K_GOAL_MODE = "g_goal_mode";
     public static final String K_UP_URL = "u_url", K_UP_CH = "u_ch", K_UP_AUTO = "u_auto",
             K_UP_LAST = "u_last", K_UP_SEEN = "u_seen";
     /** 「分支」通道选中的坑位 id（预发布 Release ci 的 update-<id>.json，见 BRANCHING.md §3） */
@@ -227,6 +226,7 @@ public class Prefs {
         pr.p.edit().putString(K_ACTIVE, id).apply();
         DiaryStore.forget();                    // ← 只丢缓存（不再写盘），下次读的是新档案
         invalidateDistinct();                   // 掌握词数缓存是「当前档案」的，切档案必须重算
+        pr.invalidateBookCaches();              // 掌握位图/错题本解码缓存同理（P3-1/P3-2）
     }
 
     /** 建档案并切过去（useLegacy=true 时占用遗留命名空间 → 老进度归它） */
@@ -276,6 +276,7 @@ public class Prefs {
         }
         e.putString(K_PROFILES, profiles().encode()).apply();
         invalidateDistinct();
+        pr.invalidateBookCaches();
         return true;
     }
 
@@ -366,8 +367,36 @@ public class Prefs {
     // ---------- per-book ----------
     public static String bk(String bid, String k) { return "b_" + bid + "_" + k; }
 
-    public java.util.BitSet mastered(String bid, int n) { return bitsOf(bid, "p", n); }
-    public void saveMastered(String bid, java.util.BitSet bs) { putBits(bid, "p", bs); invalidateDistinct(); }
+    /**
+     * 解码缓存（体检 P3-1/P3-2）：词书列表 getView 每行都要「掌握位图 + 错题本」，
+     * 23 行 × 每次 base64 解码 + WrongBook.parse，滚动时成千上万次。
+     * 缓存的是解码结果对象：读多写少、写都在主线程跟着 saveXxx 走，一致性没有窗口。
+     * 切档案 / 删档案 / 导入 / 清进度必须 {@link #invalidateBookCaches()}，否则读到别人的数据。
+     */
+    private final java.util.HashMap<String, java.util.BitSet> masteredCache =
+            new java.util.HashMap<String, java.util.BitSet>();
+    private final java.util.HashMap<String, WrongBook> wrongCache =
+            new java.util.HashMap<String, WrongBook>();
+
+    void invalidateBookCaches() {
+        masteredCache.clear();
+        wrongCache.clear();
+    }
+
+    public java.util.BitSet mastered(String bid, int n) {
+        String key = ns(bk(bid, "p"));
+        java.util.BitSet bs = masteredCache.get(key);
+        if (bs != null && bs.size() >= Math.max(1, n)) return bs;
+        bs = bitsOf(bid, "p", n);
+        masteredCache.put(key, bs);
+        return bs;
+    }
+
+    public void saveMastered(String bid, java.util.BitSet bs) {
+        putBits(bid, "p", bs);
+        masteredCache.put(ns(bk(bid, "p")), bs);
+        invalidateDistinct();
+    }
 
     /**
      * 错题本：规则见 {@link WrongBook}（错一次就进；连对 3 次算已掌握但**不出本**，要手动删；
@@ -376,15 +405,24 @@ public class Prefs {
      * 迁移结果写进新槽位 wc —— 老用户升级后错题本不会丢。
      */
     public WrongBook wrongBook(String bid) {
-        String s = p.getString(ns(bk(bid, "wc")), null);
-        if (s != null) return WrongBook.decode(s);
-        java.util.BitSet legacy = bitsOf(bid, "w", 0);
-        WrongBook wb = WrongBook.fromLegacy(legacy);
-        if (!wb.isEmpty()) saveWrongBook(bid, wb);
+        String key = ns(bk(bid, "wc"));
+        WrongBook cached = wrongCache.get(key);
+        if (cached != null) return cached;
+        String s = p.getString(key, null);
+        WrongBook wb;
+        if (s != null) {
+            wb = WrongBook.decode(s);
+        } else {
+            java.util.BitSet legacy = bitsOf(bid, "w", 0);
+            wb = WrongBook.fromLegacy(legacy);
+            if (!wb.isEmpty()) saveWrongBook(bid, wb);
+        }
+        wrongCache.put(key, wb);
         return wb;
     }
 
     public void saveWrongBook(String bid, WrongBook wb) {
+        wrongCache.put(ns(bk(bid, "wc")), wb);
         p.edit().putString(ns(bk(bid, "wc")), wb.encode()).apply();
     }
 
@@ -495,23 +533,12 @@ public class Prefs {
         return Profiles.isProfileKey(rawKey);               // 遗留命名空间：只认学习数据键
     }
 
-    public String lastBookId() {
-        String best = null; long bt = 0;
-        for (String k : p.getAll().keySet()) {
-            if (!mine(k)) continue;
-            String raw = stripNs(k);
-            if (raw.endsWith("_t") && raw.startsWith("b_")) {
-                long v = p.getLong(k, 0);
-                if (v > bt) { bt = v; best = raw.substring(2, raw.length() - 2); }
-            }
-        }
-        return best;
-    }
 
     public void clearBook(String bid) {
         SharedPreferences.Editor e = p.edit();
         for (String k : new String[]{"p", "n", "g", "o", "l", "r", "t", "w", "wc", "s"}) e.remove(ns(bk(bid, k)));
         distinctCache = -1;
+        invalidateBookCaches();
         e.apply();
     }
 
@@ -523,6 +550,7 @@ public class Prefs {
                 .putInt(ns(bk(bid, "n")), 0);
         e.apply();
         distinctCache = -1;
+        invalidateBookCaches();
     }
 
     // ---------- global stats（今日计数 = Diary 的镜像，老键继续保留以兼容进度码） ----------
@@ -531,15 +559,6 @@ public class Prefs {
         return new SimpleDateFormat("yyyyMMdd", Locale.US).format(new Date());
     }
 
-    static String dayBefore(String d, int back) {
-        try {
-            SimpleDateFormat f = new SimpleDateFormat("yyyyMMdd", Locale.US);
-            Calendar c = Calendar.getInstance(TimeZone.getDefault());
-            c.setTime(f.parse(d));
-            c.add(Calendar.DAY_OF_YEAR, -back);
-            return f.format(c.getTime());
-        } catch (Exception e) { return d; }
-    }
 
     public int countDay(String d) { return p.getInt(ns("d_" + d), 0); }
 
@@ -734,6 +753,7 @@ public class Prefs {
             }
         }
         invalidateDistinct();
+        invalidateBookCaches();                 // 导入直接改了掌握位/错题本：解码缓存作废
         return new int[]{books, added, daySet.size(), wrongBooks, wrongNew};
     }
 

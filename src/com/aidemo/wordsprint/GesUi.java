@@ -135,6 +135,12 @@ public final class GesUi {
 
         LinearLayout col = new LinearLayout(a);
         col.setOrientation(LinearLayout.VERTICAL);
+        // 体检 P4-1 把 ges_pick_title/desc 接回来：说明「点一下直接生效」，少一步确定
+        TextView desc = new TextView(a);
+        desc.setText(R.string.ges_pick_desc);
+        desc.setTextSize(12.5f);
+        desc.setTextColor(Skin.c(a, R.attr.wpText2));
+        col.addView(desc);
         final TextView[] chips = new TextView[Ges.ACTIONS.length];
         for (int i = 0; i < Ges.ACTIONS.length; i++) {
             final int action = Ges.ACTIONS[i];
@@ -163,7 +169,8 @@ public final class GesUi {
             col.addView(row);
             if (action == pick[0]) row.setActivated(true);   // 当前值高亮（bg_row_tap 的 activated 态）
         }
-        android.app.AlertDialog dlg = Ui.cardDialogEx(a, a.getString(slotLabel(slot)),
+        android.app.AlertDialog dlg = Ui.cardDialogEx(a,
+                a.getString(R.string.ges_pick_title, a.getString(slotLabel(slot))),
                 Ui.scrollable(col, 300), null, null, a.getString(R.string.cancel), null, true);
         for (TextView c : chips) c.setTag(dlg);
     }

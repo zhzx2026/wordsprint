@@ -112,14 +112,14 @@ public class ProfileActivity extends Activity {
         int pd = (int) Ui.dp(this, 12);
         et.setPadding(pd, pd, pd, pd);
         Ui.cardDialogPrimary(this, getString(R.string.profile_rename_title),
-                Ui.scrollable(et, 120), getString(R.string.profile_renamed), new Runnable() {
+                Ui.scrollable(et, 120), getString(R.string.profile_save), new Runnable() {
                     @Override public void run() {
-                        String name = et.getText() == null ? "" : et.getText().toString();
+                        String name = et.getText() == null ? "" : et.getText().toString().trim();
                         if (Prefs.renameProfile(ProfileActivity.this, p.id, name)) {
                             toast(getString(R.string.profile_renamed));
                             adapter.notifyDataSetChanged();
                         } else {
-                            toast(getString(R.string.profile_name_hint));
+                            toast(getString(R.string.profile_name_empty));
                         }
                     }
                 }, getString(R.string.cancel), null, true);
@@ -148,16 +148,35 @@ public class ProfileActivity extends Activity {
         lp.topMargin = (int) Ui.dp(this, 12);
         col.addView(et, lp);
 
-        Ui.cardDialogEx(this, getString(R.string.profile_title), Ui.scrollable(col, 240),
-                getString(R.string.profile_renamed), new Runnable() {
+        // 体检 P2-10：以前两颗按钮是「已改名 | 删除」——保存没有自己的按钮、删除倒占着主位。
+        // 现在：主按钮=「保存」（trim + 空名反馈），取消=关窗，删除=内容里单独一行红字。
+        TextView delRow = new TextView(this);
+        delRow.setText(R.string.profile_delete_row);
+        delRow.setTextSize(14f);
+        delRow.setTextColor(Skin.c(this, R.attr.wpRed));
+        delRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        delRow.setPadding((int) Ui.dp(this, 12), (int) Ui.dp(this, 12), (int) Ui.dp(this, 12), (int) Ui.dp(this, 4));
+        LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        dlp.topMargin = (int) Ui.dp(this, 14);
+        col.addView(delRow, dlp);
+        delRow.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) { confirmDelete(p); }
+        });
+
+        Ui.cardDialogEx(this, getString(R.string.profile_title), Ui.scrollable(col, 260),
+                getString(R.string.profile_save), new Runnable() {
                     @Override public void run() {
-                        Prefs.renameProfile(ProfileActivity.this, p.id, et.getText().toString());
-                        adapter.notifyDataSetChanged();
+                        String name = et.getText() == null ? "" : et.getText().toString().trim();
+                        if (Prefs.renameProfile(ProfileActivity.this, p.id, name)) {
+                            toast(getString(R.string.profile_renamed));
+                            adapter.notifyDataSetChanged();
+                        } else {
+                            toast(getString(R.string.profile_name_empty));
+                        }
                     }
                 },
-                getString(R.string.profile_delete), new Runnable() {
-                    @Override public void run() { confirmDelete(p); }
-                }, true);
+                getString(R.string.cancel), null, true);
     }
 
     private void confirmDelete(final Profiles.P p) {

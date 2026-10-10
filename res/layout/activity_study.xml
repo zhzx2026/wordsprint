@@ -149,7 +149,7 @@
                     android:tint="?attr/wpText2"
                     android:contentDescription="@string/undo_answer"/>
 
-                
+
             </LinearLayout>
 
             <LinearLayout
@@ -470,7 +470,6 @@
                 android:textSize="14sp"/>
         </LinearLayout>
     </LinearLayout>
-
 
     <com.aidemo.wordsprint.ConfettiView
         android:id="@+id/confetti"

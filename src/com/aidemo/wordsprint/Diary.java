@@ -69,13 +69,19 @@ public class Diary {
         return g < GOAL_MIN ? GOAL_MIN : (g > GOAL_MAX ? GOAL_MAX : g);
     }
 
-    /** 温习「算完成」的门槛（分钟）；自测门槛（张） */
-    /** MIN_TEST 只用于解析老版本存下来的日记串（自测功能已删，不再产生新数据） */
-    public static final int MIN_REV_MIN = 3, MIN_TEST = 10;
+    /** 温习「算完成」的门槛（分钟）。（自测门槛 MIN_TEST 是死常量：decode 根本没用它，删） */
+    public static final int MIN_REV_MIN = 3;
     /** 默认值（纯 java 常量放这里，避免纯模型依赖 android 的 Prefs） */
     public static final int DEF_SIZE = 50, DEF_LAG = 5, DEF_GOAL = 50;
 
     public final LinkedHashMap<String, Day> days = new LinkedHashMap<String, Day>();
+
+    /** 统计缓存（体检 P3-4）：仪表盘每次刷新都问这三样；数据两年长时每次都要重扫全表。 */
+    private int streakCache = -1, bestCache = -1, doneCache = -1;
+    private String streakCacheKey;
+
+    /** 数据被改过（含 Day 字段被原地改）：让下次查询重算 */
+    public void markDirty() { streakCache = bestCache = doneCache = -1; }
 
     // ---------- 日期工具（纯计算，不依赖系统时间即可测） ----------
 
@@ -93,18 +99,47 @@ public class Diary {
 
     public static String today() { return keyOf(Calendar.getInstance()); }
 
-    public static String shift(String key, int deltaDays) {
+    /**
+     * 日期 ↔ 距 1970-01-01 的天数（纯整数运算，不碰 Calendar —— 体检 P3-4）。
+     *
+     * 以前 shift()/diffDays() 每算一天都要 cal() 两次 + getTimeInMillis()：
+     * 热力图一帧画 182 格就是几百次 Calendar 分配，streak() 再按数据年数翻倍，
+     * 刷一页主线程白扔几十毫秒。civil-date 换算（Hinnant 算法）整条链路零分配零时区。
+     */
+    public static long epochDay(String key) {
         String[] p = key.split("-");
-        Calendar c = cal(Integer.parseInt(p[0]), Integer.parseInt(p[1]), Integer.parseInt(p[2]));
-        c.add(Calendar.DAY_OF_MONTH, deltaDays);
-        return keyOf(c);
+        return toEpochDay(Integer.parseInt(p[0]), Integer.parseInt(p[1]), Integer.parseInt(p[2]));
+    }
+
+    private static long toEpochDay(int y, int m, int d) {
+        long yy = y, mm = m, dd = d;
+        long era = (yy >= 0 ? yy : yy - 399) / 400;
+        long yoe = yy - era * 400;
+        long doy = (153 * (mm + (mm > 2 ? -3 : 9)) + 2) / 5 + dd - 1;
+        long doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+        return era * 146097 + doe - 719468;
+    }
+
+    public static String fromEpochDay(long e) {
+        long z = e + 719468;
+        long era = (z >= 0 ? z : z - 146096) / 146097;
+        long doe = z - era * 146097;
+        long yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+        long y = yoe + era * 400;
+        long doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+        long mp = (5 * doy + 2) / 153;
+        long dd = doy - (153 * mp + 2) / 5 + 1;
+        long mm = mp + (mp < 10 ? 3 : -9);
+        if (mm <= 2) y += 1;
+        return String.format(Locale.US, "%04d-%02d-%02d", y, mm, dd);
+    }
+
+    public static String shift(String key, int deltaDays) {
+        return fromEpochDay(epochDay(key) + deltaDays);
     }
 
     public static int diffDays(String a, String b) {
-        String[] pa = a.split("-"), pb = b.split("-");
-        long ta = cal(Integer.parseInt(pa[0]), Integer.parseInt(pa[1]), Integer.parseInt(pa[2])).getTimeInMillis();
-        long tb = cal(Integer.parseInt(pb[0]), Integer.parseInt(pb[1]), Integer.parseInt(pb[2])).getTimeInMillis();
-        return (int) Math.round((tb - ta) / 86400000.0);
+        return (int) (epochDay(b) - epochDay(a));
     }
 
     public static boolean isDate(String s) {
@@ -128,6 +163,7 @@ public class Diary {
             d.d = key;
             d.goal = clampGoal(defGoal);
             days.put(key, d);
+            markDirty();
         }
         return d;
     }
@@ -155,6 +191,7 @@ public class Diary {
 
     /** 从 today 往前数连续打卡天数（今天还没学则从昨天算，和旧版 streak() 一致） */
     public int streak(String today) {
+        if (streakCache >= 0 && today.equals(streakCacheKey)) return streakCache;
         String t = today;
         if (!active(t)) {
             String y = shift(t, -1);
@@ -163,6 +200,8 @@ public class Diary {
         }
         int s = 0;
         while (s < 3650 && active(t)) { s++; t = shift(t, -1); }
+        streakCache = s;
+        streakCacheKey = today;
         return s;
     }
 
@@ -175,6 +214,7 @@ public class Diary {
      * 只有已删除的「自测」计数的一天），所以这不是理论问题。
      */
     public int bestStreak() {
+        if (bestCache >= 0) return bestCache;
         List<String> keys = sortedKeys();
         int best = 0, cur = 0;
         String prev = null;
@@ -184,13 +224,16 @@ public class Diary {
             if (cur > best) best = cur;
             prev = k;
         }
+        bestCache = best;
         return best;
     }
 
     /** 达成过目标的总天数 */
     public int doneDays() {
+        if (doneCache >= 0) return doneCache;
         int n = 0;
         for (Day d : days.values()) if (d.goalDone()) n++;
+        doneCache = n;
         return n;
     }
 
@@ -254,6 +297,7 @@ public class Diary {
         // 目标：对方这天真学过（或单独设过目标）才参与取大 —— 纯空行不配抬我的目标
         if ((custom || learned > 0 || rev > 0 || test > 0) && goal > d.goal) { d.goal = clampGoal(goal); ch = true; }
         if (custom && !d.custom) { d.custom = true; ch = true; }
+        if (ch) markDirty();                    // 合并动了数据：统计缓存作废
         return ch;
     }
 

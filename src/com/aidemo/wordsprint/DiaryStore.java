@@ -58,8 +58,36 @@ public final class DiaryStore {
         try { save(); } catch (Throwable ignored) {}
     }
 
+    /**
+     * 落盘节流（体检 P3-3）：以前每记一笔（learned/reviewed/addTime）都当场 encode+写盘，
+     * 一张卡最多触发 3 次（今日已刷 + 用时 + 温习），大档案的 encode 不便宜。
+     * 现在这几个高频口只标脏，500ms 内的多次记账合成一次写；切档案/退后台/进结算页
+     * （调用方都会走 {@link #save}）仍立即落盘，不给「丢一笔」留窗口。
+     */
+    private static boolean dirty;
+    private static boolean scheduled;
+    private static final android.os.Handler HANDLER =
+            new android.os.Handler(android.os.Looper.getMainLooper());
+
+    private static void touch() {
+        if (cache != null) cache.markDirty();   // 顺带让 streak/bestStreak 缓存跟着失效
+        dirty = true;
+        if (scheduled) return;
+        scheduled = true;
+        HANDLER.postDelayed(new Runnable() {
+            @Override public void run() {
+                synchronized (DiaryStore.class) {
+                    scheduled = false;
+                    if (dirty) save();
+                }
+            }
+        }, 500);
+    }
+
     public static synchronized void save() {
         if (cache == null || sp == null) return;
+        dirty = false;
+        scheduled = false;
         sp.edit().putString(Prefs.ns(KEY), cache.encode()).apply();
     }
 
@@ -84,6 +112,7 @@ public final class DiaryStore {
         if (sp != null) sp.edit().putInt(Prefs.ns(KEY_GOAL), g).apply();
         Diary.Day d = cache.peek(Diary.today());
         if (d != null && !d.custom) d.goal = g;
+        cache.markDirty();
         save();
         fire();
     }
@@ -95,6 +124,7 @@ public final class DiaryStore {
         Diary.Day d = cache.getOrCreate(Diary.today(), goalDefault());
         d.goal = Diary.clampGoal(goal);
         d.custom = true;
+        cache.markDirty();
         save();
         fire();
     }
@@ -154,7 +184,7 @@ public final class DiaryStore {
         Diary.Day d = day(dayKey);
         d.learned += n;
         if (d.learned < 0) d.learned = 0;
-        save();
+        touch();
         fire();
     }
 
@@ -166,7 +196,7 @@ public final class DiaryStore {
         if (!ok) return;
         Diary.Day d = day(dayKey);
         d.rev++;
-        save();
+        touch();
         fire();
     }
 
@@ -178,14 +208,18 @@ public final class DiaryStore {
         Diary.Day d = view(dayKey);
         if (d.rev <= 0) return;                 // 没什么可撤的：别为它凭空建一条记录
         day(dayKey).rev--;
-        save();
+        touch();
         fire();
     }
 
     /** 计时（秒）：kind 0=刷词 1=温习 2=自测（今天） */
     public static synchronized void addTime(int kind, long ms) { addTime(Diary.today(), kind, ms); }
 
-    /** 计时（秒），记在 {@code dayKey} 那天 */
+    /**
+     * 计时（秒），记在 {@code dayKey} 那天。
+     * 字段语义（体检 P4-5）：{@code sec} = **当天学习总用时**（刷词 + 温习都算），
+     * {@code revSec} = 其中温习的部分 —— 所以 kind=1 要同时加 sec 和 revSec（总分关系，不是重复记账）。
+     */
     public static synchronized void addTime(String dayKey, int kind, long ms) {
         int s = (int) Math.max(0, ms / 1000);
         if (s <= 0) return;
@@ -197,27 +231,10 @@ public final class DiaryStore {
         } else if (kind == 2) {
             d.testSec += s;
         }
-        save();
+        touch();
     }
 
-    /** 今天的勾选：0 刷词目标 · 1 温习（自测已删，见 StudyActivity 顶部注释） */
-    public static synchronized boolean done(int kind) {
-        Diary.Day d = view(Diary.today());
-        switch (kind) {
-            case 0: return d.goalDone();
-            case 1: return d.revDone;
-            default: return false;
-        }
-    }
 
-    /** 今天打了几项（刷词目标 / 温习） */
-    public static synchronized int doneCount() {
-        Diary.Day d = view(Diary.today());
-        int n = 0;
-        if (d.goalDone()) n++;
-        if (d.revDone) n++;
-        return n;
-    }
 
     /** 进度码导入的历史打卡数：只补「今天之前」的天，避免把今天刷爆 */
     public static synchronized void importDay(int yyyymmdd, int count) {

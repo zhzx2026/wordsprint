@@ -22,6 +22,8 @@ import java.util.List;
 public class MainActivity extends Activity {
 
     private int filter = -1;                 // -1 全部，其余为 Db.STAGE_*
+    private android.widget.EditText etSearch;   // 顶部搜词书（P2-23）
+    private View emptyBooks;                 // 搜不到时的占位文案
     private BookAdapter adapter;
     private HeatView heat;
     private boolean wasBusy;                 // 上一次回调时「是否正在下载更新」
@@ -50,6 +52,12 @@ public class MainActivity extends Activity {
         Ui.applyWindow(this);
         setContentView(R.layout.activity_main);
         Db.ensureLoaded(this);
+        if (!Db.ready()) {
+            // 词库读不出来（wdb.dat 是包内资源，坏了只有重装一法）：给可读的提示，别抛异常炸启动页
+            toast(getString(R.string.db_failed));
+            finish();
+            return;
+        }
         DataStore.requestPermission(this);
 
         findViewById(R.id.btnSettings).setOnClickListener(new View.OnClickListener() {
@@ -67,12 +75,12 @@ public class MainActivity extends Activity {
 
         LinearLayout chips = (LinearLayout) findViewById(R.id.filterChips);
         // chip 的左右顺序必须跟列表的上下分节顺序一致 —— 列表按 Db.I.books() 的原始顺序分节，
-        // 而词库里的学段序是 小学 → 初中 → 高中 → 考纲 → 大学（已解包 res/raw/wdb.dat 核对）。
+        // 而词库里的学段序是 小学 → 初中 → 高中 → 高考 3500 → 大学（已解包 res/raw/wdb.dat 核对）。
         // 以前 chip 是 …高中 / 大学 / 考纲：点最右边的「考纲」，列表跳到中间那一节；
         // 点「大学」跳到最后一节 —— 筛选器的顺序和结果的顺序对不上。README 写的也是大纲在前。
-        final String[] names = {getString(R.string.stage_all), Db.stageName(Db.STAGE_PRIMARY),
-                Db.stageName(Db.STAGE_JUNIOR), Db.stageName(Db.STAGE_SENIOR),
-                Db.stageName(Db.STAGE_EXAM), Db.stageName(Db.STAGE_COLLEGE)};
+        final String[] names = {getString(R.string.stage_all), Db.stageName(this, Db.STAGE_PRIMARY),
+                Db.stageName(this, Db.STAGE_JUNIOR), Db.stageName(this, Db.STAGE_SENIOR),
+                Db.stageName(this, Db.STAGE_EXAM), Db.stageName(this, Db.STAGE_COLLEGE)};
         final int[] stages = {-1, Db.STAGE_PRIMARY, Db.STAGE_JUNIOR, Db.STAGE_SENIOR,
                 Db.STAGE_EXAM, Db.STAGE_COLLEGE};
         for (int i = 0; i < names.length; i++) {
@@ -87,6 +95,18 @@ public class MainActivity extends Activity {
             });
             chips.addView(chip);
         }
+
+        // 顶部搜词书（体检 P2-23）：README 一直写着「顶部搜词书」，界面里却从来没有过搜索框。
+        // 走「书名 / 出版社 / 系列」子串匹配；搜不到时书单处显示 empty_books。
+        etSearch = (android.widget.EditText) findViewById(R.id.etSearch);
+        emptyBooks = findViewById(R.id.emptyBooks);
+        etSearch.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
+            @Override public void onTextChanged(CharSequence s, int a, int b, int c) {}
+            @Override public void afterTextChanged(android.text.Editable s) {
+                adapter.refresh();
+            }
+        });
 
         adapter = new BookAdapter();
         list.setAdapter(adapter);
@@ -107,6 +127,7 @@ public class MainActivity extends Activity {
 
     private void bindDashboard(View dash) {
         heat = (HeatView) dash.findViewById(R.id.heat);
+        heat.setContentDescription(getString(R.string.heat_title));   // 无障碍（体检 P4-5）
         heat.setOnPick(new HeatView.OnPick() {
             @Override public void onPick(String day, Diary.Day d) {
                 if (d == null) { toast(getString(R.string.heat_none) + " · " + day); return; }
@@ -151,14 +172,15 @@ public class MainActivity extends Activity {
 
         ((TextView) findViewById(R.id.goalSub)).setText(
                 getString(R.string.goal_progress, t.learned, t.goal));
-        ProgressBar bar = (ProgressBar) findViewById(R.id.goalBar);
+        // 首页目标进度条：换自绘 ProgBar（同词书行）——系统 ProgressBar 的 tint 依赖
+        // progressDrawable 自身的 shape，部分 ROM 下会整根「隐形」（体检 P2-20）
+        ProgBar bar = (ProgBar) findViewById(R.id.goalBar);
         bar.setProgress(t.pct());
-        bar.setProgressTintList(ColorStateList.valueOf(
-                t.goalDone() ? Skin.c(this, R.attr.wpGreen) : Skin.c(this, R.attr.wpBrand)));
+        int gcol = Skin.c(this, t.goalDone() ? R.attr.wpGreen : R.attr.wpBrand);
+        int[] gbc = DlProg.barColors(Skin.c(this, R.attr.wpSurface), Skin.c(this, R.attr.wpText2), gcol, gcol);
+        bar.setColors(gbc[0], gbc[1]);
         TextView badge = (TextView) findViewById(R.id.goalBadge);
         badge.setVisibility(t.goalDone() ? View.VISIBLE : View.GONE);
-
-        mark(R.id.habitWordMark, t.goalDone());
 
         // 有新版就一直挂着这条横幅（点一下就更新）；没有就收起来
         View banner = findViewById(R.id.upBanner);
@@ -178,11 +200,13 @@ public class MainActivity extends Activity {
             @Override public void run() { updateHeatSub(); }
         });
         int[] ramp = HeatView.ramp(this, Prefs.of(this));
-        int[] ids = {R.id.heatL1, R.id.heatL2, R.id.heatL3, R.id.heatL4};
+        // 图例五格 + 少/多（体检 P2-5）：以前只画 1~4 档，「这天没学」那格用的还是**默认控件底色**
+        // ——跟图上真正在用的 ramp[0]（卡片色混 6% 文字灰）对不上，用户没法拿图例对照图
+        int[] ids = {R.id.heatL0, R.id.heatL1, R.id.heatL2, R.id.heatL3, R.id.heatL4};
         for (int i = 0; i < ids.length; i++) {
             GradientDrawable g = new GradientDrawable();
             g.setCornerRadius(Ui.dp(this, 3));
-            g.setColor(ramp[i + 1]);
+            g.setColor(ramp[i]);
             findViewById(ids[i]).setBackground(g);
         }
         int cur = dy.streak(Diary.today()), best = dy.bestStreak();
@@ -203,14 +227,6 @@ public class MainActivity extends Activity {
                 : getString(R.string.heat_span_actual, Math.max(1, (got + 2) / 4));   // 约几个月
         ((TextView) findViewById(R.id.heatSub)).setText(
                 getString(R.string.heat_now, label) + " · " + getString(R.string.heat_sub));
-    }
-
-    private void mark(int id, boolean done) {
-        TextView tv = (TextView) findViewById(id);
-        if (tv == null) return;
-        tv.setText(done ? "✓" : "○");
-        tv.setTextColor(done ? Skin.c(this, R.attr.wpGreen) : Skin.c(this, R.attr.wpText2));
-        Fonts.apply(tv, done);
     }
 
     private void toast(String s) {
@@ -258,7 +274,7 @@ public class MainActivity extends Activity {
         final int[] presets = Diary.GOALS;
         final int[] sel = {Diary.clampGoal(cur)};        // 选中的目标值；按钮按下时才写盘
         String[] labels = new String[presets.length];
-        for (int i = 0; i < presets.length; i++) labels[i] = presets[i] + " 词";
+        for (int i = 0; i < presets.length; i++) labels[i] = getString(R.string.words_count, presets[i]);
         Ui.fillRow(row, labels, index(sel[0], presets), new Ui.ChipTap() {
             @Override public void onTap(int idx, TextView chip) {
                 sel[0] = presets[idx];
@@ -333,8 +349,10 @@ public class MainActivity extends Activity {
         ((TextView) findViewById(R.id.tvSub)).setText(
                 getString(R.string.about_line, Db.I.books().size(), Db.I.totalWords()));
         int streak = p.streak();
-        ((TextView) findViewById(R.id.statStreak)).setText(streak > 0 ? streak + " 天" : "今天");
-        ((TextView) findViewById(R.id.statStreakLbl)).setText(streak > 0 ? "连续打卡" : "开始打卡");
+        ((TextView) findViewById(R.id.statStreak)).setText(
+                streak > 0 ? getString(R.string.days_unit_short, streak) : getString(R.string.stat_today_word));
+        ((TextView) findViewById(R.id.statStreakLbl)).setText(
+                streak > 0 ? getString(R.string.stat_streak) : getString(R.string.stat_start_label));
         ((TextView) findViewById(R.id.statToday)).setText(String.valueOf(p.todayCount()));
         Update.resumePending(this);
         ((TextView) findViewById(R.id.statTotal)).setText(String.valueOf(p.totalMastered()));
@@ -361,19 +379,29 @@ public class MainActivity extends Activity {
     private List<Row> buildRows() {
         List<Row> rows = new ArrayList<Row>();
         List<Db.Book> visible = new ArrayList<Db.Book>();
+        String q = etSearch == null ? "" : etSearch.getText().toString().trim().toLowerCase();
         for (Db.Book bk : Db.I.books()) {
             if (filter >= 0 && bk.stage != filter) continue;
+            if (!q.isEmpty()) {
+                // 搜「书名 / 出版社 / 系列」任一命中就算（大小写不敏感）
+                String hay = (bk.display() + " " + bk.pub + " " + (bk.series == null ? "" : bk.series))
+                        .toLowerCase();
+                if (!hay.contains(q)) continue;
+            }
             visible.add(bk);
+        }
+        if (emptyBooks != null) {
+            emptyBooks.setVisibility(visible.isEmpty() && !q.isEmpty() ? View.VISIBLE : View.GONE);
         }
         String curStage = null;
         for (Db.Book bk : visible) {
-            String sn = Db.stageName(bk.stage);
+            String sn = Db.stageName(this, bk.stage);
             if (!sn.equals(curStage)) {
                 curStage = sn;
                 int cnt = 0;
-                for (Db.Book o : visible) if (Db.stageName(o.stage).equals(curStage)) cnt++;
+                for (Db.Book o : visible) if (Db.stageName(this, o.stage).equals(curStage)) cnt++;
                 Row s = new Row();
-                s.title = curStage + " · " + cnt + " 本";
+                s.title = getString(R.string.stage_section, curStage, cnt);
                 rows.add(s);
             }
             Row r = new Row();
@@ -401,8 +429,11 @@ public class MainActivity extends Activity {
                 if (cv instanceof TextView) tv = (TextView) cv;
                 else {
                     tv = new TextView(g.getContext());
-                    tv.setLayoutParams(new ViewGroup.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+                    // 用 ListView 自己的 LayoutParams 族（体检 P3-9）：ViewGroup.LayoutParams 没有
+                    // 视图类型信息，AbsListView 内部得 instanceof 试一遍才认，白试两次。
+                    tv.setLayoutParams(new android.widget.AbsListView.LayoutParams(
+                            android.widget.AbsListView.LayoutParams.MATCH_PARENT,
+                            android.widget.AbsListView.LayoutParams.WRAP_CONTENT));
                     tv.setTextSize(13f);
                     tv.setTypeface(Typeface.DEFAULT_BOLD);
                     int ph = (int) Ui.dp(g.getContext(), 14);
@@ -432,16 +463,21 @@ public class MainActivity extends Activity {
 
             ((TextView) cv.findViewById(R.id.tvTitle)).setText(bk.display());
             TextView cnt = (TextView) cv.findViewById(R.id.tvCount);
-            cnt.setText(done >= bk.n ? bk.n + " 词  ✓ 已学完" : bk.n + " 词");
+            cnt.setText(done >= bk.n
+                    ? getString(R.string.book_done_tag, bk.n)
+                    : getString(R.string.words_count, bk.n));
             cnt.setTextColor(done >= bk.n ? Skin.c(cv.getContext(), R.attr.wpGreen)
                     : Skin.c(cv.getContext(), R.attr.wpText2));
             TextView pctTv = (TextView) cv.findViewById(R.id.tvPct);
             pctTv.setText(pct + "%");
-            ProgressBar bar = (ProgressBar) cv.findViewById(R.id.bar);
+            ProgBar bar = (ProgBar) cv.findViewById(R.id.bar);
             bar.setProgress(pct);
             int acc = pct >= 100 ? Skin.c(cv.getContext(), R.attr.wpGreen) : Skin.c(cv.getContext(), R.attr.wpBrand);
             pctTv.setTextColor(acc);
-            bar.setProgressTintList(ColorStateList.valueOf(acc));
+            // 轨道/进度色走 DlProg.barColors（10 套配色的主机断言盯着「必须看得见」，体检 P2-20）
+            int[] bc = DlProg.barColors(Skin.c(cv.getContext(), R.attr.wpSurface),
+                    Skin.c(cv.getContext(), R.attr.wpText2), acc, acc);
+            bar.setColors(bc[0], bc[1]);
 
             return cv;
         }

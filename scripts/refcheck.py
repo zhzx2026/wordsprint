@@ -446,8 +446,10 @@ def main():
             body = t[m.end():i]
             base = m.start()
             for cm in re.finditer(r'(?<![\w.])this(?![\w])', body):
-                # 这份代码里唯一合法的匿名类 this：把 Runnable 自己丢回 Handler（postDelayed(this, …)）
-                if re.match(r'this\s*,\s*\d', body[cm.start():cm.start() + 14]):
+                # 这份代码里唯一合法的匿名类 this：把 Runnable 自己丢回 Handler（postDelayed(this, …)）。
+                # 2026-10-10：以前只认「this, 字面量毫秒」，改成动态间隔（this, nowBusy ? 400 : 5000）就误报，
+                # 白名单放宽为「前面确实是 postDelayed(」即可，参数写什么都不算病。
+                if body[max(0, cm.start() - 12):cm.start()].endswith('postDelayed('):
                     continue
                 ctx = body[max(0, cm.start() - 40):cm.start() + 8].replace('\n', ' ')
                 problems.append('%s.java:%d  匿名类里的 this（%s…）：要写 外层类.this 或 getContext()'

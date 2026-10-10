@@ -2,30 +2,30 @@
 <resources>
     <string name="app_name">刷单词</string>
     <string name="brand_sub">人教版 · 初高中 · 整本刷词</string>
-    <string name="select_book">选择课本词书</string>
     <string name="search_hint">搜索词书，如「八年级下」「3500」</string>
-    <string name="all_pubs">全部版本</string>
+    <string name="search_books_n">%1$d 本</string>
+    <string name="stage_section">%1$s · %2$d 本</string>
+    <string name="book_done_tag">%1$d 词 ✓ 已学完</string>
+    <string name="result_book_done_fmt">%1$s《%2$s》%3$d 词全部拿下</string>
+    <string name="result_group_done_fmt">%1$s · 本组全部记住，下一组继续</string>
+    <string name="stat_today_word">今天</string>
+    <string name="stat_start_label">开始打卡</string>
+    <string name="db_failed">词库读取失败，请重装 App</string>
     <string name="stage_all">全部</string>
     <string name="stage_primary">小学</string>
     <string name="stage_junior">初中</string>
     <string name="stage_senior">高中</string>
-    <string name="stage_exam">考试</string>
+    <string name="stage_exam">高考 3500</string>
     <string name="stage_ext">拓展</string>
     <string name="words_count">%1$d 词</string>
-    <string name="progress_of">%1$d/%2$d</string>
     <string name="start_brush">开始刷词</string>
     <string name="continue_brush">继续刷词</string>
     <!-- 词本弹层主按钮：整本已学完时用这个（以前仍然写「继续刷词」，点进去是一张全零的庆祝页） -->
     <string name="brush_whole_book">重刷整本</string>
-    <string name="today_done">今日已刷</string>
-    <string name="total_mastered">累计掌握</string>
-    <string name="streak_days">连续 %1$d 天</string>
-    <string name="no_streak">今天开始打卡</string>
     <string name="tap_reveal">点击卡片查看释义</string>
     <string name="got_it">记住了</string>
     <string name="word_detail_ok">知道了</string>
     <string name="dont_know">不认识</string>
-    <string name="requeue_hint">已回炉，稍后再见</string>
     <string name="group_size">每组词数</string>
     <string name="order_label">刷词顺序</string>
     <string name="order_book">课本顺序</string>
@@ -37,48 +37,31 @@
     <string name="session_done">本组完成</string>
     <string name="book_done">恭喜！整本书已刷完</string>
     <string name="next_group">开始下一组</string>
-    <string name="back_home">先歇会儿</string>
     <string name="settings">设置</string>
     <string name="set_speak">自动朗读单词</string>
     <string name="set_phonetic">显示音标</string>
     <string name="set_sound">音效与振动</string>
     <string name="set_anim">翻转动画</string>
-    <string name="set_desc">词书进度自动保存在本机</string>
     <string name="reset_progress">重置进度</string>
     <string name="reset_confirm">确定清空《%1$s》的全部进度吗？</string>
     <string name="reset_yes">清空</string>
     <string name="reset_no">取消</string>
     <string name="quit_title">退出本组</string>
-    <string name="quit_msg">本组进度已保存，下次继续。</string>
-    <string name="resume_tip">接着上次那张继续</string>
-    <string name="quit_yes">退出</string>
-    <string name="quit_no">继续刷</string>
-    <string name="mastered_tag">已掌握</string>
     <string name="loading_data">词库加载中…</string>
     <string name="empty_books">没有找到匹配的词书</string>
-    <string name="home_cta">挑一本课本，开刷</string>
-    <string name="resume_none">还没有进行中的词书</string>
     <string name="accuracy">正确率</string>
     <string name="duration">用时</string>
-    <string name="again_count">回炉次数</string>
-    <string name="pub_label">版本</string>
-    <string name="book_label">词书</string>
     <string name="about_line">共 %1$d 本词书 · %2$d 个单词</string>
-    <string name="transfer_title">进度互传</string>
     <string name="transfer_desc">换机或双机同步：一台出示二维码，另一台扫码合并（只增不删）</string>
     <string name="export_qr">导出二维码</string>
     <string name="scan_import">扫码导入</string>
-    <string name="copied">进度码已复制</string>
     <string name="no_progress">还没有学习进度可导出</string>
-    <string name="bad_code">无法识别：请扫「刷单词」导出的进度码</string>
     <string name="cam_deny">需要相机权限才能扫码</string>
-    <string name="streak_days_short">已连续 %1$d 天</string>
     <string name="stat_streak">连续打卡</string>
     <string name="stat_today">今日已刷</string>
     <string name="stat_total">累计掌握</string>
     <string name="review_of">%1$s · 错词复习</string>
     <string name="review_mode">错词复习</string>
-    <string name="review_with_count">错词复习 · %1$d</string>
     <string name="review_done">错词复习完成</string>
     <string name="no_wrongs">错题本是空的，继续保持</string>
     <string name="wrong_times">本组已错 %1$d 次</string>
@@ -87,9 +70,6 @@
     <string name="back_to_wrong">回错题本</string>
     <!-- 整本刷完后结算页的主按钮。以前是代码里写死的 "再刷一轮"，而且点了没反应（见 StudyActivity.nextGroup） -->
     <string name="brush_again">再刷一轮</string>
-    <string name="sheet_stats">已学 %1$d · 剩余 %2$d · 错词 %3$d</string>
-    <string name="start_brush_group">开始刷词 · 每组 %1$d 词</string>
-    <string name="continue_brush_group">继续刷词 · 第 %1$d 组</string>
     <string name="custom_size">自定义每组词数</string>
     <string name="size_hint">5 – 500 之间的数字</string>
     <string name="first_learn">一次记住</string>
@@ -112,7 +92,6 @@
     <string name="import_close">知道了</string>
     <string name="paste_read_clip">读取剪贴板</string>
     <string name="paste_clear">清空</string>
-    <string name="paste_empty">剪贴板是空的：先在对方手机「导出进度」点复制（或在微信里长按那条消息→复制），再回来点导入。</string>
     <string name="paste_clip_chars">已读取剪贴板 %1$d 个字符</string>
     <string name="paste_clip_none">剪贴板读不到内容（系统限制/内容为空），请长按输入框手动粘贴</string>
     <string name="diag_copy">复制诊断信息</string>
@@ -125,10 +104,8 @@
     <string name="cam_fail">相机打开失败，可用「粘贴进度码」</string>
     <string name="update_title">检查更新</string>
     <string name="update_auto">自动检查更新</string>
-    <string name="update_src">更新源</string>
     <string name="update_src_stable">stable</string>
     <string name="update_src_branch">分支</string>
-    <string name="update_src_hint">stable = 正式版；分支 = 各分支自己的测试包</string>
     <string name="update_branch_refresh">刷新</string>
     <string name="update_branch_list_loading">正在读取分支…</string>
     <string name="update_branch_list_empty">还没有任何分支的测试包（先跑一次 staging 构建）</string>
@@ -137,14 +114,10 @@
     <string name="update_branch_empty">该分支还没有测试包（先跑一次 staging 构建）</string>
     <string name="update_default_src" translatable="false">https://github.com/zhzx2026/wordsprint/releases/latest/download/update.json</string>
     <string name="update_ci_base" translatable="false">https://github.com/zhzx2026/wordsprint/releases/download/ci</string>
-    <string name="update_repo_api" translatable="false">https://api.github.com/repos/zhzx2026/wordsprint</string>
-    <string name="update_check">检查</string>
     <string name="update_checking">正在检查…</string>
     <string name="update_checking_ch">正在检查（%1$s 通道）…</string>
     <string name="update_cur_ver_ch">当前 v%1$s（code %2$d）· %3$s 通道</string>
     <string name="update_latest_detail">已是最新版本（%1$s 通道 · 服务器 %2$s / code %3$d · 本机 v%4$s / code %5$d）</string>
-    <string name="update_latest_now">已是最新版本</string>
-    <string name="update_cur_ver">当前 v%1$s（code %2$d）</string>
     <string name="update_fail_short">检查失败：%1$s</string>
     <string name="update_found_v">发现新版本 v%1$s（当前 v%2$s）</string>
     <string name="update_go">立即更新</string>
@@ -165,17 +138,13 @@
     <string name="import_done">完成</string>
     <string name="import_fail_title">导入失败</string>
     <string name="import_fail_body">这串内容没能读成进度码。把下面这行报错发给开发者最快；也可以改用「扫码导入」。</string>
-    <string name="import_retry">重新粘贴</string>
-    <string name="import_back">返回</string>
     <string name="import_truncated">进度码末尾被截断了：已把写完整的那部分全部合并，剩下的建议改用扫码导入。</string>
     <string name="import_oom">进度码太长，这台机器内存不够</string>
-    <string name="paste_loaded">已自动读入剪贴板里的 %1$d 个字符，可直接导入</string>
     <string name="paste_manual_tip">在对方手机「导出进度」页点「复制文本码」，回来长按下面的输入框粘贴即可</string>
     <string name="copied_chars">已复制 %1$d 个字符，去另一台手机「粘贴导入」即可</string>
     <string name="copy_fail">系统剪贴板没写成功，请长按下面的文本码手动全选</string>
     <string name="code_full_title">进度码全文（长按可全选复制）</string>
     <string name="code_full_btn">查看 / 手动复制全文</string>
-    <string name="scan_import_desc">对准另一台手机出示的进度码</string>
     <string name="code_len">文本码 %1$d 字符</string>
 
     <!-- ===== v2.1 新增：每日目标 / 热力图 / 打卡 / 档案 / 收藏 / 查词 / 战绩 / 词本配置 / 手势 / 配色 ===== -->
@@ -183,21 +152,15 @@
     <string name="goal_title">今日目标</string>
     <string name="goal_progress">已刷 %1$d / %2$d 词</string>
     <string name="goal_met">目标达成 ✓</string>
-    <string name="goal_gap">还差 %1$d 词</string>
     <string name="goal_pick">设定每日目标</string>
     <string name="goal_pick_desc">刷够就算完成，首页会打勾（每天 0 点重新开始）</string>
     <string name="goal_only_today">只改今天</string>
     <string name="goal_set_default">设为默认</string>
-    <string name="goal_custom">自定义</string>
     <string name="goal_custom_hint">5 – 500 之间的数字</string>
+    <string name="goal_custom_label">自定义</string>
     <string name="goal_ok_today">今天的目标已改为 %1$d 词</string>
     <string name="goal_ok_default">默认目标已改为 %1$d 词</string>
-    <string name="goal_progress_pct">%1$d%%</string>
 
-    <string name="habit_rev">温习</string>
-    <string name="habit_rev_desc">%1$d 分钟</string>
-    <string name="habit_done">已完成</string>
-    <string name="habit_undone">未完成</string>
 
     <string name="heat_title">学习热力图</string>
     <string name="heat_sub">一格一天 · 越深刷得越多</string>
@@ -206,8 +169,9 @@
     <string name="heat_span_actual">最近 %1$d 个月</string>
     <string name="heat_today">今天</string>
     <string name="heat_none">这天没学</string>
+    <string name="heat_less">少</string>
+    <string name="heat_more">多</string>
     <string name="heat_day_info">%1$s · 新词 %2$d · 温习 %3$d（目标 %4$d）</string>
-    <string name="heat_back_today">回到今天</string>
     <string name="streak_cur">连续打卡</string>
     <string name="streak_best">最高连续</string>
     <string name="streak_done_days">达标天数</string>
@@ -217,13 +181,16 @@
     <string name="quick_search">查词</string>
     <string name="quick_wrong">错题本</string>
     <string name="quick_share">分享战绩</string>
-    <string name="quick_profile">档案</string>
 
     <string name="profile_title">谁在刷词</string>
     <string name="profile_first_title">先起个名字吧</string>
     <string name="profile_first_desc">学习进度按名字分开存：进度、热力图、收藏各刷各的，互不打扰。</string>
     <string name="profile_new">新建档案</string>
     <string name="profile_name_hint">名字（最多 12 字）</string>
+    <string name="profile_save">保存</string>
+    <string name="profile_now_fmt">%1$s · %2$d 个档案</string>
+    <string name="profile_delete_row">删除这个档案</string>
+    <string name="profile_name_empty">名字不能为空</string>
     <string name="profile_create">创建并开始</string>
     <string name="profile_current">当前</string>
     <string name="profile_switch_to">切换到「%1$s」</string>
@@ -241,7 +208,6 @@
     <string name="search_empty">没有找到匹配的词</string>
     <string name="search_tip">内置全部词书（含大学四六级），离线可用</string>
     <string name="search_result">找到 %1$d 个词</string>
-    <string name="search_from">%1$s</string>
 
     <string name="share_title">学习战绩</string>
     <string name="share_desc">长按图片可保存；微信扫图里的二维码能打开在线战绩页</string>
@@ -288,14 +254,8 @@
     <string name="word_detail_title">单词详情</string>
     <string name="word_detail_book">出处：%1$s</string>
     <string name="word_not_found">词库里没有这个词</string>
-    <string name="total_words_n">%1$d 词</string>
-    <string name="book_pick_title">选择要加入的词书</string>
     <string name="about_count_short">已掌握 %1$d 词 · 连续 %2$d 天</string>
     <!-- 自测（看中文想英文）与错题本订正（用户 2026-09-14 定的规则） -->
-    <string name="wrong_added_book">已进错题本：订正要对 %1$d 次</string>
-    <string name="wrong_add_more">又错一次：还得对 %1$d 次</string>
-    <string name="wrong_still">订正中：还要对 %1$d 次</string>
-    <string name="wrong_cleared">连对 3 次，已掌握 ✓（仍留在错题本，可手动删）</string>
     <string name="wrong_left_n">还要对 %1$d 次</string>
     <string name="wrong_more_n">… 共 %1$d 个词还要订正，点「错词复习」逐个击破</string>
     <string name="wrong_review_done">还要订正 %1$d 个词 · 合计还要对 %2$d 次</string>
@@ -304,15 +264,16 @@
     <string name="wrong_page_count">共 %1$d 个错词 · 还要订正 %2$d 个 · 已掌握 %3$d 个</string>
     <string name="wrong_page_empty">错题本是空的 ✓\n刷词时答「不认识」的词会进这里；连对 3 次算已掌握，仍留在本里，可以手动删。</string>
     <string name="wrong_book_line">%1$s · %2$d 个</string>
+    <string name="wrong_book_due_line">%1$s · %2$d 个待订正</string>
+    <string name="filter_col_fmt">%1$s：%2$s  ▾</string>
+    <string name="wrong_pick_title">订正哪一本？</string>
     <!-- 错题本三档：只有这三档，界面上用五角星 1/2/3 个代替文字（星越多越熟） -->
     <string name="wrong_t_miss">未掌握</string>
     <string name="wrong_t_near">快掌握</string>
     <string name="wrong_t_ok">已掌握</string>
-    <string name="wrong_filter_all">全部</string>
     <string name="wrong_f_book">词本</string>
     <string name="wrong_f_star">星级</string>
     <string name="wrong_f_any">不限</string>
-    <string name="wrong_f_clear">不限</string>
     <string name="wrong_f_done">收起</string>
     <string name="wrong_filter_none">这个筛选下没有词</string>
     <string name="wrong_del">从错题本移除</string>
@@ -346,8 +307,6 @@
 
     <string name="up_banner">发现新版本 %1$s（当前 %2$s）· 点这里更新</string>
     <string name="undo_answer">上一个（撤销）</string>
-    <string name="undo_done">已撤销，重新选一次</string>
-    <string name="undo_none">还没有可撤销的操作</string>
     <string name="ges_unfit">（不适合点按/长按）</string>
     <string name="ges_pick_title">%1$s 绑哪个动作？</string>
     <string name="ges_pick_desc">点一下直接生效，不用确定。</string>
@@ -367,7 +326,6 @@
     <string name="nav_data">数据与档案</string>
     <string name="nav_data_desc">档案切换 · 进度码导出与扫码导入 · 战绩分享</string>
     <string name="nav_about">关于与更新</string>
-    <string name="nav_about_desc">版本信息 · 更新通道 · 检查更新</string>
     <string name="set_data_title">数据</string>
     <string name="set_speak_desc">看卡与翻卡时自动发音</string>
     <string name="set_phonetic_desc">单词下方显示音标</string>
@@ -379,12 +337,11 @@
     <string name="ges_reset_desc">改回出厂那套（上滑收藏 · 下滑释义 · 左右判定）</string>
     <string name="export_progress">导出 / 导入进度码</string>
     <string name="update_src_title">更新源</string>
-    <string name="update_auto_desc">启动时轻量检查一次，有新版再提示</string>
+    <string name="update_auto_desc">前台每 60 秒自动检查，有新版时在「设置 → 关于」提示更新</string>
     <string name="update_check_now">检查更新</string>
     <string name="update_desc">覆盖安装不丢进度</string>
     <string name="ges_saved">已更新手势</string>
     <string name="profile_rename_title">改个名字</string>
-    <string name="habit_word">刷词</string>
     <string name="shelf_title">词书库</string>
 
     <!-- ===== v2.9：词表仅预览 + 批量改进度（用户：词本加一个仅预览，还可以直接批量编辑） ===== -->
@@ -417,6 +374,7 @@
     <string name="book_preview">仅预览词表</string>
     <string name="book_clear_progress">清除进度</string>
     <string name="sheet_stats_group">已学 %1$d · 剩余 %2$d · 错词 %3$d · 下一组第 %4$d 组</string>
+    <string name="sheet_series_fmt">%1$s · %2$s · 共 %3$d 词</string>
     <string name="book_batch">批量改进度</string>
 
     <!-- ===== v7.1：进度码内容可选 + 错题/日记/设置一起传 ===== -->
@@ -431,6 +389,17 @@
     <string name="export_qr_big">内容太多，二维码装不下（文本码 %1$d 字符）：可少选几本词书分多次传，或直接复制文本码（粘贴导入不限长度）</string>
     <string name="export_need_one">至少选一项内容再导出</string>
     <string name="export_generating">正在生成…</string>
+    <string name="btn_ok">确定</string>
+    <string name="export_share_chooser">分享进度码</string>
+    <string name="export_no_share_target">没有可用的分享目标</string>
+    <string name="export_stat_head">包含 </string>
+    <string name="export_stat_books">%1$d 本词书 · %2$d 个已掌握</string>
+    <string name="export_stat_wrong">错题 %1$d 个</string>
+    <string name="export_stat_days">%1$d 天记录</string>
+    <string name="export_stat_empty">（所选内容为空）</string>
+    <string name="export_gen_fail">生成失败：%1$s</string>
+    <string name="export_book_line">%1$s（掌握 %2$d/%3$d）</string>
+    <string name="export_book_line_wrong">%1$s（掌握 %2$d/%3$d · 错 %4$d）</string>
     <string name="export_with_set">含设置</string>
     <string name="import_ok_wrong">错题本：%1$d 本 · 新增 %2$d 个错词</string>
     <string name="import_ok_from">来自「%1$s」的进度码</string>

@@ -106,6 +106,7 @@ public class SettingsSubActivity extends Activity {
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, (int) Ui.dp(this, 10), 1);
             lp.rightMargin = (int) Ui.dp(this, 6);
             preview.addView(v, lp);
+            v.setContentDescription(pal.name);   // 无障碍：色块念出配色名（体检 P4-5）
             v.setAlpha(pr.skin() == i ? 1f : 0.35f);
         }
 
@@ -175,7 +176,7 @@ public class SettingsSubActivity extends Activity {
         String[] goalLabels = new String[goals.length];
         int cur = Diary.clampGoal(DiaryStore.goalDefault()), sel = -1;
         for (int i = 0; i < goals.length; i++) {
-            goalLabels[i] = goals[i] + " 词";
+            goalLabels[i] = getString(R.string.words_count, goals[i]);
             if (goals[i] == cur) sel = i;
         }
         final TextView goalDesc = (TextView) findViewById(R.id.tvGoalDesc);
@@ -382,8 +383,8 @@ public class SettingsSubActivity extends Activity {
             Update.resumePending(this);      // 授权页返回后接着下载（设置页点更新也要能接上）
         }
         try {
-            ((TextView) findViewById(R.id.tvProfileNow)).setText(
-                    Prefs.activeName() + " · " + Prefs.profiles().list.size() + " 个档案");
+            ((TextView) findViewById(R.id.tvProfileNow)).setText(getString(R.string.profile_now_fmt,
+                    Prefs.activeName(), Prefs.profiles().list.size()));
         } catch (Throwable ignored) {}
     }
 
@@ -394,7 +395,8 @@ public class SettingsSubActivity extends Activity {
 
     /** 「每日目标」那行的说明文字：功能说明 + 括号里的当前值 */
     private String goalDescText(int cur) {
-        return getString(R.string.goal_pick_desc) + "（" + getString(R.string.goal_title) + " " + cur + " 词）";
+        return getString(R.string.goal_pick_desc) + "（" + getString(R.string.goal_title) + " "
+                + getString(R.string.words_count, cur) + "）";
     }
 
     /** 跟档案走的开关（学习数据） */

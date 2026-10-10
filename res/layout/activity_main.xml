@@ -205,6 +205,39 @@
             android:orientation="horizontal"/>
     </HorizontalScrollView>
 
+    <!-- ===== 搜词书（体检 P2-23：README 写了「顶部搜词书」，这里补上） ===== -->
+    <EditText
+        android:id="@+id/etSearch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_card_field"
+        android:hint="@string/search_hint"
+        android:inputType="text"
+        android:imeOptions="actionSearch"
+        android:singleLine="true"
+        android:textColor="?attr/wpText"
+        android:textColorHint="?attr/wpText2"
+        android:textSize="13.5sp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="9dp"
+        android:paddingBottom="9dp"
+        android:contentDescription="@string/search_hint"/>
+
+    <TextView
+        android:id="@+id/emptyBooks"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="28dp"
+        android:gravity="center"
+        android:text="@string/empty_books"
+        android:textColor="?attr/wpText2"
+        android:textSize="13.5sp"
+        android:visibility="gone"/>
+
     <!-- ===== 词书列表 ===== -->
     <ListView
         android:id="@+id/bookList"
@@ -217,7 +250,7 @@
         android:paddingBottom="18dp"
         android:clipToPadding="false"
         android:divider="#00000000"
-        android:dividerHeight="9dp"
+        android:dividerHeight="14dp"
         android:listSelector="@android:color/transparent"
         android:scrollbars="none"/>
 </LinearLayout>

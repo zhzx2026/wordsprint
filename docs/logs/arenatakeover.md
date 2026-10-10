@@ -55,3 +55,16 @@
 ## 版本
 - `version.sh bump-dev`：v9.1/62 → **v9.2 / code 63**（远端仅 main=62，无并行 arena 分支撞号）。
 - v9.1 文案已归档 CHANGELOG；RELEASE_NOTES.md = 本轮 v9.2 文案。
+
+## 2026-10-10 · v9.3 — 体检报告 P2~P4 专项（用户指令「p2-p4」）
+
+- 修完 `docs/audit-unreasonable.md` 剩余的 P2×15（另 8 条 v9.1 已修）、P3×9、P4×5 组，逐条对照现状后动手。
+- 界面：搜索框真做出来了（README 说了很多年的「顶部搜词书」）、图例补空档色块+少/多、习惯格删除、
+  详情弹窗单按钮、错题本「订正哪一本？」、档案菜单「保存/取消/删除行」、长按图片存相册、
+  手势提示只在首卡、结算页文案进资源、行距统一 14dp、进度条全自绘（ProgBar + DlProg.barColors）。
+- 性能：Words 建索引（查词 8 万次分配 → O(1)）、Diary 日期纯算术（零 Calendar）、Prefs 掌握位图/错题本解码缓存、
+  DiaryStore 落盘 500ms 节流、HeatView 画笔复用、Update 空闲轮询 400ms→5s、Db 后台预热+读失败不再炸。
+- 数据：`scripts/fix_book_pub.py` 把初中/高中 12 本的 pub 「人教版 PEP」→「人教版」（词条指纹断言无损）；
+  series 不再拼进书名，挪到词书弹层。
+- 清理：删 60+ 死字符串；「刷词页不弹窗」的用户决定落实（undo toast 串删除而非接线）；AGENT 坑 21/22
+  （删功能清 fossil 规则、文案与代码对齐）。
