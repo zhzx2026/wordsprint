@@ -5,7 +5,12 @@ set -e
 cd "$(dirname "$0")/.."
 VER=$(grep -oE 'versionName="[^"]*"' AndroidManifest.xml | sed 's/.*="//;s/"//')
 VC=$(grep -oE 'versionCode="[0-9]*"' AndroidManifest.xml | sed 's/.*="//;s/"//')
-TAG="${GITHUB_REF_NAME:-v$VER}"
+# TAG = 发布 tag，恒为 v$VER（gate 打的附注 tag 就是它）。
+# ⚠️ 别用 GITHUB_REF_NAME 拼直链（2026-10-11 v10.0 转正时踩实）：PR 合并（pull_request closed）
+# 触发的运行里 GITHUB_REF_NAME 是 **main**，于是 update.json 的下载直链拼成
+# releases/download/main/wordsprint.apk —— 那是个停在 v4.0 的浮动别名位，v5.0~v9.0 的
+# update.json 全指着它，手机点「立即更新」会下到旧包。直链必须指**版本 tag 自己的资产**。
+TAG="v$VER"
 REPO="${GITHUB_REPOSITORY:-zhzx2026/wordsprint}"
 # 说明优先级：环境变量 > 仓库里的 RELEASE_NOTES.md（人写的发布文案）> 最后一条提交标题
 # （tag 触发时 RELEASE_NOTES 是空的，只用提交标题会把技术提交信息发到 Release 页上）
