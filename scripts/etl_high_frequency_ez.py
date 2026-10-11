@@ -2,11 +2,13 @@
 # -*- coding: utf-8 -*-
 """把 PDF「3500词汇高频使用词汇（E-Z）」整理成独立词书并并入 wdb.dat。
 
-词条源：data/high_frequency_ez.tsv，每行 `word<TAB>phonetic<TAB>chinese`。
+词条源：data/high_frequency_ez.tsv，每行 `word<TAB>phonetic<TAB>pos<TAB>chinese`。
 TSV 是可维护的正式源数据；ETL 不依赖维护机上的 PDF/PyMuPDF。
+词性（第三列）由 ETL 拼到释义前面（`n. 生态`），与词库里其他词书的呈现方式一致
+（用户 2026-10-11：「把 E-Z 的词性加上」）。
 
 用法：
-  python3 scripts/etl_high_frequency_ez.py          # 首次追加词书（幂等）
+  python3 scripts/etl_high_frequency_ez.py          # 追加词书 / 词条有更新时原地同步
   python3 scripts/etl_high_frequency_ez.py --check  # 只校验 TSV 与已打包词书
 
 此词书放在 stage 3（高考 3500 学段），紧跟已有 stage 3 词表、大学词书之前。
@@ -31,6 +33,14 @@ TITLE = '3500词汇高频使用词汇（E–Z）'
 SERIES = ''
 STAGE = 3
 WORD_RE = re.compile(r"^[A-Za-z][A-Za-z'’\-]*(?:\s+[A-Za-z][A-Za-z'’\-]*)*$")
+# 词性标注（第三列）：单词性 / 多词性用 / 连接；固定搭配没有单一词性时用 phr.
+POS_TAGS = ('n.', 'v.', 'adj.', 'adv.', 'prep.', 'conj.', 'pron.', 'art.', 'num.', 'phr.')
+
+
+def has_pos(meaning):
+    """释义是否以词性标注开头（`n. 生态` / `v./n. 缓解`）。"""
+    head, sep, rest = meaning.partition(' ')
+    return bool(sep) and bool(rest.strip()) and all(tag in POS_TAGS for tag in head.split('/'))
 
 
 def read_tsv(path=TSV):
@@ -42,9 +52,13 @@ def read_tsv(path=TSV):
             if not line.strip() or line.lstrip().startswith('#'):
                 continue
             cells = [cell.strip() for cell in line.split('\t')]
-            if len(cells) != 3:
-                raise SystemExit('%s:%d：应为 word<TAB>phonetic<TAB>chinese' % (path, lineno))
-            word, phonetic, chinese = cells
+            if len(cells) != 4:
+                raise SystemExit('%s:%d：应为 word<TAB>phonetic<TAB>pos<TAB>chinese' % (path, lineno))
+            word, phonetic, pos, chinese = cells
+            for tag in pos.split('/'):
+                if tag not in POS_TAGS:
+                    raise SystemExit('%s:%d：词性只认 %s（用 / 连接多词性），得到 %r'
+                                     % (path, lineno, ' '.join(POS_TAGS), pos))
             key = word.lower()
             if key in seen:
                 raise SystemExit('%s:%d：重复词条 %r' % (path, lineno, word))
@@ -55,10 +69,14 @@ def read_tsv(path=TSV):
                 raise SystemExit('%s:%d：缺少中文释义：%r' % (path, lineno, word))
             if len(phonetic) > 40:
                 raise SystemExit('%s:%d：音标过长：%r' % (path, lineno, word))
+            if not pos:
+                raise SystemExit('%s:%d：缺少词性：%r' % (path, lineno, word))
             # 主词头按 E-Z 收录。少量 A 开头条目只是 PDF 中出现的固定搭配。
             if word[0].lower() in 'abcd' and key not in SOURCE_PHRASE_EXCEPTIONS:
                 raise SystemExit('%s:%d：发现不属于 E-Z 的词头：%r' % (path, lineno, word))
-            rows.append((word, phonetic, chinese))
+            # 词性拼进释义 —— wdb.dat 每条只有「词 / 音标 / 释义」三个字段，
+            # 与词库里其他词书（如高考 3500「n. 能力，能耐; 才能」）保持同一种形态。
+            rows.append((word, phonetic, pos + ' ' + chinese))
     if len(rows) != EXPECTED_WORDS:
         raise SystemExit('词条数异常：预期 %d，实际 %d；核对 TSV / 更新测试常量' %
                          (EXPECTED_WORDS, len(rows)))
@@ -172,6 +190,9 @@ def check_pack():
         raise SystemExit('E-Z 词书的书名/出版社/学段元数据与 ETL 源不一致')
     if _book_rows_as_text(actual, pool) != expected['rows']:
         raise SystemExit('wdb.dat 中的 E-Z 词条与 data/high_frequency_ez.tsv 不一致')
+    for word, _ph, mean in _book_rows_as_text(actual, pool):
+        if not has_pos(mean):
+            raise SystemExit('E-Z 词条缺少词性标注：%s -> %r' % (word, mean))
     total = verify(pool, books)
     ez_count = len(actual['rows'])
     # 四级/六级书(stage 5)排在 E-Z 之后；stage3 顺序与全量 ETL 一致。
@@ -183,17 +204,56 @@ def check_pack():
     return 0
 
 
+def _sync_existing(actual, pool, books, ver, new):
+    """词书已在包里：内容一致 = 无事；只有释义变了（如本轮补词性）= 原地同步。
+
+    词条数、词条顺序、音标全不变，只把每条指向的释义串换掉 —— 用户进度是按
+    书内下标存的（ProgressCode / mastered 位图），所以原地同步不会错位。
+    词条增删 / 顺序变化一律拒绝，请走 scripts/etl.py 全量重建（那种情况进度本来也要重来）。
+    """
+    if (actual['pub'], actual['title'], actual['series'], actual['stage']) != \
+            (new['pub'], new['title'], new['series'], new['stage']):
+        raise SystemExit('wdb.dat 里的 E-Z 词书元数据与 ETL 源不一致，未自动覆盖。')
+    before = _book_rows_as_text(actual, pool)
+    if before == new['rows']:
+        print('E-Z 词书已存在且与源 TSV 一致（%d 词），无需重复添加。' % len(new['rows']))
+        return 0
+    if [r[:2] for r in before] != [r[:2] for r in new['rows']]:
+        raise SystemExit('词条/音标（或顺序）与 TSV 不一致：原地同步只支持「释义变化」；'
+                         '词条增删请走 scripts/etl.py 全量重建。')
+
+    indices = {s: i for i, s in enumerate(pool)}
+    changed = 0
+    for j, (wi, pi, mi) in enumerate(actual['rows']):
+        word, phonetic, meaning = new['rows'][j]
+        if pool[mi] == meaning:
+            continue
+        if meaning not in indices:                 # 只增不改：老串留在池里，其他词书索引不受影响
+            indices[meaning] = len(pool)
+            pool.append(meaning)
+        actual['rows'][j] = (wi, pi, indices[meaning])
+        changed += 1
+    if changed == 0:
+        print('E-Z 词书无需更新。')
+        return 0
+    verify(pool, books)
+    write_wdb(WDB, ver, pool, books)
+    # 落盘重读，模拟 App 冷启动
+    ver2, pool2, books2 = read_wdb()
+    assert ver2 == ver and len(pool2) == len(pool) and len(books2) == len(books)
+    check_pack()
+    print('已原地同步 E-Z 词书：%d/%d 条释义更新（词条数、顺序、音标不变）。'
+          % (changed, len(new['rows'])))
+    return 0
+
 def append_to_pack():
     new = make_book()
     ver, pool, books = read_wdb()
     existing = [b for b in books if b['id'] == BOOK_ID]
     if existing:
-        if len(existing) == 1 and _book_rows_as_text(existing[0], pool) == new['rows'] and \
-                (existing[0]['pub'], existing[0]['title'], existing[0]['series'], existing[0]['stage']) == \
-                (new['pub'], new['title'], new['series'], new['stage']):
-            print('E-Z 词书已存在且与源 TSV 一致（%d 词），无需重复添加。' % len(new['rows']))
-            return 0
-        raise SystemExit('wdb.dat 已有同 ID 词书但内容不同；为避免错位用户进度，未自动覆盖。')
+        if len(existing) != 1:
+            raise SystemExit('wdb.dat 里出现了 %d 本同 ID 的 E-Z 词书' % len(existing))
+        return _sync_existing(existing[0], pool, books, ver, new)
 
     indices = {s: i for i, s in enumerate(pool)}
     indexed = []

@@ -116,12 +116,8 @@
     <string name="update_auto">自动检查更新</string>
     <string name="update_src_stable">stable</string>
     <string name="update_src_branch">分支</string>
-    <string name="update_branch_refresh">刷新</string>
-    <string name="update_branch_list_loading">正在读取分支…</string>
-    <string name="update_branch_list_empty">还没有任何分支的测试包（先跑一次 staging 构建）</string>
-    <string name="update_branch_list_fail">读取分支失败（%1$s），点「刷新」重试</string>
-    <string name="update_branch_none">还没有可认领的分支（先点上面任意一条分支）</string>
-    <string name="update_branch_empty">该分支还没有测试包（先跑一次 staging 构建）</string>
+    <string name="update_branch_none">这个包没有编译进分支坑位（本机手编的包），无法自查测试包更新</string>
+    <string name="update_branch_empty">本分支还没有测试包（先跑一次 staging 构建）</string>
     <string name="update_default_src" translatable="false">https://github.com/zhzx2026/wordsprint/releases/latest/download/update.json</string>
     <string name="update_ci_base" translatable="false">https://github.com/zhzx2026/wordsprint/releases/download/ci</string>
     <string name="update_checking">正在检查…</string>
@@ -351,6 +347,10 @@
     <string name="ges_reset_desc">改回出厂那套（上滑收藏 · 下滑释义 · 左右判定）</string>
     <string name="export_progress">导出 / 导入进度码</string>
     <string name="update_src_title">更新源</string>
+    <string name="update_ver_title">当前版本</string>
+    <!-- 更新源不可切换（用户 2026-10-11「不要有选择的地方」）：正式版只看正式发布 / 测试包只看自己那条分支 -->
+    <string name="update_src_locked_stable">固定：正式版（stable）· 只认正式发布的版本，不可切换</string>
+    <string name="update_src_locked_sbs">固定：分支 %1$s · 只认本分支的测试包，不可切换</string>
     <string name="update_auto_desc">前台每 60 秒自动检查，有新版时在「设置 → 关于」提示更新</string>
     <string name="update_check_now">检查更新</string>
     <string name="update_desc">覆盖安装不丢进度</string>

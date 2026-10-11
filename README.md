@@ -1,6 +1,6 @@
 # 刷单词 WordsPrint
 
-**当前版本：v10.1（dev）** <!-- CURRENT-VERSION -->
+**当前版本：v10.2（dev）** <!-- CURRENT-VERSION -->
 
 一个精致的**离线背单词 Android 应用**：以「整本课本」为单位刷词，覆盖小学到大学的主流词表。
 无 Gradle、无第三方 UI 库，`bash build.sh` 直接出签名 APK；更新走 GitHub Releases（App 内 OTA）。
@@ -82,12 +82,15 @@
 
 - 内置更新源 `github.com/zhzx2026/wordsprint/releases/latest/download/update.json`；
   App 在前台每 60 秒静默查一次、进首页立刻查一次，发现新版首页亮横幅 + 弹窗（同版本只弹一次窗）
-> **测试包装机不走 OTA**（用户 2026-10-10 定版）：分支测试包是**双装新 App**（不同包名、手动安装、
-  与正式包数据隔离），应用内更新对它无效。下面的「分支」更新源只服务**更新式测试包**（SBS=0，备用）：
-  装的是更新式测试包（版本号形如 X.Y，Y≥1）就默认盯本包自己的「分支」坑位；
-  也可在设置里切换正式源 / 其他测试分支。分支列表来自 ci 根 `update.json`，只显示现存且已有
-  完整测试包的分支；删除分支后 CI 会清理它的坑位和列表。「已是最新版本」会写清查了哪个通道、
-  服务器什么版本、本机什么版本（判断逻辑见 `VersTest` / `UpChTest` 主机测试）
+- **更新源不可选**（用户 2026-10-11 定版：「如果是 sbs 就只更新 arena takeover 的更新包，不要有选择；
+  相同的 main 就只有 main，不要有选择的地方」）：**每个包只认自己该认的那一个源**，
+  设置页不再有任何 chips / 分支下拉 ——
+  · 正式版（`X.0`，就是 main 那条线）→ 只认 `releases/latest`；
+  · 双装测试包（刷单词·测试）/「更新式」dev 包（`X.Y`）→ 只认**自己那条分支**在预发布 Release `ci`
+    里的坑位 `update-<分支id>.json`（坑位 id 编译期写进构建标识，见 `UpCh.ownSlot`）。
+  测试包因此能自己升级（同包同签 → 系统框写「更新」），首次装则从 Actions Artifacts 取。
+  判断逻辑在 `Vers.channel`，被 `VersTest` / `UpChTest` 主机测试盯住；
+  「已是最新版本」会写清查了哪个源、服务器什么版本、本机什么版本
 - 下载有进度弹窗（百分比 / 已下 / 总量 / 速度），下完按长度核对 + 用 zip 读一遍（必须有 `AndroidManifest.xml`），
   被截断或拿到错误页一律判失败并**自动重下一次**；装包走 `ApkProvider` + `REQUEST_INSTALL_PACKAGES`
 - **进度条是自己画的**（更新弹窗 `UpdateBar`、词书行/目标卡 `ProgBar`，都不用系统 ProgressBar）：用户前后四次反馈「更新没有进度条」，

@@ -11,32 +11,18 @@
         <LinearLayout style="@style/SettingRow">
             <LinearLayout style="@style/SettingRowText">
                 <TextView style="@style/SettingTitle" android:text="@string/update_src_title"/>
+                <TextView android:id="@+id/tvUpdateSrc" style="@style/SettingDesc" android:text="@string/update_checking"/>
+            </LinearLayout>
+        </LinearLayout>
+        <!-- 更新源固定（用户 2026-10-11「不要有选择的地方」）：只读文字，没有任何 chips / 下拉 / 刷新 -->
+        <View style="@style/SettingDivider"/>
+
+        <LinearLayout style="@style/SettingRow">
+            <LinearLayout style="@style/SettingRowText">
+                <TextView style="@style/SettingTitle" android:text="@string/update_ver_title"/>
                 <TextView android:id="@+id/tvUpdateState" style="@style/SettingDesc" android:text="@string/update_checking"/>
             </LinearLayout>
         </LinearLayout>
-        <LinearLayout
-            android:id="@+id/srcChips"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:paddingBottom="12dp"/>
-        <!-- 「分支」通道的坑位选择行：只在第 3 档选中时出现（v6.1，BRANCHING.md §3） -->
-        <HorizontalScrollView
-            android:id="@+id/brScroll"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:paddingBottom="12dp"
-            android:scrollbars="none"
-            android:visibility="gone">
-
-            <LinearLayout
-                android:id="@+id/brChips"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"/>
-        </HorizontalScrollView>
-        <View style="@style/SettingDivider"/>
 
         <LinearLayout style="@style/SettingRow">
             <LinearLayout style="@style/SettingRowText">

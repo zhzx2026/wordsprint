@@ -1,3 +1,4 @@
+import com.aidemo.wordsprint.UpCh;
 import com.aidemo.wordsprint.Vers;
 
 /**
@@ -8,6 +9,9 @@ import com.aidemo.wordsprint.Vers;
  * `code > myCode` 永远不成立 → 点「检查更新」永远显示「已经是最新版本」。
  * 「装的是测试包 → 默认盯测试通道」是硬断言，改坏了主机测试就先红。
  * 2026-09-22：dev 聚合档退役（用户「安装界面 dev 还在」），测试通道 = 指定分支，旧值 1 一律迁到分支。
+ * 2026-10-11：更新源**不再可切换**（用户「如果是 sbs 就只更新 arena takeover 的更新包，不要有选择；
+ * 相同的 main 就只有 main」）—— 通道只由「这个包是什么包」决定：双装测试包/ dev 包 → 自己那条分支；
+ * 正式版（main 那条线）→ 正式发布。
  *
  * 跑法：bash scripts/run_tests.sh
  */
@@ -27,17 +31,18 @@ public class VersTest {
         check(!Vers.isDevName(null) && !Vers.isDevName("") && !Vers.isDevName("abc")
                 && !Vers.isDevName("2.") && !Vers.isDevName(".9"), "乱数据不吃亏");
 
-        // 2) 通道：只有 stable / 分支 两档（dev 档 2026-09-22 退役，「安装界面 dev 还在」）
-        check(Vers.channel("2.9", 0) == 0, "用户选了 stable → 就用 stable");
-        check(Vers.channel("2.0", 2) == 2, "用户选了分支 → 就用分支");
-        check(Vers.channel("2.9", 1) == 2, "旧版存量的 1=dev 通道 → 迁到分支（测试包只认分支）");
-        check(Vers.channel("2.9", -3) == 2, "显式选过的脏值（-3）→ 不落回 stable，按分支处理");
+        // 2) 通道：只有 stable / 分支 两档，且**用户选不了**（2026-10-11「不要有选择的地方」）
+        check(Vers.channel(true, "10.2") == 2, "双装测试包（sbs）→ 只认自己那条分支的坑位");
+        check(Vers.channel(true, "10.0") == 2, "双装包即使版本号是 X.0 也认分支（包名后缀才是它的身份）");
+        check(Vers.channel(false, "10.2") == 2, "「更新式」dev 包（X.Y）→ 同样认分支（否则永远查不到自己的包）");
+        check(Vers.channel(false, "10.0") == 0, "正式版（X.0 = main 那条线）→ 只认正式发布，没有别的源");
+        check(Vers.channel(false, "1.0.14") == 0, "旧方案 1.0.14 → 按正式版处理");
 
-        // 3) 没选过：装测试包默认盯分支，装正式版默认盯 stable（2026-09-15 事故的修法延续）
-        check(Vers.channel("2.9", null) == 2, "装了测试包 2.9、没选过通道 → 默认盯分支（否则永远显示已是最新）");
-        check(Vers.channel("2.10", null) == 2, "装了 2.10 → 默认盯分支");
-        check(Vers.channel("2.0", null) == 0, "装了正式版 2.0 → 默认盯 stable");
-        check(Vers.channel("1.0.14", null) == 0, "装的是旧方案 1.0.14 → 默认盯 stable");
+        // 3) 等价说法：正式包只有「装的是 dev 包」这一个条件会拐到分支去，其余一律 stable
+        String[] names = {"10.0", "9.0", "1.0.14", "", null, "abc"};
+        for (String n : names)
+            check(Vers.isDevName(n) || Vers.channel(false, n) == UpCh.STABLE,
+                    "非 dev 名字一律 stable：" + n);
 
         System.out.println("ALL VERS TESTS PASS (" + checks + " checks)");
     }

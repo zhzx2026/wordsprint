@@ -27,6 +27,9 @@ import java.net.URL;
 /**
  * 应用内更新：拉取 update.json → 比 versionCode → 下载到 app 私有目录 → 自供 ContentProvider 拉起安装器。
  * update.json: {"versionCode":7,"versionName":"1.0.6","url":"…apk(可相对)","notes":"…","force":false}
+ *
+ * 更新源 = 每个包自己那一个，界面上**没有可选项**（用户 2026-10-11 定版，见 {@link UpCh}）：
+ * 正式版只认 releases/latest，测试包只认自己那条分支在预发布 Release `ci` 里的坑位。
  */
 public class Update {
     public static class Info {
@@ -52,13 +55,28 @@ public class Update {
 
     public interface Cb2 { void onRes(Res r); }
 
+    /** 本包锁定的更新通道（界面上没得选，见 {@link #lockedSourceText}） */
+    public static int lockedChannel(Context c) {
+        return Vers.channel(BuildInfo.SBS, myName(c));
+    }
+
+    /**
+     * 更新源的显示名。源由包本身定死（用户 2026-10-11「不要有选择的地方」）：
+     *   正式版 → `stable`；双装测试包 / dev 包 → `分支·<自己那条分支的坑位 id>`。
+     */
     public static String channelName(Context c, int ch) {
-        if (ch == UpCh.BRANCH) {
-            String id = Prefs.of(c).upBranch();
-            String b = c.getString(R.string.update_src_branch);
-            return id.isEmpty() ? b : b + "·" + id;
-        }
-        return c.getString(R.string.update_src_stable);
+        if (ch != UpCh.BRANCH) return c.getString(R.string.update_src_stable);
+        String id = UpCh.ownSlot(BuildInfo.STAMP);
+        String b = c.getString(R.string.update_src_branch);
+        return id.isEmpty() ? b : b + "·" + id;
+    }
+
+    /** 本包的固定更新源（设置页那行「更新源」的说明文字）：选择和它是哪条分支都不需要用户操心 */
+    public static String lockedSourceText(Context c) {
+        if (lockedChannel(c) != UpCh.BRANCH) return c.getString(R.string.update_src_locked_stable);
+        String slot = UpCh.ownSlot(BuildInfo.STAMP);
+        if (slot.isEmpty()) return c.getString(R.string.update_branch_none);
+        return c.getString(R.string.update_src_locked_sbs, slot);
     }
 
     private static Info pending;   // 等待用户授予安装权限后继续
@@ -114,10 +132,11 @@ public class Update {
      * 显式选了 stable 就完全按 stable 来，不再替用户偷看别的源。
      */
     public static Res checkRes(Context c) {
-        // 双装测试包（包名带 .sbs 后缀）走自己的「分支」坑位：坑位里放的也是双装 APK，
-        // 下载完系统安装器对同包同签的它显示「更新」——测试版能自己升级（用户 2026-10-10：
-        // 「自动下载」）。坑位里若不是自己的包（老坑位/手滑），系统安装器会另起安装，顶多多一个图标。
-        return fetch(c, Prefs.of(c).updateChannel());
+        // 更新源由包本身定死（2026-10-11 用户「不要有选择的地方」）：正式版只看正式发布，
+        // 测试包只看**自己那条分支**的坑位 —— 坑位 id 来自构建标识，用户选不了也就选不错。
+        // 双装测试包自己的坑位里放的也是双装 APK，同包同签 → 系统安装器显示「更新」，测试版能自升级
+        //（用户 2026-10-10「自动下载」）；坑位里若不是自己的包，系统会另起安装，顶多多一个图标。
+        return fetch(c, lockedChannel(c));
     }
 
     /** 只查一个通道 */
@@ -129,7 +148,7 @@ public class Update {
             if (channel == UpCh.BRANCH) {
                 // 分支坑位：GitHub 预发布 Release `ci` 里该分支自己的 update-<id>.json
                 //（用户 2026-09-22「apk 直接连 github 看分支」；dev 聚合分支与 dev 档都已删）
-                String slot = Prefs.of(c).upBranch();
+                String slot = UpCh.ownSlot(BuildInfo.STAMP);
                 if (slot.isEmpty()) { r.err = c.getString(R.string.update_branch_none); return r; }
                 raw = UpCh.branchUpdateUrl(c.getString(R.string.update_ci_base), slot);
             } else {
@@ -185,44 +204,6 @@ public class Update {
             in.close();
             return sb.toString();
         } finally { conn.disconnect(); }
-    }
-
-    // ---------- 分支清单（「分支」通道的选择行：读 ci 根 update.json 的 channels） ----------
-
-    public interface BranchCb { void onRes(java.util.List<String> ids, String err); }
-
-    private static volatile java.util.List<String> lastBranches;   // 最近一次成功拉到的分支 id
-
-    public static java.util.List<String> lastBranches() { return lastBranches; }
-
-    /**
-     * 拉分支清单：读 ci 根 update.json 的 `channels` 数组（CI 在构建及删除分支时同步，
-     * 仅含远端存在且测试包齐全的坑位）。域名与下载同（github.com），能下包就一定能拉清单
-     * —— 用户 2026-09-22「分支都没用，没反应」的教训：api.github.com 在手机网络下经常不通/匿名
-     * 限流 403，清单永远拉不到。失败时回落上次结果，err 照实回调给界面，不静默。
-     * 名单只含「出过测试包」的分支：新分支第一次构建后才进名单（没包的分支本来就没得选）。
-     */
-    public static void fetchBranchesAsync(final Activity a, final BranchCb cb) {
-        new Thread(new Runnable() {
-            @Override public void run() {
-                java.util.List<String> ids = null;
-                String err = null;
-                try {
-                    String base = a.getString(R.string.update_ci_base).trim();
-                    while (base.endsWith("/")) base = base.substring(0, base.length() - 1);
-                    ids = UpCh.parseChannels(httpGet(base + "/update.json"));
-                    if (ids.isEmpty()) err = a.getString(R.string.update_branch_list_empty);
-                } catch (Throwable t) {
-                    err = t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage();
-                }
-                if (ids != null) lastBranches = ids;                // 成功读到 [] = 分支全删，不能回退到幽灵名单
-                final java.util.List<String> ok = UpCh.fetchedOrCached(ids, lastBranches); // 只有网络失败才用上次的
-                final String e = err;
-                a.runOnUiThread(new Runnable() {
-                    @Override public void run() { cb.onRes(ok, e); }
-                });
-            }
-        }).start();
     }
 
     /** 异步版：回调里连「查了哪个通道、服务器什么版本」一起给 */

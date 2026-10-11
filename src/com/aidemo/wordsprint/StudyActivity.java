@@ -402,7 +402,11 @@ public class StudyActivity extends Activity {
         tvMeaning.setVisibility(View.VISIBLE);
         tvWord.setText(book.word(w));
         tvWord.setTextSize(Fonts.wordSize(this, book.word(w).length()));
-        tvMeaning.setText(book.mean(w));
+        // 释义 = 这个词在**全部词书**里的释义合并去重（用户 2026-10-11：别的书里叫 y，
+        // 就显示 x；y；在哪本书刷到都一个样）。词库没加载好/没这个索引时退回本书释义。
+        String mean = Meanings.display(book.word(w), book.mean(w));
+        tvMeaning.setText(mean);
+        tvMeaning.setTextSize(Meanings.meaningSp(mean.length()) * Fonts.scale(this));
         String ph = book.ph(w);
         boolean showPh = prefs.gbool(Prefs.K_PHON, true) && !ph.isEmpty();
         tvPhonetic.setText(ph.isEmpty() ? "" : "/" + ph + "/");

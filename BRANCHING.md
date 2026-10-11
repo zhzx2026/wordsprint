@@ -16,10 +16,12 @@
 
    arena/<id>-wordsprint ──push──▶ staging.yml ─┬─▶ Actions Artifacts（zip，解压得 apk）
       （源码+文档+测试）                        │     ★ 标准装机路径：**双装新 App**（包名 .sbs.<分支id>，
-      │                                        │       手动安装、桌面多一个图标、与正式包数据隔离、更新关闭）
+      │                                        │       手动安装、桌面多一个图标、与正式包数据隔离、
+      │                                        │       更新只认自己那条分支）
       │                                        └─▶ [仅 SBS=0 时] 预发布 Release `ci` 的资产（更新式包，备用）：
       │                                              wordsprint.apk + update.json            ← 根资产：最近一次构建（仅直链兼容）
-      │                                              update-<分支id>.json + wordsprint-<id>.apk ← App 更新源「分支」档坑位
+      │                                              update-<分支id>.json + wordsprint-<id>.apk ← 该分支测试包自己的更新坑位
+      │                                                （2026-10-11 起 App 不再给用户挑分支：sbs 包只认自己这条）
       │                                              正文 = 自动维护的「分支 × 版本」索引表
 
 ② 转正期（用户确认后才做，只做一次）

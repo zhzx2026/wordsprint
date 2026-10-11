@@ -1,20 +1,20 @@
 package com.aidemo.wordsprint;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
- * 更新通道的纯逻辑（主机可单测，不许 import android.*）。
+ * 更新源的纯逻辑（主机可单测，不许 import android.*）。
  *
- * 2026-09-22 起不再有 dev 聚合分支（用户：「dev 分支就是一个聚合，不用在最外面搞一个」）——
- * App 直连 GitHub；用户随后指出「安装界面 dev 还在」→ **App 里只剩两档：stable / 分支**：
- *   stable = `releases/latest`（只有转正 Release）；
- *   分支   = 预发布 Release `ci` 里每分支自己的资产 `update-<分支id>.json` / `wordsprint-<分支id>.apk`，
- *            分支清单读 **ci 根 update.json 的 `channels` 数组**（github.com 与下载同域 ——
- *            用户 2026-09-22「分支都没用，没反应」：api.github.com 在手机网络下经常不通/匿名限流，
- *            清单永远拉不到、整行卡死。能与不能下包用同一个域名判断，不再有第二个域名）。
- * 服务器上仍保留 ci 的**根资产**（最近一次构建，任何分支构建都会刷新），但只作直链兼容，
- * App 不再给它入口 —— 聚合不出现在任何「最外面」。
+ * 2026-10-11 用户定版：「如果是 sbs 就只更新 arena takeover 的更新包，不要有选择；
+ * 相同的 main 就只有 main，不要有选择的地方」——
+ * **App 里不再有任何更新源选择**，每个包只认自己该认的那一个源：
+ *   正式版（stable `X.0`）        → `releases/latest`（只有转正 Release）；
+ *   双装测试包 / dev 包（`X.Y`）  → 预发布 Release `ci` 里**本包自己那条分支**的坑位
+ *                                 `update-<分支id>.json` / `wordsprint-<分支id>.apk`。
+ * 分支 id 不再让用户点选，而是编译期写进构建标识（build.sh → BuildInfo.STAMP 第一段），
+ * 见 {@link #ownSlot}：sbs 包永远盯着造它的那条分支，正式包永远盯着正式发布。
+ *
+ * 于是早先那套「chips 下标 ↔ 通道号换算」「从根 update.json 抠 channels 名单」「分支下拉刷新」
+ * 全部退役 —— 没有选择，就没有选错的可能（v6.3/v6.4「分支还是显示 stable」这类回归随之消失）。
+ *
  * Release 资产走 github.com 直链（302 到对象存储），不吃 api 配额；预发布永远不会变成 `latest`，
  * 所以 stable OTA 不受任何影响。
  *
@@ -22,21 +22,13 @@ import java.util.List;
  */
 public final class UpCh {
 
-    /** 更新通道：0 = stable（正式版 Release）· 2 = branch（指定分支；1 是旧「dev」档的编号，已退役，见 Prefs 迁移） */
+    /** 更新通道：0 = stable（正式发布）· 2 = branch（本包自己那条分支的坑位；1 是旧「dev」档的编号，已退役） */
     public static final int STABLE = 0, BRANCH = 2;
 
     private UpCh() {}
 
     /** 通道号兜底：除「分支」外（旧 1=dev、越界脏数据）一律当 stable，保守不吃亏 */
     public static int sanitize(int ch) { return ch == BRANCH ? ch : STABLE; }
-
-    /**
-     * 更新源 chips 的第几枚 → 通道号。chips 只有两枚：0 = stable，1 = 分支。
-     * ⚠️ 这行换算必须存在：v6.1 三枚 chips（stable/dev/分支）时下标恰好等于通道号，
-     * 砍掉 dev 档后直接把下标 1 当通道号存 → 实际存成 stable（用户 2026-09-23
-     * 「分支还是显示stable」）—— v6.3/v6.4 的回归根源，现收进这里被测试盯住。
-     */
-    public static int channelForChip(int chipIdx) { return chipIdx == 1 ? BRANCH : STABLE; }
 
     /**
      * 坑位 id 清洗：只保留 [A-Za-z0-9-]，最长 48，其余字符直接剔除。
@@ -72,6 +64,20 @@ public final class UpCh {
         return sanitizeSlot(s.replace('_', '-'));
     }
 
+    /**
+     * 本包自己那条分支的坑位 id —— 从构建标识（{@link BuildInfo#STAMP}，build.sh 编译期写入，
+     * 形如 `arena01a0c983·1a2b3c4` 或 `arenatakeover·1a2b3c4·sbs`）的第一段取。
+     *
+     * 这是「不给选择」的落点：用户 2026-09-22 早就抱怨过「装了哪条分支的包还得再手动点一次
+     * 同名分支，纯属多余」，2026-10-11 干脆把选择整个删掉 —— 装哪个包就更新哪个源。
+     * 没有构建标识（本机手编的包）返回空串，调用方按「该源没有测试包」处理，绝不猜。
+     */
+    public static String ownSlot(String stamp) {
+        if (stamp == null) return "";
+        int dot = stamp.indexOf('·');
+        return sanitizeSlot(dot < 0 ? stamp : stamp.substring(0, dot));
+    }
+
     /** 分支坑位的 update.json 直链（GitHub Release `ci` 的资产）：`<base>/update-<id>.json` */
     public static String branchUpdateUrl(String ciBase, String id) {
         String slot = sanitizeSlot(id);
@@ -80,37 +86,4 @@ public final class UpCh {
         while (base.endsWith("/")) base = base.substring(0, base.length() - 1);
         return base + "/update-" + slot + ".json";
     }
-
-    /**
-     * 从 update.json 文本里抠出 {@code "channels":["a","b"]} —— CI 在构建及删除分支时
-     * 只把远端仍存在、且 manifest / APK 齐全的坑位写进根 update.json。手抠而不是 org.json：
-     * 主机 JVM 没有 android 的 org.json，这条逻辑要能在主机测试里跑。
-     * 只认双引号字符串；key 不存在 / 数组为空 / 截断都返回已抠到的部分（空 list 合法）。
-     */
-    public static List<String> parseChannels(String json) {
-        List<String> out = new ArrayList<String>();
-        if (json == null) return out;
-        int k = json.indexOf("\"channels\"");
-        if (k < 0) return out;
-        int i = json.indexOf('[', k + "\"channels\"".length());
-        if (i < 0) return out;
-        StringBuilder cur = null;
-        for (int e = i + 1; e < json.length(); e++) {
-            char ch = json.charAt(e);
-            if (cur != null) {
-                if (ch == '\\') { e++; continue; }   // 坑位 id 是 [A-Za-z0-9-]，遇转义跳过即可
-                if (ch == '"') { out.add(cur.toString()); cur = null; }
-                else cur.append(ch);
-            } else if (ch == '"') cur = new StringBuilder();
-            else if (ch == ']') break;
-        }
-        return out;
-    }
-
-    /** 有效的空名单表示分支都删了；只有网络请求失败（null）才沿用上次的结果。 */
-    public static List<String> fetchedOrCached(List<String> fetched, List<String> cached) {
-        if (fetched != null) return fetched;
-        return cached == null ? new ArrayList<String>() : cached;
-    }
-
 }
