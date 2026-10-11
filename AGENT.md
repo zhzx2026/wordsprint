@@ -16,15 +16,18 @@
 - dev 不合 main、不打 tag；tag 只打 stable（`v2.0`…）；旧 `1.0.x` 三段号已退役（`check` 判 legacy，CI 拒绝）。
 - `promote.sh` 不带版本号参数（自动从当前 dev 推导）；`push_release.sh` 是 dev 迭代（bump→构建→commit，不 tag 不 push）。
 
-## 📦 装机测试包 = 更新式，从正式版里下载安装（用户 2026-10-10 定版；同日二次修正，覆盖上午的双装决定）
-**用户原话：「我要的是从正式版下载安装的，不是手动！」——分支测试包默认出「更新式」：**
-- `bash scripts/staging_build.sh`（默认就出更新式包）→ CI 构建并刷预发布 Release `ci` 的分支坑位 →
-  **手机上打开正式版 → 设置 → 关于与更新 → 更新源「分支」→ 选本分支 → 检查更新 → 立即更新**
-  （应用内下载 + 系统安装器覆盖安装，同包名同签名，**进度直接带过去**）。
-- 更新式包 = 同包名 `com.aidemo.wordsprint` 覆盖安装（versionCode 比正式版高即可装）。
-- 「双装」降为备用：`SBS=1 bash scripts/staging_build.sh` 出 `.sbs.<分支id>` 后缀的新 App
-  （手动安装、与正式包并存、数据隔离）——只有用户明确要对比双机/双图标时才用。
-- **千万别手动改包名/签名**：覆盖安装要求同包名同签名（KEYSTORE_B64 与线上同一把钥匙）。
+## 📦 装机测试包 = 另一个 App，正式版里自动下载安装（用户 2026-10-10 最终定版）
+⚠️ 这是用户当天**三次澄清**后收敛的唯一版本，别再翻烧饼：
+「我要的是从正式版下载安装的，而不是手动」→「自动下载 app 是另一个，两个不同的，是安装不是更新」。
+- **形态 = 双装**：测试包是**另一个 App**（包名 `.sbs.<分支id>`、图标名「刷单词·测试」），
+  与正式包并存、数据隔离；装它是**安装**，不动正式版。
+- **交付 = 自动下载**：不许手动去 GitHub 拖 zip。CI 把双装 APK 刷进 ci 分支坑位后，
+  手机上**打开正式版 → 设置 → 关于与更新 → 更新源「分支」→ 选本分支 → 检查 → 立即更新**
+  —— 正式版自动下载 APK 并调起系统安装器，点「安装」完事（v9.0 按钮文案是「立即更新」改不了，
+  下载完系统弹的框写的是「安装」，notes 首行也会讲清这是装第二个 App）。
+- **坑位资产名固定 `wordsprint-<id>.apk`**（名字只是坑位名，内容是双装包）；update-<id>.json 的 url 指它。
+- 测试版自己也能升级：它的「分支」坑位里就是它自己的包，同包同签 → 系统框变「更新」。
+- 「更新式」（同包名覆盖安装正式版）降为备用：`SBS=0 bash scripts/staging_build.sh`。
 
 ## 💾 用户数据 = 固定位置存储（用户 2026-10-10 定版，与发版铁律同级）
 **「用户数据存储在一个固定的位置，卸载重装还在。」** 实现在 `DataStore.java` + `DataCodec.java`：
@@ -45,7 +48,7 @@
 
 ## 🧩 多分支并行守则（用户 2026-09-18 定版）
 **分支分工的权威说明是 [BRANCHING.md](BRANCHING.md)**（谁写哪个分支、Pages 托管在哪、多会话怎么互不打架）。
-一句话：**`main` = 正式线（只放 stable `X.0`，只有它能发 tag / Release）；预发布 Release `ci` = 更新式测试包的聚合位
+一句话：**`main` = 正式线（只放 stable `X.0`，只有它能发 tag / Release）；预发布 Release `ci` = 测试包（双装 App）的聚合位
 （不是分支，只有 CI 能写）；`arena/<id>-wordsprint` = 工作分支（代码只在这里改，合并即删）。**
 开工先跑 `bash scripts/branch_audit.sh` 看自己在哪条线上。
 
@@ -121,8 +124,9 @@ bash scripts/version.sh bump-dev        # 每轮迭代交付前：+0.1、code �
 git add -A && git commit -m "dev vX.Y：……"
 bash scripts/staging_build.sh           # 推当前分支 → staging.yml：版本门禁 + run_tests.sh + 真钥匙构建 + 刷 ci 坑位
 #   装机：手机打开**正式版** → 设置 → 关于与更新 → 更新源「分支」→ 选本分支 → 检查更新 → 立即更新
-#         （同包名覆盖安装、进度保留；要双装新 App 才用 SBS=1，产物在 Actions Artifacts 手动装）
-#   撤本分支坑位（仅更新式包才有）：gh release delete-asset ci update-<本分支id>.json -y
+#   装机：正式版里「设置→关于与更新→更新源→分支→选本分支→立即更新」自动下载 + 系统安装
+#         （要「更新式」覆盖安装包才用 SBS=0）
+#   撤本分支坑位：gh release delete-asset ci update-<本分支id>.json -y
 # 本机有工具链 + keystore 时可以一条龙：bash scripts/push_release.sh "本次改动说明"（bump→build→commit，同样不 tag 不 push）
 ```
 盯 CI（沙箱读不到 Actions 日志页，靠 workflow 自己写回的 check-run）：
@@ -157,7 +161,7 @@ gh pr merge <n> --merge                  # 历史上都是用 merge commit（保
 - 手机侧更新行为（**正式版**）：内置默认源 `github.com/zhzx2026/wordsprint/releases/latest/download/update.json`；
   前台每 60 秒静默查一次（`Update.startWatch` 的 150 × 400ms）+ 进首页立刻查一次，发现新版首页亮横幅 + 弹窗，
   同版本只弹一次窗。测试包（X.Y）默认盯自己的「分支」坑位（`VersTest` 有断言）；
-  测试包怎么装见上文「装机测试包 = 更新式」。
+  测试包怎么装见上文「装机测试包 = 另一个 App」。
 - 发布完自证（沙箱 curl 不到 release-assets 域，一律用 API 元数据）：
 ```bash
 gh api /repos/zhzx2026/wordsprint/releases/tags/vX.Y --jq '.assets[]|{name,size,digest}'   # apk + update.json 在不在、多大

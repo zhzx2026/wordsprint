@@ -1,10 +1,11 @@
-# 装机测试包：构建 + artifact（默认 = 更新式包：正式版里「更新源→分支→立即更新」即可下载安装，
-# 用户 2026-10-10 定版：「要从正式版下载安装的，不要手动」）。
+# 装机测试包：构建 + artifact + 刷 ci 分支坑位（用户 2026-10-10 最终定版）：
+# **两个不同的 App**（测试包是安装，不是更新）；下载自动化 = 正式版里「更新源→分支→立即更新」
+# 自动下载 APK 并调起系统**安装**器，装完桌面多一个「刷单词·测试」图标，与正式包并存、数据隔离。
 # **不打正式 tag、不发正式 Release、不动 main** —— 转正前先装机实测（AGENT.md 发版铁律）。
 # 版本格式门禁：dev 须 X.Y（Y>=1），stable 须 X.0（见 VERSIONING.md）；旧 1.0.x 三段号直接失败。
 # 签名钥匙在 GitHub Secret `KEYSTORE_B64`（构建时还原，与线上同一个签名证书）。
-# 默认更新式（同包名覆盖安装、进度保留，刷预发布 Release `ci` 的分支坑位）；
-# 显式 side_by_side=true 才出「双装」备用包（包名带 .sbs.<分支id>，手动安装、数据隔离）。
+# 默认双装包（包名带 .sbs.<分支id> = 另一个 App；坑位里放的也是它，App 内自动下载安装）；
+# 显式 side_by_side=false 才出「更新式」包（同包名覆盖安装正式版，备用）。
 name: staging
 # ⚠️ workflow_dispatch 要求 workflow 文件存在于**默认分支**，新分支上没法手动触发；
 # 所以这里同时挂 push 触发（push 事件用的是被推分支里的那份 workflow 文件，立刻可用）。
@@ -14,9 +15,9 @@ on:
     inputs:
       label: { description: "备注（只写进构建摘要）；ci-sync-only = 只修复聚合、不构建（兼容旧工作流入口）", required: false, default: "staging" }
       side_by_side:
-        description: "默认留空/false = 更新式测试包（正式版内「更新源→分支→立即更新」下载安装，覆盖安装进度保留）。填 true 才出同机双装备用包（不同包名新 App，手动安装）"
+        description: "默认留空/true = 双装测试版 App（另一个包名，正式版内「更新源→分支→立即更新」自动下载后系统安装器点安装，桌面多一个图标）。填 false 才出「更新式」覆盖安装包（备用）"
         required: false
-        default: "false"
+        default: "true"
       sync_only:
         description: "只同步 ci 聚合：移除已删除分支，不构建 APK / 不发布版本"
         required: false
@@ -88,8 +89,8 @@ jobs:
           SDK_ROOT: "${{ runner.temp }}/sdk"
           KS_PASS: "${{ secrets.KS_PASS }}"
           GIT_BRANCH: "${{ github.ref_name }}"
-          # 默认更新式（用户 2026-10-10 定版）；只有显式 side_by_side=true 才出双装备用包
-          SIDE_BY_SIDE: "${{ github.event.inputs.side_by_side == 'true' && '1' || '0' }}"
+          # 默认双装（用户 2026-10-10 最终定版：两个不同的 App，安装不是更新）；显式 false 才出更新式
+          SIDE_BY_SIDE: "${{ github.event.inputs.side_by_side == 'false' && '0' || '1' }}"
         run: |
           set +e
           bash build.sh > /tmp/b.log 2>&1; ec=$?
@@ -108,7 +109,7 @@ jobs:
           VER=$(grep -oE 'versionName="[^"]*"' AndroidManifest.xml | sed 's/versionName="//;s/"//')
           VC=$(grep -oE 'versionCode="[0-9]*"' AndroidManifest.xml | sed 's/[^0-9]//g')
           BID=$(bash scripts/branch_id.sh)
-          SBS="${{ github.event.inputs.side_by_side == 'true' && '-sbs' || '' }}"
+          SBS="${{ github.event.inputs.side_by_side == 'false' && '' || '-sbs' }}"
           APK="wordsprint-v${VER}${SBS}.apk"
           [ -f "$APK" ] || APK="wordsprint-v${VER}.apk"
           echo "ver=$VER"  >> "$GITHUB_OUTPUT"
@@ -178,7 +179,7 @@ jobs:
   # 删除分支事件由 sync_ci.yml 走同一个锁：不会在清理后被尚未结束的旧构建重新写回。
   publish:
     needs: build
-    if: github.event.inputs.side_by_side != 'true'
+    if: always() && needs.build.result == 'success'
     runs-on: ubuntu-latest
     concurrency:
       group: ci-release-aggregation
@@ -193,13 +194,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GIT_BRANCH: ${{ github.ref_name }}
+          APK_FILE: ${{ needs.build.outputs.apk }}
         run: |
-          bash scripts/publish_ci.sh "CI staging v${{ needs.build.outputs.ver }}（code ${{ needs.build.outputs.vc }}）"
+          bash scripts/publish_ci.sh "⚠️这是测试版 App 的安装（不是正式版更新）· v${{ needs.build.outputs.ver }}（code ${{ needs.build.outputs.vc }}）"
           {
             echo
-            echo "### 手机装机（App 内更新，不用手填地址）"
+            echo "### 手机装机（正式版里自动下载 → 系统安装器点「安装」，不用手动）"
             echo
-            echo "设置 → 关于与更新 → 更新源 →「分支」→ 选 \`${{ needs.build.outputs.bid }}\` → 检查 → 立即更新（同签名，覆盖安装不丢进度）"
+            echo "正式版 → 设置 → 关于与更新 → 更新源 →「分支」→ 选 \`${{ needs.build.outputs.bid }}\` → 检查 → 立即更新"
+            echo "（按钮叫「立即更新」是正式版的旧文案；下载完系统弹的框是**安装**——测试包是**另一个 App**，"
+            echo "装完桌面多一个「刷单词·测试」图标，与正式包并存、数据隔离）"
             echo
             echo "坑位直链：\`https://github.com/${{ github.repository }}/releases/download/ci/update-${{ needs.build.outputs.bid }}.json\`"
             echo

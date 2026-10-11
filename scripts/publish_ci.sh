@@ -21,7 +21,9 @@ VER=$(grep -oE 'versionName="[^"]*"' AndroidManifest.xml | sed 's/versionName="/
 VC=$(grep -oE 'versionCode="[0-9]*"' AndroidManifest.xml | sed 's/[^0-9]//g')
 REPO=$(git remote get-url origin 2>/dev/null | sed -E 's#(https://|git@)(github\.com[:/])##; s#\.git$##')
 [ -n "$REPO" ] || { echo "!! 没有 origin"; exit 1; }
-APK="wordsprint-v$VER.apk"
+# APK_FILE = 构建产物真名（可能是 -sbs 双装包）；坑位资产名固定 wordsprint-<id>.apk
+# —— 名字只是「坑位名」，内容可以是双装包或更新式包，App 只按 update-<id>.json 的 url 下载。
+APK="${APK_FILE:-wordsprint-v$VER.apk}"
 [ -f "$APK" ] || { echo "!! 找不到 $APK（先 bash build.sh）"; exit 1; }
 LABEL="${1:-开发者测试包 v$VER（未转正）}"
 BASE="https://github.com/$REPO/releases/download/ci"

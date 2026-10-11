@@ -112,11 +112,9 @@ public class Update {
      * 显式选了 stable 就完全按 stable 来，不再替用户偷看别的源。
      */
     public static Res checkRes(Context c) {
-        if (BuildInfo.SBS) {          // 同机双装包（包名带后缀）：应用内更新的 APK 是正式包名，装不上只会白报错
-            Res r = new Res();
-            r.err = "同机双装测试包不支持应用内更新，请从 GitHub Actions 的 staging artifact 手动下载安装";
-            return r;
-        }
+        // 双装测试包（包名带 .sbs 后缀）走自己的「分支」坑位：坑位里放的也是双装 APK，
+        // 下载完系统安装器对同包同签的它显示「更新」——测试版能自己升级（用户 2026-10-10：
+        // 「自动下载」）。坑位里若不是自己的包（老坑位/手滑），系统安装器会另起安装，顶多多一个图标。
         return fetch(c, Prefs.of(c).updateChannel());
     }
 
