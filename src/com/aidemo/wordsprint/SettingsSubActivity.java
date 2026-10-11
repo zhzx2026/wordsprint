@@ -145,6 +145,8 @@ public class SettingsSubActivity extends Activity {
         bindGlobal(R.id.swPhonetic, Prefs.K_PHON, true);
         bindGlobal(R.id.swSound, Prefs.K_SOUND, true);
         bindGlobal(R.id.swAnim, Prefs.K_ANIM, true);
+        // 进刷单词问不问「上次继续 / 重新开始」（问句里勾「记住这次的选择」会把这开关关掉）
+        bindGlobal(R.id.swResumeAsk, Prefs.K_RESUME_ASK, true);
 
         // 默认每组词数
         final int[] sizes = {20, 30, 50, 80, 100};

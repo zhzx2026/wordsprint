@@ -175,7 +175,13 @@ public class StudyActivity extends Activity {
         // 勾了「重刷整本」/ 错词订正 / 全新书（没现场也没组指针进度）不问 —— 那几种没有第二种答案。
         if (mode == MODE_WORD && !redo && !engine.allMastered()
                 && (pendingResume != null || prefs.next(book.id) > 0)) {
-            askContinueOrRestart();      // 弹窗里选完才开组（返回键/点外面 = 上次继续）
+            if (prefs.gbool(Prefs.K_RESUME_ASK, true)) {
+                askContinueOrRestart();  // 没记住过选择：弹窗里选完才开组（返回键/点外面 = 上次继续）
+            } else if (prefs.gbool(Prefs.K_RESUME_RESTART, false) && pendingResume != null) {
+                startFresh();            // 记住的是「重新开始」：有现场可重切才重切
+            } else {
+                startGroup();            // 记住的是「上次继续」（或组边界没得重切）：照常接着刷
+            }
         } else {
             startGroup();
         }
@@ -259,27 +265,53 @@ public class StudyActivity extends Activity {
      * 进刷单词的二选一弹窗（用户 2026-10-11）：「上次继续」还是「重新开始」。
      * · 上次继续 = 接回现场（刷到一半的那张卡）；没有现场就从下一组接着刷。
      * · 重新开始 = 见 {@link #startFresh}。
+     * · 可勾「记住这次的选择」（用户 2026-10-11 加）：以后不再问，直接按记住的来
+     *   （设置 → 学习 →「进刷单词时询问」可以重新打开）。
      * 返回键 / 点外面 = 上次继续（不丢进度的安全默认，挂 OnCancelListener —— 按钮走的是
-     * dismiss() 不会触发它，两条路不会打架）。
+     * dismiss() 不会触发它，两条路不会打架；返回不写记忆）。
      */
     private void askContinueOrRestart() {
         final boolean hasScene = pendingResume != null;
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
         TextView body = new TextView(this);
         body.setText(hasScene ? R.string.resume_pick_body : R.string.resume_pick_body_book);
         body.setTextColor(Skin.c(this, R.attr.wpText2));
         body.setTextSize(13.5f);
+        col.addView(body, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        final android.widget.CheckBox remember = new android.widget.CheckBox(this);
+        remember.setText(R.string.resume_remember);
+        remember.setTextColor(Skin.c(this, R.attr.wpText2));
+        remember.setTextSize(12.5f);
+        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        rlp.topMargin = (int) Ui.dp(this, 4);
+        col.addView(remember, rlp);
         android.app.AlertDialog dlg = Ui.cardDialogEx(this,
                 getString(hasScene ? R.string.resume_pick_title : R.string.resume_pick_title_book),
-                body,
+                col,
                 getString(R.string.resume_btn_continue), new Runnable() {
-                    @Override public void run() { startGroup(); }
+                    @Override public void run() {
+                        if (remember.isChecked()) rememberPick(false);
+                        startGroup();
+                    }
                 },
                 getString(R.string.resume_btn_restart), new Runnable() {
-                    @Override public void run() { startFresh(); }
+                    @Override public void run() {
+                        if (remember.isChecked()) rememberPick(true);
+                        startFresh();
+                    }
                 }, true);
         dlg.setOnCancelListener(new android.content.DialogInterface.OnCancelListener() {
             @Override public void onCancel(android.content.DialogInterface d) { startGroup(); }
         });
+    }
+
+    /** 勾了「记住这次的选择」：以后进刷单词不问，直接按这个来（本机级设置） */
+    private void rememberPick(boolean restart) {
+        prefs.gset(Prefs.K_RESUME_ASK, false);
+        prefs.gset(Prefs.K_RESUME_RESTART, restart);
     }
 
     /**

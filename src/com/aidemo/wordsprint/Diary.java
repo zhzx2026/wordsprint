@@ -90,6 +90,24 @@ public class Diary {
                 c.get(Calendar.MONTH) + 1, c.get(Calendar.DAY_OF_MONTH));
     }
 
+    /**
+     * 「yyyy-MM-dd」→「yyyyMMdd」。两种写法都认，已是紧凑形则原样返回。
+     * 首页「今日已刷」的 d_ 镜像键、进度码导出都用紧凑形（8 位数字）；
+     * 2026-10-11 前 addToday 曾把日记的带横杠键直接拼进去（d_2026-10-11），
+     * 读侧永远查不到 → 首页计数恒 0、导出丢天数（见 Prefs.migrateDayMirror）。
+     */
+    public static String compact(String key) {
+        return key == null ? "" : key.replace("-", "");
+    }
+
+    /** 「yyyyMMdd」→「yyyy-MM-dd」（日记本体只认带横杠的键）；两种写法都认，已是带横杠则原样返回 */
+    public static String dashed(String key) {
+        if (key == null) return "";
+        String k = key.replace("-", "");
+        if (k.length() != 8) return key;
+        return k.substring(0, 4) + "-" + k.substring(4, 6) + "-" + k.substring(6);
+    }
+
     public static Calendar cal(int y, int m, int d) {
         Calendar c = Calendar.getInstance(TimeZone.getDefault());
         c.clear();

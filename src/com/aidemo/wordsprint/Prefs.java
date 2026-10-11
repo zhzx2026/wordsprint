@@ -25,6 +25,8 @@ import java.util.TimeZone;
  */
 public class Prefs {
     public static final String K_SPEAK = "s_speak", K_PHON = "s_phon", K_SOUND = "s_sound", K_ANIM = "s_anim";
+    /** 进刷单词问不问「上次继续 / 重新开始」，以及记住的答案（false=上次继续 true=重新开始；只在不问时生效） */
+    public static final String K_RESUME_ASK = "s_resume_ask", K_RESUME_RESTART = "s_resume_restart";
     /** 主题：0 跟随系统 · 1 浅色 · 2 深色 */
     public static final String K_NIGHT = "g_night";
     /** 配色主题：见 Skin.PALETTES 下标 */
@@ -157,6 +159,7 @@ public class Prefs {
             DiaryStore.attach(c);
             loadProfiles(I);
             migrateGlobalKeys(I);               // 档案命名空间里的「本机级」设置搬到全局（见方法注释）
+            migrateDayMirror(I);                // d_ 计数镜像键改成 8 位日期（修「今日已刷恒 0」）
         }
         return I;
     }
@@ -364,6 +367,34 @@ public class Prefs {
         if (e != null) e.apply();
     }
 
+    /**
+     * 一次性迁移：修「今日已刷一直是 0」（2026-10-11 bug）—— addToday 曾把日记的带横杠日期
+     * 直接拼进 d_ 镜像键（d_2026-10-11），而首页 todayCount()、进度码导出（exportDays 按
+     * 长度==10 过滤）只认 8 位数字的 d_20261011：刷了词首页恒 0、导出还丢天数。
+     * 这里把带横杠的老键并进规范键（两边都有取大，沿用进度码导入的规矩），老键删掉。
+     * 日记本体（Diary.days）没受过影响，热力图/目标卡一直是对的。
+     */
+    private static void migrateDayMirror(Prefs pr) {
+        SharedPreferences sp = pr.p;
+        java.util.Map<String, ?> all = sp.getAll();
+        SharedPreferences.Editor e = null;
+        for (String k : all.keySet()) {
+            String raw = stripNs(k);
+            if (!raw.startsWith("d_") || raw.length() != 12) continue;
+            String compact = Diary.compact(raw.substring(2));
+            if (compact.length() != 8 || !raw.substring(2).contains("-")) continue;
+            String prefix = k.substring(0, k.length() - raw.length());
+            String to = prefix + "d_" + compact;
+            Object v = all.get(k);
+            if (!(v instanceof Integer)) continue;
+            int cnt = (Integer) v;
+            if (e == null) e = sp.edit();
+            if (cnt > sp.getInt(to, 0)) e.putInt(to, Math.min(1000000, cnt));
+            e.remove(k);
+        }
+        if (e != null) e.apply();
+    }
+
     // ---------- per-book ----------
     public static String bk(String bid, String k) { return "b_" + bid + "_" + k; }
 
@@ -560,7 +591,8 @@ public class Prefs {
     }
 
 
-    public int countDay(String d) { return p.getInt(ns("d_" + d), 0); }
+    /** 某天的新词计数（d_ 镜像键）。日期两种写法都认，镜像键统一按 8 位数字存（见 Diary.compact） */
+    public int countDay(String d) { return p.getInt(ns("d_" + Diary.compact(d)), 0); }
 
     public int todayCount() { return countDay(today()); }
 
@@ -570,19 +602,22 @@ public class Prefs {
     /**
      * 指定那天的新词计数 +x。
      *
-     * 两个坑，一起补上：
+     * 三个坑，一起补上：
      * ① **day 得是「这次作答发生时的那一天」**。跨零点还在刷的话，撤销要撤昨天那笔；
-     *    写「今天」会把还是 0 的今天减成负数，昨天那笔却原封不动留着（两头都错）。
+     * 写「今天」会把还是 0 的今天减成负数，昨天那笔却原封不动留着（两头都错）。
      * ② **下限钳到 0**。d_ 是日记的镜像键，两边各有写入路径（进度码导入「只增不减」地写 d_，
-     *    撤销却同时减两边），一旦对不上账就会出现负数 → 首页显示「今日已刷 -3」，
-     *    而 Diary.active() 判这天没学过 → 打卡勾消失、连续天数被截断。计数不该有负值这种状态。
+     * 撤销却同时减两边），一旦对不上账就会出现负数 → 首页显示「今日已刷 -3」，
+     * 而 Diary.active() 判这天没学过 → 打卡勾消失、连续天数被截断。计数不该有负值这种状态。
+     * ③ **镜像键只认 8 位数字的日期（d_20261011），日记本体只认带横杠的（2026-10-11）**。
+     * 以前把 sessionDay（带横杠）直接拼进 d_ 键 → 首页 todayCount() 永远查不到、
+     * 进度码导出也按长度把这种键跳过 —— 「今日已刷一直是 0」就是它（2026-10-11 bug）。
      */
     public void addToday(String day, int x) {
         String d = (day == null || day.isEmpty()) ? today() : day;
         int v = countDay(d) + x;
         if (v < 0) v = 0;
-        p.edit().putInt(ns("d_" + d), v).apply();
-        DiaryStore.learned(d, x);
+        p.edit().putInt(ns("d_" + Diary.compact(d)), v).apply();
+        DiaryStore.learned(Diary.dashed(d), x);
     }
 
     /** 连续打卡：以 Diary 为准（含温习/自测也算打卡） */

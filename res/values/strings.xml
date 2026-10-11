@@ -77,6 +77,9 @@
     <string name="resume_pick_body_book">这本书已经刷过一部分了。\n「上次继续」接着往下刷；「重新开始」从这本书开头重新刷（记住了的词会跳过）。</string>
     <string name="resume_btn_continue">上次继续</string>
     <string name="resume_btn_restart">重新开始</string>
+    <string name="resume_remember">记住这次的选择，不再问我</string>
+    <string name="set_resume_ask">进刷单词时询问</string>
+    <string name="set_resume_ask_desc">问「上次继续 / 重新开始」。关掉后按弹窗里记住的选择来，不再弹</string>
     <string name="custom_size">自定义每组词数</string>
     <string name="size_hint">5 – 500 之间的数字</string>
     <string name="first_learn">一次记住</string>

@@ -132,6 +132,15 @@ public class DiaryTest {
         check(Diary.diffDays("2026-09-01", "2026-09-04") == 3, "diffDays");
         check(Diary.cal(2026, 9, 1) != null, "cal 不炸");
 
-        System.out.println("ALL DIARY TESTS PASS (" + checks + " checks) —— 目标量程单一真相源、只读视图不留垃圾、退休功能不再替用户打卡");
+        // 12) 日期键两种写法互转（首页「今日已刷」的 d_ 镜像键 / 日记本体各认一种，2026-10-11 bug）
+        check(Diary.compact("2026-10-11").equals("20261011"), "compact：带横杠 → 8 位数字");
+        check(Diary.compact("20261011").equals("20261011"), "compact：已是紧凑形原样返回");
+        check(Diary.compact(null).equals(""), "compact：null 不炸");
+        check(Diary.dashed("20261011").equals("2026-10-11"), "dashed：8 位数字 → 带横杠");
+        check(Diary.dashed("2026-10-11").equals("2026-10-11"), "dashed：已是带横杠原样返回（幂等）");
+        check(Diary.dashed("7").equals("7"), "dashed：不是 8 位数字不乱拼");
+        check(Diary.compact(Diary.dashed("20261011")).equals("20261011"), "compact ∘ dashed = 恒等");
+
+        System.out.println("ALL DIARY TESTS PASS (" + checks + " checks) —— 目标量程单一真相源、只读视图不留垃圾、退休功能不再替用户打卡、日期键互转");
     }
 }
