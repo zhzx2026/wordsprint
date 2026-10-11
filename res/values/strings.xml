@@ -70,6 +70,13 @@
     <string name="back_to_wrong">回错题本</string>
     <!-- 整本刷完后结算页的主按钮。以前是代码里写死的 "再刷一轮"，而且点了没反应（见 StudyActivity.nextGroup） -->
     <string name="brush_again">再刷一轮</string>
+    <!-- 进刷单词的二选一（用户 2026-10-11）：有进度时问「上次继续 / 重新开始」 -->
+    <string name="resume_pick_title">上次刷到一半</string>
+    <string name="resume_pick_body">这组还没刷完。\n「上次继续」回到那张卡接着刷；「重新开始」把没刷完的词重新拼成新的一组。</string>
+    <string name="resume_pick_title_book">有刷过的进度</string>
+    <string name="resume_pick_body_book">这本书已经刷过一部分了。\n「上次继续」接着往下刷；「重新开始」从这本书开头重新刷（记住了的词会跳过）。</string>
+    <string name="resume_btn_continue">上次继续</string>
+    <string name="resume_btn_restart">重新开始</string>
     <string name="custom_size">自定义每组词数</string>
     <string name="size_hint">5 – 500 之间的数字</string>
     <string name="first_learn">一次记住</string>

@@ -171,7 +171,14 @@ public class StudyActivity extends Activity {
         // 顺序反过来就是拿加过档的值再乘一次倍率，本次会话第一张卡的单词比后面每张都大
         // （大屏自适应下能到 1.06 × 1.45 ≈ 1.54 倍），从第二张起又突然变小。
         Ui.finishSetup(this);
-        startGroup();
+        // 「上次继续 / 重新开始」入口选择（用户 2026-10-11：每次进刷单词，有进度就问一次）。
+        // 勾了「重刷整本」/ 错词订正 / 全新书（没现场也没组指针进度）不问 —— 那几种没有第二种答案。
+        if (mode == MODE_WORD && !redo && !engine.allMastered()
+                && (pendingResume != null || prefs.next(book.id) > 0)) {
+            askContinueOrRestart();      // 弹窗里选完才开组（返回键/点外面 = 上次继续）
+        } else {
+            startGroup();
+        }
         lastTick = SystemClock.elapsedRealtime();
     }
 
@@ -246,6 +253,71 @@ public class StudyActivity extends Activity {
         }
         pendingResume = null;                          // 现场只用于「进来第一次开组」，下一组照常重新切
         updateHud();                                   // 接上现场时不弹提示（用户 2026-09-24：别弹奇怪的窗）
+    }
+
+    /**
+     * 进刷单词的二选一弹窗（用户 2026-10-11）：「上次继续」还是「重新开始」。
+     * · 上次继续 = 接回现场（刷到一半的那张卡）；没有现场就从下一组接着刷。
+     * · 重新开始 = 见 {@link #startFresh}。
+     * 返回键 / 点外面 = 上次继续（不丢进度的安全默认，挂 OnCancelListener —— 按钮走的是
+     * dismiss() 不会触发它，两条路不会打架）。
+     */
+    private void askContinueOrRestart() {
+        final boolean hasScene = pendingResume != null;
+        TextView body = new TextView(this);
+        body.setText(hasScene ? R.string.resume_pick_body : R.string.resume_pick_body_book);
+        body.setTextColor(Skin.c(this, R.attr.wpText2));
+        body.setTextSize(13.5f);
+        android.app.AlertDialog dlg = Ui.cardDialogEx(this,
+                getString(hasScene ? R.string.resume_pick_title : R.string.resume_pick_title_book),
+                body,
+                getString(R.string.resume_btn_continue), new Runnable() {
+                    @Override public void run() { startGroup(); }
+                },
+                getString(R.string.resume_btn_restart), new Runnable() {
+                    @Override public void run() { startFresh(); }
+                }, true);
+        dlg.setOnCancelListener(new android.content.DialogInterface.OnCancelListener() {
+            @Override public void onCancel(android.content.DialogInterface d) { startGroup(); }
+        });
+    }
+
+    /**
+     * 「重新开始」开组：现场在 → 先装回现场拿到「没刷到的词」，再作废这组、重新拼一组满的
+     * （用户定的语义：这组 30 个刷了 10 个 → 新一组 = 剩下 20 个 + 往后补 10 个；
+     * 见 {@link Engine#startGroupRestart}）。现场没有 / 装不上 → 「重新开始」= 从这本书
+     * 开头重扫（跳过已记住的词）。错题本、已掌握记录都原样保留。
+     */
+    private void startFresh() {
+        startTs = SystemClock.elapsedRealtime();
+        result.setVisibility(View.GONE);
+        confetti.setVisibility(View.GONE);
+        firstOfGroup = true;
+        resumed = false;
+        boolean started = false;
+        if (pendingResume != null) {
+            loading = true;                            // 装现场的中间态别回写快照（见 restoreScene）
+            try {
+                started = engine.resume(pendingResume);
+            } catch (Throwable t) {
+                started = false;                       // 现场读歪了绝不拖累刷词：退回「从头重扫」
+            } finally {
+                loading = false;
+            }
+            if (started) {
+                try {
+                    engine.startGroupRestart();        // onShow → persistScene：新现场立刻落盘
+                } catch (Throwable t) {
+                    started = false;
+                }
+            }
+        }
+        if (!started) {
+            engine.pos = 0;                            // 没现场可拆 → 从这本书开头重扫（跳过已记住的）
+            engine.startGroup();
+        }
+        pendingResume = null;
+        updateHud();
     }
 
     /**
