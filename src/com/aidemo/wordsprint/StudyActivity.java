@@ -32,12 +32,12 @@ public class StudyActivity extends Activity {
     private Engine engine;
     private int mode = MODE_WORD;
     private boolean reviewMode;                 // 错词/收藏复习：不推进组指针
-    private java.util.BitSet wrongs;                 // 在册错词（从 WrongBook 派生，给计数/队列用）
     private WrongBook wb;                            // 错题本本体（订正次数在这里）
     private boolean finishedAll;
     private boolean resumed;                    // 本次进来是「接着上次那张卡」（组内现场恢复成功）
     private boolean loading;                    // 正在装现场：这一小段里 onShow 不回写快照
     private String pendingResume;               // 待恢复的本组现场（只在第一次开组时用一次）
+    private boolean firstOfGroup;               // 本组第一张卡？手势提示只在这一张显示（P2-17）
     private long startTs;
     private long lastTick;
     /**
@@ -57,7 +57,6 @@ public class StudyActivity extends Activity {
     // 撤销用：作答前的错题本快照 / 这张是不是「首次记住」/ 这次答对了吗
     private WrongBook wbSnap;
     private boolean lastFresh, lastOk, lastWasReview;
-    private boolean hintShown;
     private android.widget.ProgressBar progress;
     private ConfettiView confetti;
 
@@ -68,8 +67,8 @@ public class StudyActivity extends Activity {
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
         Skin.apply(this);
-        setContentView(R.layout.activity_study);
         Ui.applyWindow(this);
+        setContentView(R.layout.activity_study);
         Db.ensureLoaded(this);
         prefs = Prefs.of(this);
         sfx = new SoundFx(this);
@@ -82,7 +81,6 @@ public class StudyActivity extends Activity {
         reviewMode = mode == MODE_WRONG;
         final boolean redo = getIntent().getBooleanExtra("redo", false);   // 「重刷整本」：不看旧现场，从组头重切
         wb = prefs.wrongBook(book.id);
-        wrongs = wb.dueIds();
 
         card = findViewById(R.id.card);
         actions = findViewById(R.id.actions);
@@ -110,9 +108,8 @@ public class StudyActivity extends Activity {
             tvGroupPill.setText(R.string.review_mode);
             tvHint.setText(getString(R.string.tap_reveal));
         }
-        if (mode == MODE_WORD && !hintShown) {
-            tvGroupPill.setText(gesHint());                 // 每次进来只在第一张卡提示一句，且按用户自己的映射说
-            hintShown = true;
+        if (mode == MODE_WORD) {
+            tvGroupPill.setText(gesHint());                 // 手势提示只在本组第一张卡出现（见 fill）
         }
 
         findViewById(R.id.btnClose).setOnClickListener(new View.OnClickListener() {
@@ -138,11 +135,13 @@ public class StudyActivity extends Activity {
             @Override public boolean onFling(MotionEvent e1, MotionEvent e2, float vx, float vy) {
                 if (engine.current() < 0 || engine.busy()) return false;
                 float dx = e2.getX() - e1.getX(), dy = e2.getY() - e1.getY();
-                if (Math.abs(dx) > 110 && Math.abs(dx) > Math.abs(dy)) {
+                // 阈值按 dp 换算（体检 P4-5）：原来是裸像素 110/90，密度 2.0 的机器上
+                // 只差 45dp、密度 3.5 上只差 26dp —— 低密度机「轻扫没反应」、高密度机「轻扫就翻」
+                if (Math.abs(dx) > Ui.dp(StudyActivity.this, 48) && Math.abs(dx) > Math.abs(dy)) {
                     fire(dx > 0 ? Ges.RIGHT : Ges.LEFT, gesMap);
                     return true;
                 }
-                if (Math.abs(dy) > 90 && Math.abs(dy) > Math.abs(dx)) {
+                if (Math.abs(dy) > Ui.dp(StudyActivity.this, 40) && Math.abs(dy) > Math.abs(dx)) {
                     fire(dy < 0 ? Ges.UP : Ges.DOWN, gesMap);
                     return true;
                 }
@@ -172,7 +171,20 @@ public class StudyActivity extends Activity {
         // 顺序反过来就是拿加过档的值再乘一次倍率，本次会话第一张卡的单词比后面每张都大
         // （大屏自适应下能到 1.06 × 1.45 ≈ 1.54 倍），从第二张起又突然变小。
         Ui.finishSetup(this);
-        startGroup();
+        // 「上次继续 / 重新开始」入口选择（用户 2026-10-11：每次进刷单词，有进度就问一次）。
+        // 勾了「重刷整本」/ 错词订正 / 全新书（没现场也没组指针进度）不问 —— 那几种没有第二种答案。
+        if (mode == MODE_WORD && !redo && !engine.allMastered()
+                && (pendingResume != null || prefs.next(book.id) > 0)) {
+            if (prefs.gbool(Prefs.K_RESUME_ASK, true)) {
+                askContinueOrRestart();  // 没记住过选择：弹窗里选完才开组（返回键/点外面 = 上次继续）
+            } else if (prefs.gbool(Prefs.K_RESUME_RESTART, false) && pendingResume != null) {
+                startFresh();            // 记住的是「重新开始」：有现场可重切才重切
+            } else {
+                startGroup();            // 记住的是「上次继续」（或组边界没得重切）：照常接着刷
+            }
+        } else {
+            startGroup();
+        }
         lastTick = SystemClock.elapsedRealtime();
     }
 
@@ -228,8 +240,9 @@ public class StudyActivity extends Activity {
         startTs = SystemClock.elapsedRealtime();
         result.setVisibility(View.GONE);
         confetti.setVisibility(View.GONE);
+        firstOfGroup = true;                           // 下一次 fill 是本组第一张：亮手势提示
         if (mode == MODE_WRONG) {
-            wrongs = wb.dueIds();                      // 订正队列只看「还要订正」的（已掌握的不再抽到）
+            java.util.BitSet wrongs = wb.dueIds();     // 订正队列只看「还要订正」的（已掌握的不再抽到）
             List<Integer> ids = new ArrayList<Integer>();
             for (int i = wrongs.nextSetBit(0); i >= 0; i = wrongs.nextSetBit(i + 1)) ids.add(i);
             int[] arr = new int[ids.size()];
@@ -246,6 +259,97 @@ public class StudyActivity extends Activity {
         }
         pendingResume = null;                          // 现场只用于「进来第一次开组」，下一组照常重新切
         updateHud();                                   // 接上现场时不弹提示（用户 2026-09-24：别弹奇怪的窗）
+    }
+
+    /**
+     * 进刷单词的二选一弹窗（用户 2026-10-11）：「上次继续」还是「重新开始」。
+     * · 上次继续 = 接回现场（刷到一半的那张卡）；没有现场就从下一组接着刷。
+     * · 重新开始 = 见 {@link #startFresh}。
+     * · 可勾「记住这次的选择」（用户 2026-10-11 加）：以后不再问，直接按记住的来
+     *   （设置 → 学习 →「进刷单词时询问」可以重新打开）。
+     * 返回键 / 点外面 = 上次继续（不丢进度的安全默认，挂 OnCancelListener —— 按钮走的是
+     * dismiss() 不会触发它，两条路不会打架；返回不写记忆）。
+     */
+    private void askContinueOrRestart() {
+        final boolean hasScene = pendingResume != null;
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        TextView body = new TextView(this);
+        body.setText(hasScene ? R.string.resume_pick_body : R.string.resume_pick_body_book);
+        body.setTextColor(Skin.c(this, R.attr.wpText2));
+        body.setTextSize(13.5f);
+        col.addView(body, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        final android.widget.CheckBox remember = new android.widget.CheckBox(this);
+        remember.setText(R.string.resume_remember);
+        remember.setTextColor(Skin.c(this, R.attr.wpText2));
+        remember.setTextSize(12.5f);
+        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        rlp.topMargin = (int) Ui.dp(this, 4);
+        col.addView(remember, rlp);
+        android.app.AlertDialog dlg = Ui.cardDialogEx(this,
+                getString(hasScene ? R.string.resume_pick_title : R.string.resume_pick_title_book),
+                col,
+                getString(R.string.resume_btn_continue), new Runnable() {
+                    @Override public void run() {
+                        if (remember.isChecked()) rememberPick(false);
+                        startGroup();
+                    }
+                },
+                getString(R.string.resume_btn_restart), new Runnable() {
+                    @Override public void run() {
+                        if (remember.isChecked()) rememberPick(true);
+                        startFresh();
+                    }
+                }, true);
+        dlg.setOnCancelListener(new android.content.DialogInterface.OnCancelListener() {
+            @Override public void onCancel(android.content.DialogInterface d) { startGroup(); }
+        });
+    }
+
+    /** 勾了「记住这次的选择」：以后进刷单词不问，直接按这个来（本机级设置） */
+    private void rememberPick(boolean restart) {
+        prefs.gset(Prefs.K_RESUME_ASK, false);
+        prefs.gset(Prefs.K_RESUME_RESTART, restart);
+    }
+
+    /**
+     * 「重新开始」开组：现场在 → 先装回现场拿到「没刷到的词」，再作废这组、重新拼一组满的
+     * （用户定的语义：这组 30 个刷了 10 个 → 新一组 = 剩下 20 个 + 往后补 10 个；
+     * 见 {@link Engine#startGroupRestart}）。现场没有 / 装不上 → 「重新开始」= 从这本书
+     * 开头重扫（跳过已记住的词）。错题本、已掌握记录都原样保留。
+     */
+    private void startFresh() {
+        startTs = SystemClock.elapsedRealtime();
+        result.setVisibility(View.GONE);
+        confetti.setVisibility(View.GONE);
+        firstOfGroup = true;
+        resumed = false;
+        boolean started = false;
+        if (pendingResume != null) {
+            loading = true;                            // 装现场的中间态别回写快照（见 restoreScene）
+            try {
+                started = engine.resume(pendingResume);
+            } catch (Throwable t) {
+                started = false;                       // 现场读歪了绝不拖累刷词：退回「从头重扫」
+            } finally {
+                loading = false;
+            }
+            if (started) {
+                try {
+                    engine.startGroupRestart();        // onShow → persistScene：新现场立刻落盘
+                } catch (Throwable t) {
+                    started = false;
+                }
+            }
+        }
+        if (!started) {
+            engine.pos = 0;                            // 没现场可拆 → 从这本书开头重扫（跳过已记住的）
+            engine.startGroup();
+        }
+        pendingResume = null;
+        updateHud();
     }
 
     /**
@@ -289,6 +393,11 @@ public class StudyActivity extends Activity {
 
     private void fill(int w) {
         if (w < 0) return;
+        // 手势提示只挂在本组第一张卡上（体检 P2-17）：以前 hintShown 只在 onCreate 置一次、
+        // tvGroupPill 从不更新，于是一次刷词会话里那句提示一直占着组名的位置。
+        // 其余卡片统一显示「本组」，组内进度看下面的「3 / 50」和进度条就够。
+        tvGroupPill.setText(firstOfGroup && mode == MODE_WORD ? gesHint() : getString(R.string.this_group));
+        firstOfGroup = false;
         tvWord.setVisibility(View.VISIBLE);
         tvMeaning.setVisibility(View.VISIBLE);
         tvWord.setText(book.word(w));
@@ -409,14 +518,12 @@ public class StudyActivity extends Activity {
         if (ok) {
             wb.correct(w);                         // 答对一次就往「已掌握」推一步（要连对 3 次；满了也不出本）
             prefs.saveWrongBook(book.id, wb);
-            wrongs = wb.dueIds();
             // 「还要订正几次 / 已掌握」这类提示不再弹（用户 2026-09-24）：档位去错题本看 ★ 就行
             if (reviewMode) DiaryStore.reviewed(sessionDay, true);
             sfx.ok();
         } else {
             wb.miss(w);                            // 错一次就进本；在订正的再错，还差次数 +1
             prefs.saveWrongBook(book.id, wb);
-            wrongs = wb.dueIds();
             sfx.miss();
         }
         updateHud();
@@ -446,7 +553,6 @@ public class StudyActivity extends Activity {
         if (wbSnap != null) {                     // 错题本回到作答前
             wb = wbSnap;
             prefs.saveWrongBook(book.id, wb);
-            wrongs = wb.dueIds();
         }
         if (lastFresh) prefs.addToday(sessionDay, -1);        // 刚记成「首次掌握」的那一个词撤回来
         if (lastWasReview && lastOk) DiaryStore.undoReviewed(sessionDay);
@@ -473,8 +579,8 @@ public class StudyActivity extends Activity {
         String sub = reviewMode
                 ? getString(R.string.wrong_review_done, wb.dueCount(), wb.remaining())
                 : finishedAll
-                ? book.pub + "《" + book.display() + "》" + book.n + " 词全部拿下"
-                : book.display() + " · 本组全部记住，下一组继续";
+                ? getString(R.string.result_book_done_fmt, book.pub, book.display(), book.n)
+                : getString(R.string.result_group_done_fmt, book.display());
         ((TextView) findViewById(R.id.resultSub)).setText(sub);
         ((TextView) findViewById(R.id.rsFirst)).setText(String.valueOf(Math.max(0, engine.okCount() - engine.requeues())));
         ((TextView) findViewById(R.id.rsRetry)).setText(String.valueOf(engine.requeues()));

@@ -20,6 +20,11 @@
     <TextView style="@style/SectionHead" android:text="@string/set_data_title"/>
 
     <LinearLayout style="@style/CardBox">
+        <!-- 数据备份状态（v9.4）：备份成功/未授权/写入失败 一眼可见，别再静默失败 -->
+        <TextView android:id="@+id/tvBackup" style="@style/SettingDesc"
+            android:paddingStart="16dp" android:paddingEnd="16dp"
+            android:paddingTop="12dp" android:paddingBottom="4dp"
+            android:text="@string/backup_pending"/>
         <LinearLayout android:id="@+id/rowExport" style="@style/SettingRow">
             <LinearLayout style="@style/SettingRowText">
                 <TextView style="@style/SettingTitle" android:text="@string/export_progress"/>

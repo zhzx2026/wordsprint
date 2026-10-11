@@ -119,6 +119,59 @@ public class Engine {
         next();
     }
 
+    /**
+     * 「重新开始」（用户 2026-10-11 定）：这组作废，把**还没刷到的词**重新拼成完整的一组开刷。
+     * 例：这组 30 个刷了 10 个就退出 → 新一组 = 剩下的 20 个 + 往后补 10 个凑满一组。
+     *
+     * 词的去向：
+     * · 没答过的（当时那张卡 + 队列里剩的）→ 按原顺序排进新组，再从本组原来的消费末尾
+     *   （{@link #groupEnd}）往后补足到 groupSize（跳过已掌握）；
+     * · 答过「记住了」的 → 保持已掌握，永远跳过；
+     * · 答过「不认识」（回炉中）的 → 算「刷过」，不进新组 —— 错题本里有它们，走订正。
+     *
+     * 记账：补足段的末尾存进 {@link #groupEnd}，组打完 {@link #pos} 推进到那儿，下一组接着
+     * 往后切；组指针本身不挪，中途退出的现场照常能续（{@link #resume} 的 p 闸门不受影响）。
+     * 通常在 {@link #resume} 成功之后调用（拿现场里「没答过的词」）；没有现场时上层直接
+     * 改 pos + {@link #startGroup} 就行，不必走这里。
+     */
+    public void startGroupRestart() {
+        // 先把「还没答过的词」按原队列顺序捞出来（下面重置状态会清掉 current/q）。
+        // 当时那张卡没答完就算「没刷到」，排在最前；已被别处标成「记住了」的照旧剔掉。
+        ArrayDeque<Integer> head = new ArrayDeque<Integer>();
+        if (current >= 0 && current < n && !mastered.get(current)) head.addLast(current);
+        for (int w : q) {
+            if (w >= 0 && w < n && !mastered.get(w) && w != current) head.addLast(w);
+        }
+        int from = groupEnd > pos ? groupEnd : pos;
+        snapQ = null;
+        review = false;
+        q.clear(); due.clear(); firstShown.clear();
+        drawn = 0; okCount = 0; answers = 0; firstOk = 0; requeues = 0;
+        current = -1; busy = false; flipped = false; resumeElapsed = 0;
+        q.addAll(head);
+        int p = from < 0 ? 0 : from;
+        while (q.size() < groupSize && p < order.length) {
+            int w = order[p];
+            if (!redoAll && mastered.get(w)) { p++; continue; }
+            q.addLast(w);
+            p++;
+        }
+        groupEnd = p;
+        groupTotal = q.size();
+        if (groupTotal == 0) {
+            // 一个都没拼到：多半是剩余的词全被别处标成「记住了」。同 startGroup 的自愈 ——
+            // 全书其实没刷完就回 0 重扫（可能还有回炉中的错词散在后面），确实刷完才算学完。
+            if (!redoAll && pos > 0 && !allMastered()) {
+                pos = 0;
+                startGroup();
+                return;
+            }
+            L.onBookEmpty();
+            return;
+        }
+        next();
+    }
+
     /** 错词复习：以给定列表为整组，不推进 pos */
     public void startQueue(int[] idxs) {
         snapQ = null;

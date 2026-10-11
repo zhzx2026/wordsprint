@@ -355,6 +355,81 @@ public class EngineTest {
             check(ended && endPos == 7, "19：复习收尾后指针仍是 7（groupEnd 跟着 pos）");
         }
 
-        System.out.println("ENGINE OK — 19 组断言全部通过（含撤销 + 意外退出续存 + 组指针推进 + 重刷正确率）");
+        // ============ 20) 「重新开始」：这组作废，没刷到的词重新拼一组满的 ============
+        // 用户 2026-10-11 定的语义：这组 30 个刷了 10 个退出 → 新一组 = 剩下的 20 个 + 往后补
+        // 10 个凑满一组。答过「记住了」的保持跳过；答过「不认识」（回炉中）的算刷过，不进新组
+        // （错题本里有它们，走订正）；补足段末尾成为新的消耗终点，下一组接着往后切。
+        {
+            int n20 = 15;
+            BitSet ms20 = new BitSet(n20);
+            Engine e20 = new Engine(n20, o9(n20), ms20, 2, 5, 3, false, new Sink(ms20)); // 本组 = 2,3,4,5,6
+            e20.startGroup();
+            check(e20.current() == 2 && e20.groupTotal() == 5, "20：本组 5 个，从 2 开始");
+            e20.answer(true); e20.next();                    // 记住 2
+            check(e20.current() == 3, "20：下一张 3");
+            e20.answer(false); e20.next();                   // 3 不认识 → 回炉中
+            check(e20.current() == 4, "20：下一张 4");
+            e20.answer(true); e20.next();                    // 记住 4
+            check(e20.current() == 5, "20：当前停在 5（未答），队列剩 6");
+            String snap20 = e20.snapshot(777);
+            // —— 退出重进，选「重新开始」——
+            BitSet ms20b = new BitSet(n20);                  // 快照那一刻的掌握状态：2、4 记住了
+            ms20b.set(2); ms20b.set(4);
+            ended = false; endPos = -1; emptyCb = false;
+            Engine e20b = new Engine(n20, o9(n20), ms20b, 2, 5, 3, false, new Sink(ms20b));
+            check(e20b.resume(snap20), "20：现场装回（拿到没刷到的词）");
+            e20b.startGroupRestart();
+            check(e20b.current() == 5, "20：新一组从「没刷到的」那张卡 5 开始，实际 " + e20b.current());
+            check(e20b.groupTotal() == 5, "20：新一组仍是满的 5 个（剩 2 个 + 往后补 3 个），实际 " + e20b.groupTotal());
+            check(e20b.dueCount() == 0, "20：回炉表清空（刷过的 3 不进新组，错题本另算）");
+            int[] want = {5, 6, 7, 8, 9};
+            for (int g = 0; g < 5; g++) {
+                check(e20b.current() == want[g], "20：新一组第 " + (g + 1) + " 张应为 " + want[g] + "，实际 " + e20b.current());
+                e20b.answer(true); e20b.next();
+            }
+            check(ended && endPos == 10, "20：组打完指针推进到补足段末尾 10（实际 " + endPos + "）");
+            check(!ms20b.get(3), "20：3 仍是没记住的状态（留错题本订正，不会凭空变没）");
+            // 下一组接着往后切，不把补过的词再出一遍
+            ended = false;
+            e20b.startGroup();
+            check(e20b.current() == 10, "20：下一组从 10 接着刷，实际 " + e20b.current());
+
+            // 20b) 重新开始是幂等的：拼好一组后不答题再「重新开始」，词不丢不重
+            BitSet ms20b2 = new BitSet(n20);                 // 干净的掌握状态（20a 走组已把 ms20b 刷满）
+            ms20b2.set(2); ms20b2.set(4);
+            Engine e20c = new Engine(n20, o9(n20), ms20b2, 2, 5, 3, false, new Sink(ms20b2));
+            check(e20c.resume(snap20), "20b：再装一次同一份现场");
+            e20c.startGroupRestart();
+            String snap20d = e20c.snapshot(1);
+            Engine e20d = new Engine(n20, o9(n20), ms20b2, 2, 5, 3, false, new Sink(ms20b2));
+            check(e20d.resume(snap20d), "20b：新一组的现场也能续（组指针没挪，闸门放行）");
+            e20d.startGroupRestart();
+            check(e20d.current() == 5 && e20d.groupTotal() == 5, "20b：再拼一次还是这 5 个（实际 " + e20d.current() + "/" + e20d.groupTotal() + ")");
+
+            // 20c) 队列空、只剩当时那张卡没答 → 一张 + 往后补 4 张，还是满组
+            BitSet ms20e = new BitSet(10);
+            Engine e20e = new Engine(10, o9(10), ms20e, 0, 5, 3, false, new Sink(ms20e));
+            e20e.startGroup();                               // 0..4
+            for (int g = 0; g < 4; g++) { e20e.answer(true); e20e.next(); }
+            check(e20e.current() == 4, "20c：停在最后一张 4");
+            Engine e20f = new Engine(10, o9(10), ms20e, 0, 5, 3, false, new Sink(ms20e));
+            check(e20f.resume(e20e.snapshot(9)), "20c：现场装回");
+            e20f.startGroupRestart();
+            check(e20f.current() == 4 && e20f.groupTotal() == 5, "20c：新一组 = 那张 4 + 补 4 张");
+            for (int g = 0; g < 5 && !ended; g++) { if (e20f.current() < 0) break; e20f.answer(true); e20f.next(); }
+            check(ended && endPos == 9, "20c：补足段收尾在 9（实际 " + endPos + "）");
+
+            // 20d) 剩下的词全被别处标成「记住了」→ 一个都拼不到 → 报空组，不假装有词刷
+            BitSet ms20g = new BitSet(5);
+            Engine e20g = new Engine(5, o9(5), ms20g, 0, 5, 3, false, new Sink(ms20g));
+            e20g.startGroup();
+            e20g.answer(true); e20g.next();                  // 记住 0，当前 1
+            for (int i = 1; i < 5; i++) ms20g.set(i);        // 批量改进度把剩下的全标成记住了
+            ended = false; emptyCb = false;
+            e20g.startGroupRestart();
+            check(emptyCb && !ended, "20d：拼不到词 → onBookEmpty");
+        }
+
+        System.out.println("ENGINE OK — 20 组断言全部通过（含撤销 + 意外退出续存 + 组指针推进 + 重刷正确率 + 重新开始重切）");
     }
 }

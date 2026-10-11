@@ -42,6 +42,15 @@
             </LinearLayout>
             <Switch android:id="@+id/swAnim" style="@style/SettingSwitch" android:clickable="false" android:focusable="false"/>
         </LinearLayout>
+        <View style="@style/SettingDivider"/>
+
+        <LinearLayout style="@style/SettingRow">
+            <LinearLayout style="@style/SettingRowText">
+                <TextView style="@style/SettingTitle" android:text="@string/set_resume_ask"/>
+                <TextView style="@style/SettingDesc" android:text="@string/set_resume_ask_desc"/>
+            </LinearLayout>
+            <Switch android:id="@+id/swResumeAsk" style="@style/SettingSwitch" android:clickable="false" android:focusable="false"/>
+        </LinearLayout>
     </LinearLayout>
 
     <TextView style="@style/SectionHead" android:text="@string/default_size"/>

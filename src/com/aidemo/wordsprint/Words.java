@@ -7,8 +7,11 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 查词（内置离线查询）：跨全部词书的单词/释义检索 + 单词详情卡片。
@@ -19,6 +22,8 @@ public final class Words {
     public static class Hit {
         public Db.Book book;
         public int idx;
+        /** 这个词出现在几本词书里（搜索结果行右侧的小标签；1 = 只此一本） */
+        public int books = 1;
 
         Hit(Db.Book b, int i) { book = b; idx = i; }
         public String word() { return book.word(idx); }
@@ -26,47 +31,92 @@ public final class Words {
         public String mean() { return book.mean(idx); }
     }
 
+    // ---------------- 词索引（体检 P3-6） ----------------
+    // 以前每次 search() 都把全部词书从头扫 4 遍、每词再 toLowerCase() 新建一个串：
+    // 两万多词 × 4 遍 ≈ 8 万次 String 分配 + 8 万次 equals，主线程直接卡半秒。
+    // 现在第一次查词时建一遍索引（词库 wdb.dat 是 APK 内资源、进程内不变，建一次即可）：
+    //   · byWordMap：小写词 → 全部出处（byWord 从 O(n·m) 变 O(1)，详情弹窗受益最大）
+    //   · keys/keysLc：去重后的词表，前缀/包含匹配只扫这张表（1.6 万词里大量重复词只算一次）
+    //   · meanLc：小写释义，供中文检索，不再每次搜索现转
+    private static Map<String, ArrayList<Hit>> byWordMap;
+    private static List<String> keys;                 // 与 byWordMap 的 key 一一对应（原始大小写）
+    private static String[] keysLc;
+    private static String[] meanLc;                   // 与 allHits 平行
+    private static List<Hit> allHits;
+    private static int[] hitBooks;                    // 与 byWordMap 的 value 平行：每个词的「几本」
+
+    private static void ensureIndex() {
+        if (byWordMap != null || !Db.ready()) return;
+        byWordMap = new HashMap<String, ArrayList<Hit>>();
+        allHits = new ArrayList<Hit>();
+        for (Db.Book b : Db.I.books()) {
+            for (int i = 0; i < b.n; i++) {
+                Hit h = new Hit(b, i);
+                allHits.add(h);
+                String lc = b.word(i).toLowerCase();
+                ArrayList<Hit> list = byWordMap.get(lc);
+                if (list == null) { list = new ArrayList<Hit>(); byWordMap.put(lc, list); }
+                list.add(h);
+            }
+        }
+        keys = new ArrayList<String>(byWordMap.keySet());
+        keysLc = new String[keys.size()];
+        hitBooks = new int[keys.size()];
+        for (int k = 0; k < keys.size(); k++) {
+            keysLc[k] = keys.get(k).toLowerCase();
+            HashSet<Db.Book> bs = new HashSet<Db.Book>();
+            for (Hit h : byWordMap.get(keys.get(k))) bs.add(h.book);
+            hitBooks[k] = bs.size();
+            for (Hit h : byWordMap.get(keys.get(k))) h.books = hitBooks[k];
+        }
+        meanLc = new String[allHits.size()];
+        for (int i = 0; i < allHits.size(); i++) meanLc[i] = allHits.get(i).mean().toLowerCase();
+    }
+
     private Words() {}
 
-    /** 搜索：先精确单词 → 前缀 → 单词包含 → 释义包含（中文也能查） */
+    /**
+     * 搜索：先精确单词 → 前缀 → 单词包含 → 释义包含（中文也能查）。
+     *
+     * 结果**按单词去重**（体检 P2-8）：apple 在 12 本词书里都有，以前能连出 12 行一模一样的
+     * 「apple」，把真正想找的词挤出屏幕。现在一个词一行（用第一本的音标释义），行右侧标
+     * 「N 本」说明它在几本词书里出现过，点进详情再看全部出处。
+     */
     public static List<Hit> search(String q, int limit) {
         List<Hit> out = new ArrayList<Hit>();
         if (q == null || !Db.ready()) return out;
+        ensureIndex();
         String s = q.trim().toLowerCase();
-        if (s.isEmpty()) return out;
+        if (s.isEmpty() || byWordMap == null) return out;
+        HashSet<String> seen = new HashSet<String>();
         for (int pass = 0; pass < 4 && out.size() < limit; pass++) {
-            for (Db.Book b : Db.I.books()) {
-                for (int i = 0; i < b.n && out.size() < limit; i++) {
-                    String w = b.word(i).toLowerCase();
-                    boolean hit;
-                    switch (pass) {
-                        case 0: hit = w.equals(s); break;
-                        case 1: hit = w.startsWith(s); break;
-                        case 2: hit = w.contains(s); break;
-                        default: hit = b.mean(i).toLowerCase().contains(s); break;
-                    }
-                    if (hit && !dup(out, b, i)) out.add(new Hit(b, i));
+            if (pass == 3) {
+                // 释义包含：扫全部词条（这遍没法按词去重索引，但有 seen 挡重复词）
+                for (int i = 0; i < allHits.size() && out.size() < limit; i++) {
+                    if (!meanLc[i].contains(s)) continue;
+                    Hit h = allHits.get(i);
+                    if (seen.add(h.word().toLowerCase())) out.add(h);
                 }
+                continue;
+            }
+            for (int k = 0; k < keys.size() && out.size() < limit; k++) {
+                String w = keysLc[k];
+                boolean hit = pass == 0 ? w.equals(s) : pass == 1 ? w.startsWith(s) : w.contains(s);
+                if (!hit || !seen.add(w)) continue;
+                out.add(byWordMap.get(keys.get(k)).get(0));
             }
         }
         return out;
-    }
-
-    private static boolean dup(List<Hit> out, Db.Book b, int i) {
-        for (Hit h : out) if (h.book == b && h.idx == i) return true;
-        return false;
     }
 
     /** 同一个词在哪些词书里出现（详情卡片用来标出处） */
     public static List<Hit> byWord(String word) {
         List<Hit> out = new ArrayList<Hit>();
         if (word == null || !Db.ready()) return out;
-        String s = word.trim().toLowerCase();
-        for (Db.Book b : Db.I.books()) {
-            for (int i = 0; i < b.n; i++) {
-                if (b.word(i).toLowerCase().equals(s)) out.add(new Hit(b, i));
-            }
-        }
+        ensureIndex();
+        if (byWordMap == null) return out;
+        ArrayList<Hit> list = byWordMap.get(word.trim().toLowerCase());
+        if (list != null) out.addAll(list);
         return out;
     }
 
@@ -144,12 +194,13 @@ public final class Words {
             col.addView(src, lp);
         }
 
-        // 收藏按钮已按用户要求删除：详情里只留一个「知道了」
+        // 收藏按钮已按用户要求删除；「知道了」是唯一出口 —— 以前旁边还挂一颗同义的「取消」
+        // （两个按钮都不写任何数据，点了唯一效果都是关窗），用户不知道该点哪个（体检 P2-7）
         Ui.cardDialogEx(a, a.getString(R.string.word_detail_title), Ui.scrollable(col, 300),
                 a.getString(R.string.word_detail_ok), new Runnable() {
                     @Override public void run() { }
                 },
-                a.getString(R.string.cancel), null, true);
+                null, null, true);
 
         if (a instanceof StudyActivity) return;             // 刷词页自己有朗读按钮
         try {
@@ -170,12 +221,33 @@ public final class Words {
         col.setOrientation(LinearLayout.VERTICAL);
         box.addView(col, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
 
+        LinearLayout wrow = new LinearLayout(a);
+        wrow.setOrientation(LinearLayout.HORIZONTAL);
+        wrow.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        col.addView(wrow, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
         TextView w = new TextView(a);
         w.setText(h.word());
         w.setTextSize(16.5f);
         w.setTypeface(Fonts.typeface(a, true));
         w.setTextColor(Skin.c(a, R.attr.wpText));
-        col.addView(w);
+        wrow.addView(w);
+
+        if (h.books > 1) {
+            // 同一个词出现在多本词书里（体检 P2-8 的「N 本」标签）
+            TextView tag = new TextView(a);
+            tag.setText(a.getString(R.string.search_books_n, h.books));
+            tag.setTextSize(10.5f);
+            tag.setTextColor(Skin.c(a, R.attr.wpBrand));
+            tag.setBackgroundResource(R.drawable.bg_tag);
+            int tp = (int) Ui.dp(a, 1.5f), ts = (int) Ui.dp(a, 6);
+            tag.setPadding(ts, tp, ts, tp);
+            LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            tlp.leftMargin = (int) Ui.dp(a, 7);
+            wrow.addView(tag, tlp);
+        }
 
         TextView m = new TextView(a);
         String phS = h.ph() == null || h.ph().isEmpty() ? "" : " /" + h.ph() + "/";

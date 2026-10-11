@@ -112,11 +112,9 @@ public class Update {
      * 显式选了 stable 就完全按 stable 来，不再替用户偷看别的源。
      */
     public static Res checkRes(Context c) {
-        if (BuildInfo.SBS) {          // 同机双装包（包名带后缀）：应用内更新的 APK 是正式包名，装不上只会白报错
-            Res r = new Res();
-            r.err = "同机双装测试包不支持应用内更新，请从 GitHub Actions 的 staging artifact 手动下载安装";
-            return r;
-        }
+        // 双装测试包（包名带 .sbs 后缀）走自己的「分支」坑位：坑位里放的也是双装 APK，
+        // 下载完系统安装器对同包同签的它显示「更新」——测试版能自己升级（用户 2026-10-10：
+        // 「自动下载」）。坑位里若不是自己的包（老坑位/手滑），系统安装器会另起安装，顶多多一个图标。
         return fetch(c, Prefs.of(c).updateChannel());
     }
 
@@ -604,8 +602,9 @@ public class Update {
 
     /**
      * 页面 onResume 调它、onPause 调 {@link #stopWatch()}。
-     * 每 400ms 回一次进度（有下载在跑时才有内容），每 60 秒静默查一次更新 ——
-     * 「不够灵敏」就是这么来的：前台一直在问，不用退回桌面再进来。
+     * **下载中**每 400ms 回一次进度；**空闲**时降到每 5 秒醒一次（12 次 ≈ 60 秒静默查一次更新，
+     * 体检 P3-7）—— 以前不管有没有下载都 400ms 空转，前台挂机十分钟就白烧 1500 次唤醒。
+     * 「不够灵敏」的问题不在这：查更新的节拍（60 秒）没变。
      */
     public static void startWatch(Activity a, Watch w) {
         ref = new java.lang.ref.WeakReference<Activity>(a);
@@ -627,8 +626,9 @@ public class Update {
                         && (progressDlg == null || progressHost != act || !progressDlg.isShowing())) {
                     showProgress(act);
                 }
-                if (tick++ % 150 == 0 && !busy) silentCheck(act);     // 150 × 400ms = 60 秒
-                h.postDelayed(this, 400);
+                boolean nowBusy = busy;
+                if (!nowBusy && tick++ % 12 == 0) silentCheck(act);   // 12 × 5s = 60 秒
+                h.postDelayed(this, nowBusy ? 400 : 5000);           // 下载要丝滑，空闲省电（P3-7）
             }
         };
         h.post(loop);

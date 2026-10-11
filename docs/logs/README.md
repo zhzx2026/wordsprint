@@ -19,3 +19,4 @@ docs/logs/arena<id>.md     ← 如 arena01a0b2c2.md
 | arena01a0c46d | 进行中 | dev / main 分工澄清：新增 `BRANCHING.md`（含 Pages 托管分工）+ `publish_dev.sh` 产物白名单门禁 + `scripts/branch_audit.sh` 体检 |
 | arena01a0cec1 | 进行中 | 外观切换及时生效：外观代数对账（`Look.java`），改配色/深浅/字体/字号后返回其他页面自动重建（v6.1） |
 | arena01a0d3d5 | 进行中 | 刷词意外退出续存：每张卡落盘现场，重开接着那张（v8.1 / code 58） |
+| arenatakeover | 进行中 | 接管轮（2026-10-10）：规则清理（删弃用）+ 用户数据固定位置（卸载重装还在）+ 测试包默认双装新 App（v9.2 / code 63） |

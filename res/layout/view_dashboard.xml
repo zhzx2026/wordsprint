@@ -71,47 +71,12 @@
             android:textSize="24sp"
             android:textStyle="bold"/>
 
-        <ProgressBar
+        <com.aidemo.wordsprint.ProgBar
             android:id="@+id/goalBar"
-            style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="match_parent"
             android:layout_height="8dp"
-            android:layout_marginTop="10dp"
-            android:max="100"
-            android:progressDrawable="@drawable/progress_line"/>
+            android:layout_marginTop="10dp"/>
 
-        <!-- 三个习惯：一行三个，勾选状态由 MainActivity 上色 -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:orientation="horizontal">
-
-            <LinearLayout
-                android:id="@+id/habitWord"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:gravity="center">
-                <TextView
-                    android:id="@+id/habitWordMark"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="○"
-                    android:textColor="?attr/wpText2"
-                    android:textSize="15sp"
-                    android:textStyle="bold"/>
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="3dp"
-                    android:text="@string/habit_word"
-                    android:textColor="?attr/wpText2"
-                    android:textSize="11.5sp"/>
-            </LinearLayout>
-
-        </LinearLayout>
     </LinearLayout>
 
     <!-- 有新版就冒出来的一行（用户：检查更新不够灵敏 —— 首页盯着，有新包立刻能看见） -->
@@ -232,9 +197,22 @@
                 android:id="@+id/heatEmpty"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
                 android:text="@string/heat_none"
                 android:textColor="?attr/wpText2"
                 android:textSize="11sp"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="@string/heat_less"
+                android:textColor="?attr/wpText2"
+                android:textSize="11sp"/>
+            <View
+                android:id="@+id/heatL0"
+                android:layout_width="9dp"
+                android:layout_height="9dp"
+                android:layout_marginStart="3dp"/>
             <View
                 android:id="@+id/heatL1"
                 android:layout_width="9dp"
@@ -255,6 +233,13 @@
                 android:layout_width="9dp"
                 android:layout_height="9dp"
                 android:layout_marginStart="3dp"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="3dp"
+                android:text="@string/heat_more"
+                android:textColor="?attr/wpText2"
+                android:textSize="11sp"/>
         </LinearLayout>
     </LinearLayout>
 

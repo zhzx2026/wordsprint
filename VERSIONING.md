@@ -2,7 +2,8 @@
 
 > 一句话：**dev 版 X.Y（Y≥1）做迭代，每轮 +0.1；用户确认后转正为 stable (X+1).0（主版本 +1）；下一轮 dev 从新主版本的 `.1` 继续（2.0 之后是 2.1、2.2…）。**
 > 上述版本号更新、内容迭代与版本转正操作，均由 arena agent 在内部自动完成（本文件 + `scripts/version.sh` 即执行器）。
-> **分支分工**（谁写 `main`、谁写 `dev`、Pages 挂哪、多会话如何并行）另见 [BRANCHING.md](BRANCHING.md)。
+> **分支分工**（谁写 `main`、Pages 挂哪、多会话如何并行）另见 [BRANCHING.md](BRANCHING.md)；
+> 装机测试包 = 双装新 App（默认）见 AGENT.md「装机测试包 = 双装新 App」。
 
 ## 1. 版本号规则
 
@@ -83,7 +84,7 @@ bash scripts/staging_build.sh      # 出测试包（不变）
    那段字，也是测试通道 `update.json` 的 `notes` —— 只写标题/空话 = 发不出去（`publish_ci.sh` 校验正文 ≥40 字，
    不足直接失败）。转正时整份进 Release 正文；staging 时按分支拼进坑位 `notes`。
 
-## 8. 迁移与发布台账
+## 附：迁移与发布台账（历史，只供查阅）
 
 - 2026-09-13 前的 `1.0.x`（含 v1.0.17/code 18）视为第 1 代，不再延续；旧 tag（`v1.0.8/9/14/17`）保留不动。
 - 迁移路径：`1.0.17（code 18）` →（`VERSION_NEW_MAJOR=2` bump）→ `工作版 2.1（code 19）` → 用户确认直发 → **stable v2.0（code 20）**。
@@ -97,7 +98,7 @@ bash scripts/staging_build.sh      # 出测试包（不变）
 | v4.0 | 40 | ✓ | ✓ | 2026-09-17 | 十二批功能线转正（编号 2.x→3.x→4.0，`src/` 50 个文件）：四六级词库 / 两套字体 / 5 套配色 / 热力图 / 每日目标 / 多档案 / 错题本 / 战绩分享 / 自定义手势 / 查词 / 词表预览与批量改进度 + 更新进度条与下载校验修复 |
 | v5.0 | 41 | ✓ | ✓ | 2026-09-17 | **仓库整理版**：App 代码与 v4.0 完全相同（用户「修整一下整个仓库并且发布 5.0 apk 不用改」），只清仓库 —— CI 重复步骤 / 发布文案瘦身（历史进 `CHANGELOG.md`）/ README 数字对齐真实词库 / `test/` 分层 + 删过期副本 / 文档同步 |
 
-- **当前位置：stable v5.0（code 41）**。下一轮 `bump-dev` → dev 5.1（code 42 起）；下次转正 → v6.0。
+- 当前版本看 [README.md](README.md) 首行或 `bash scripts/version.sh status`（本文不维护"当前位置"，写死必过时）。
 - 历史残留（要不要清由用户定，别自己动手）：tag `v1.0.17` 与 tag `v3.0` 都是有 tag 无 Release；
   另有一个**误用 tag `main` 建的 Release**（2026-09-13），已不是 `latest`，但仍挂在 Releases 列表里。
 
@@ -129,9 +130,10 @@ bash scripts/staging_build.sh      # 出测试包（不变）
    `update-<分支id>.json` / `wordsprint-<分支id>.json` 资产，互不覆盖；根资产 =「最近一次构建」；
    Release 正文 = 脚本自动维护的「现存分支 × 版本」索引表；`ci_sync.py` 在构建和删除分支后对账，
    清理失效坑位并把现存且有完整测试包的分支写入根 `update.json` 的 `channels`，供 App 选择、锁坑位。
-6. **同机双装**：`SBS=1 bash scripts/staging_build.sh`（或手动触发 staging 勾 side_by_side）→
-   包名 `com.aidemo.wordsprint.sbs.<分支id>`、provider authorities 同步改写（build.sh 自检 badging）、
-   数据隔离、可与正式包并存；**应用内更新对双装包禁用**（`Update.checkRes` 早退提示，装正式包名必失败）。
+6. **装机测试包默认 = 双装新 App**（用户 2026-10-10 定版）：`bash scripts/staging_build.sh` 直接出
+   `com.aidemo.wordsprint.sbs.<分支id>` 的**独立新 App**（provider authorities 同步改写，build.sh 自检 badging），
+   手动安装、与正式包并存、**数据隔离**；用户数据在公共目录 `Documents/刷单词/`（卸载重装还在）。
+   **应用内更新对双装包禁用**（`Update.checkRes` 早退提示）。`SBS=0` 才出更新式包（覆盖安装 + 刷 ci 坑位，备用）。
 7. **日志解耦**：会话流水账写 `docs/logs/<分支id>.md`（每分支一个文件，合并零冲突）；
    `AGENT.md` 只留长期规则，合并转正时由合并 PR 摘回结论。
 

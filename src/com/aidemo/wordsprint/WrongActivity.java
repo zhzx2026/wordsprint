@@ -129,7 +129,7 @@ public class WrongActivity extends Activity {
             for (String id : bookSel) { Db.Book b = Db.ready() ? Db.I.byId(id) : null; if (b == null) continue; if (first == null) first = b.display(); n++; }
             bk = first == null ? getString(R.string.wrong_f_any) : (n > 1 ? first + " +" + (n - 1) : first);
         }
-        colBook.setText(getString(R.string.wrong_f_book) + "：" + bk + "  ▾");
+        colBook.setText(getString(R.string.filter_col_fmt, getString(R.string.wrong_f_book), bk));
         String st;
         if (starSel.isEmpty()) st = getString(R.string.wrong_f_any);
         else {
@@ -138,7 +138,7 @@ public class WrongActivity extends Activity {
                 if (starSel.contains(t)) { if (sb.length() > 0) sb.append(' '); sb.append(starText(t)); }
             st = sb.toString();
         }
-        colStar.setText(getString(R.string.wrong_f_star) + "：" + st + "  ▾");
+        colStar.setText(getString(R.string.filter_col_fmt, getString(R.string.wrong_f_star), st));
     }
 
     private boolean bookPass(String id) { return bookSel.isEmpty() || bookSel.contains(id); }
@@ -151,7 +151,7 @@ public class WrongActivity extends Activity {
         final Prefs p = Prefs.of(this);
         LinearLayout col = menuBody();
         for (final Db.Book bk : withWords) {
-            col.addView(checkRow(bk.display() + "  " + p.wrongBook(bk.id).size(), bookSel.contains(bk.id),
+            col.addView(checkRow(getString(R.string.wrong_book_line, bk.display(), p.wrongBook(bk.id).size()), bookSel.contains(bk.id),
                     new Runnable() {
                         @Override public void run() {
                             if (!bookSel.remove(bk.id)) bookSel.add(bk.id);
@@ -221,7 +221,7 @@ public class WrongActivity extends Activity {
         foot.setOrientation(LinearLayout.HORIZONTAL);
         int pd = (int) Ui.dp(this, 8);
         foot.setPadding(pd, 0, pd, pd);
-        TextView any = footBtn(getString(R.string.wrong_f_clear), R.attr.wpText2);
+        TextView any = footBtn(getString(R.string.wrong_f_any), R.attr.wpText2);
         any.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { clear.run(); dismissMenu(); }
         });
@@ -440,7 +440,7 @@ public class WrongActivity extends Activity {
         final android.app.AlertDialog[] ref = new android.app.AlertDialog[1];
         for (final Db.Book bk : due) {
             TextView row = new TextView(this);
-            row.setText(getString(R.string.wrong_book_line, bk.display(),
+            row.setText(getString(R.string.wrong_book_due_line, bk.display(),
                     p.wrongBook(bk.id).dueCount()));
             row.setTextSize(14f);
             row.setTextColor(Skin.c(this, R.attr.wpText));
@@ -458,7 +458,7 @@ public class WrongActivity extends Activity {
                 }
             });
         }
-        ref[0] = Ui.cardDialog(this, getString(R.string.book_pick_title), Ui.scrollable(col, 300),
+        ref[0] = Ui.cardDialog(this, getString(R.string.wrong_pick_title), Ui.scrollable(col, 300),
                 getString(R.string.cancel), null, null);
     }
 

@@ -42,6 +42,7 @@ public class SetupActivity extends Activity {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         super.onCreate(b);
         Skin.apply(this);                       // 配色/字体/字号：必须在 setContentView 之前
+        Ui.applyWindow(this);                   // 统一初始化顺序（体检 P4-5）：Skin → applyWindow → setContentView
         setContentView(R.layout.sheet_setup);
         setFinishOnTouchOutside(true);
         Db.ensureLoaded(this);
@@ -63,7 +64,11 @@ public class SetupActivity extends Activity {
         root.animate().translationY(0f).setDuration(260).setInterpolator(new android.view.animation.DecelerateInterpolator()).start();
 
         ((TextView) findViewById(R.id.tvBook)).setText(book.display());
-        ((TextView) findViewById(R.id.tvSeries)).setText(book.pub + " · " + Db.stageName(book.stage) + " · 共 " + book.n + " 词");
+        // 系列（如小学的「三年级起点」）不再拼进书名（P2-15），挪到这行跟出版社放一起
+        String pubLine = book.series == null || book.series.isEmpty()
+                ? book.pub : book.pub + " · " + book.series;
+        ((TextView) findViewById(R.id.tvSeries)).setText(getString(R.string.sheet_series_fmt, pubLine,
+                Db.stageName(this, book.stage), book.n));
         int col = Db.pubColor(book.pub);
         TextView tag = (TextView) findViewById(R.id.tvPubTag);
         tag.setText(book.pub);
@@ -81,7 +86,7 @@ public class SetupActivity extends Activity {
             names[i] = String.valueOf(SIZES[i]);
             if (SIZES[i] == size) sel = i;
         }
-        TextView custom = Ui.chip(this, "自定义", isCustom(size));
+        TextView custom = Ui.chip(this, getString(R.string.goal_custom_label), isCustom(size));
         Ui.fillRow(sizeRow, names, isCustom(size) ? -1 : sel, new Ui.ChipTap() {
             @Override public void onTap(int idx, TextView chip) {
                 size = SIZES[idx];
@@ -221,6 +226,9 @@ public class SetupActivity extends Activity {
     }
 
     @Override public void finish() {
+        // 点遮罩 / 返回键关掉弹层时也把大小/顺序两颗 chip 的改动留下来（体检 P4-5）：
+        // 以前只有「开始刷词」那颗按钮会 saveSetup，点遮罩走人 = 刚才点的组词数悄悄丢了。
+        try { prefs.saveSetup(book.id, size, order); } catch (Throwable ignored) {}
         super.finish();
         overridePendingTransition(0, R.anim.act_slide_out_down);
     }

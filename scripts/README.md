@@ -13,8 +13,8 @@
 | `version.sh promote` | 转正：dev `X.Y` → stable `(X+1).0`（只改文件，不打 tag 不 push） | 用户明确说「可以转正」之后 |
 | `version.sh set X.Y [code]` | 手工指定版本号（用户要求改编号时用，如 2026-09-17 的 2.x→3.x、2026-09-17 的 4.0→5.0）；code 省略则同样取三方最大 +1 | 用户点名要某个号 |
 | `version.sh sync` / `check` | 幂等地把 manifest 版本重写到各标识 / 校验格式（CI 门禁同款，legacy 三段号直接红） | 标识不同步时；`check` 由 `staging.yml` 调 |
-| `run_tests.sh` | 主机侧测试统一入口：ci 聚合同步 Python 回归测试 + **直接编译发版用的那一份 `src/`**，跑 JVM 测试及 node 的 `share_page_test.js` | 每次改动之后、发版之前（本地与 CI 同一条命令） |
-| `staging_build.sh [分支]` | 推分支 + 触发 `staging.yml` → CI 用 Secret 里的真钥匙签名，产出 Actions **Artifacts** + 预发布 Release `ci` 资产（App 内更新用）。**不打正式 tag、不发正式 Release** | 要给用户一个能覆盖安装的装机测试包 |
+| `run_tests.sh` | 主机侧测试统一入口：ci 聚合同步 Python 回归测试 + **直接编译发版用的那一份 `src/`**，跑 JVM 测试（含 `DataCodecTest` 用户数据固定位置格式）及 node 的 `share_page_test.js` | 每次改动之后、发版之前（本地与 CI 同一条命令） |
+| `staging_build.sh [分支]` | 推分支 + 触发 `staging.yml` → CI 用 Secret `KEYSTORE_B64` 里的真钥匙签名，产出 Actions **Artifacts**。**默认 = 双装新 App**（包名 `.sbs.<分支id>`，手动安装、与正式包数据隔离）；`SBS=0` 才出更新式包（覆盖安装 + 刷预发布 Release `ci` 坑位）。**不打正式 tag、不发正式 Release** | 要给用户一个装机测试包（每次迭代） |
 | `promote.sh [分支]` | 转正一条龙：`version.sh promote` → commit → 推分支 → **轮询等 staging 变绿**（不绿就中止，main/tag 不动）→ 打附注 tag → `git push HEAD:refs/heads/main` + tag | 用户确认转正、且要走「手动打 tag」这条路时（合 PR 走 `auto_release.yml` 是另一条路，二选一） |
 | `push_release.sh ["说明"]` | dev 迭代一条龙：`bump-dev` → 本地 `build.sh` → 拷一份 `../刷单词-vX.Y.apk` → commit（**不 tag、不 push**）；带 >2MB 误提交拦截 | 本机有工具链 + keystore 时 |
 

@@ -20,7 +20,7 @@ mkdir -p "$D"
 cp "$S"/Engine.java "$S"/QREnc.java "$S"/QRUtil.java "$S"/Transfer.java "$S"/ProgressCode.java "$S"/Pack.java \
    "$S"/ZipB64.java "$S"/Diary.java "$S"/Scale.java "$S"/Heat.java "$S"/BookEdit.java \
    "$S"/Vers.java "$S"/UpCh.java "$S"/Profiles.java "$S"/DlProg.java "$S"/Order.java \
-   "$S"/WrongBook.java "$S"/ShareGeom.java "$S"/Ges.java "$D"/
+   "$S"/WrongBook.java "$S"/ShareGeom.java "$S"/Ges.java "$S"/DataCodec.java "$D"/
 rm -rf test/out && mkdir -p test/out
 
 echo "== javac（同一份源码）"
@@ -28,7 +28,7 @@ javac -encoding UTF-8 -nowarn -d test/out -cp libs/zxing-core.jar \
   "$D"/*.java test/T.java test/EngineTest.java test/QRHostTest.java test/CodeHostTest.java test/PackTest.java \
   test/SharePayloadTest.java test/ScaleTest.java test/GesTest.java test/WrongBookTest.java test/ShareGeomTest.java \
   test/HeatRampTest.java test/BookEditTest.java test/VersTest.java test/UpChTest.java test/ProfilesTest.java \
-  test/DlProgTest.java test/TransferExtTest.java test/OrderTest.java test/DiaryTest.java
+  test/DlProgTest.java test/TransferExtTest.java test/OrderTest.java test/DiaryTest.java test/DataCodecTest.java
 
 CP=test/out:libs/zxing-core.jar
 echo "== EngineTest（刷词引擎 + 回炉区间断言）"
@@ -53,6 +53,8 @@ echo "== OrderTest（刷词顺序：同种子同排列、词号与组指针位�
 java -cp "$CP" OrderTest
 echo "== DiaryTest（每日日志：目标量程单一真相源、只读视图不留垃圾、退休功能不替用户打卡）"
 java -cp "$CP" DiaryTest
+echo "== DataCodecTest（用户数据固定位置：文件格式全类型往返 + 行级容错）"
+java -cp "$CP" DataCodecTest
 echo "== WrongBookTest（错题本：错一次就进 / 连对 3 次才出 / 再错多加一次）"
 java -cp "$CP" WrongBookTest
 # ⚠️ 只有文件末尾那一个 node 测试需要门控。
@@ -61,7 +63,7 @@ java -cp "$CP" WrongBookTest
 # 没装 node 的机器上它们被静默跳过，屏幕上只留一行「跳过 SharePageTest」，看着像全绿。
 echo "== ShareGeomTest（战绩图版面：网格不压标签、二维码不出画布）"
 java -cp "$CP" ShareGeomTest
-echo "== VersTest（版本号/更新通道：装 dev 包就该盯 dev 通道）"
+echo "== VersTest（版本号/更新通道：测试包默认盯自己的分支坑位）"
 java -cp "$CP" VersTest
 echo "== UpChTest（更新源第 3 档「分支」：坑位 id 清洗 / 直链拼装 / channels 名单解析）"
 java -cp "$CP" UpChTest

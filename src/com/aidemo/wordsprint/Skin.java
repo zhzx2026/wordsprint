@@ -21,21 +21,22 @@ public final class Skin {
     public static final int DEFAULT = 0;
 
     public static class Palette {
-        public final String name, desc;
+        public final String name;
         public final int brand, brand2;      // 预览用的两个色（列表里画色块）
+        // 以前还有个 desc（「默认 · 米白纸感 + 靛蓝」这类说明），全仓库没人读它 —— 死字段，删（体检 P4-3）
 
-        Palette(String name, String desc, int brand, int brand2) {
-            this.name = name; this.desc = desc; this.brand = brand; this.brand2 = brand2;
+        Palette(String name, int brand, int brand2) {
+            this.name = name; this.brand = brand; this.brand2 = brand2;
         }
     }
 
     /** 配色方案清单（0 = 默认暖纸风，不挂 overlay） */
     public static final Palette[] PALETTES = {
-            new Palette("暖纸", "默认 · 米白纸感 + 靛蓝", 0xFF3D5AF1, 0xFF16213A),
-            new Palette("松林", "森林绿 · 稳重清爽", 0xFF0E9F5E, 0xFF12A870),
-            new Palette("落日", "暖橙 · 晚霞渐变", 0xFFE8590C, 0xFFF08C00),
-            new Palette("莓红", "玫瑰 · 恋爱感复习", 0xFFD6336C, 0xFFE64980),
-            new Palette("深海", "靛青 · 冷调专注", 0xFF0B7285, 0xFF15AABF),
+            new Palette("暖纸", 0xFF3D5AF1, 0xFF16213A),
+            new Palette("松林", 0xFF0E9F5E, 0xFF12A870),
+            new Palette("落日", 0xFFE8590C, 0xFFF08C00),
+            new Palette("莓红", 0xFFD6336C, 0xFFE64980),
+            new Palette("深海", 0xFF0B7285, 0xFF15AABF),
     };
 
     private static final int[] LIGHT = {0, R.style.Skin_S1, R.style.Skin_S2, R.style.Skin_S3, R.style.Skin_S4};

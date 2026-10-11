@@ -54,6 +54,7 @@ public class ShareActivity extends Activity {
         ImageView iv = new ImageView(this);
         iv.setAdjustViewBounds(true);
         iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        iv.setContentDescription(getString(R.string.share_desc));   // 无障碍（体检 P4-5）
         int pad = (int) Ui.dp(this, 14);
         iv.setPadding(pad, 0, pad, 0);
         root.addView(iv, new LinearLayout.LayoutParams(
@@ -80,6 +81,14 @@ public class ShareActivity extends Activity {
         });
         send.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { shareImage(); }
+        });
+        // 长按图片直接存相册（体检 P2-12）：share_desc 文案一直写着「长按图片可保存」，
+        // 代码里却没有任何长按监听 —— 用户长按没反应，只能点下面的按钮。
+        iv.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override public boolean onLongClick(View v) {
+                saveImage();
+                return true;
+            }
         });
 
         new Thread(new Runnable() {
@@ -167,6 +176,7 @@ public class ShareActivity extends Activity {
 
     @Override protected void onDestroy() {
         super.onDestroy();
-        try { if (bmp != null && !bmp.isRecycled()) bmp.recycle(); } catch (Throwable ignored) {}
+        // 这里**不再手动 recycle**（体检 P4-5）：onDestroy 时 ImageView 还指着这张 bitmap，
+        // 某些 ROM 的 detach 动画会晚一帧再取像素 → recycled crash。交给 GC 就好，一张图而已。
     }
 }

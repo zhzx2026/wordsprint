@@ -25,6 +25,8 @@ import java.util.TimeZone;
  */
 public class Prefs {
     public static final String K_SPEAK = "s_speak", K_PHON = "s_phon", K_SOUND = "s_sound", K_ANIM = "s_anim";
+    /** 进刷单词问不问「上次继续 / 重新开始」，以及记住的答案（false=上次继续 true=重新开始；只在不问时生效） */
+    public static final String K_RESUME_ASK = "s_resume_ask", K_RESUME_RESTART = "s_resume_restart";
     /** 主题：0 跟随系统 · 1 浅色 · 2 深色 */
     public static final String K_NIGHT = "g_night";
     /** 配色主题：见 Skin.PALETTES 下标 */
@@ -36,7 +38,6 @@ public class Prefs {
     /** 字号缩放：0 标准 · 1 大屏自适应 · 2 特大 */
     public static final String K_SCALE = "g_scale";
     /** 目标类型默认值：刷词 / 温习 / 自测 */
-    public static final String K_GOAL_MODE = "g_goal_mode";
     public static final String K_UP_URL = "u_url", K_UP_CH = "u_ch", K_UP_AUTO = "u_auto",
             K_UP_LAST = "u_last", K_UP_SEEN = "u_seen";
     /** 「分支」通道选中的坑位 id（预发布 Release ci 的 update-<id>.json，见 BRANCHING.md §3） */
@@ -158,6 +159,7 @@ public class Prefs {
             DiaryStore.attach(c);
             loadProfiles(I);
             migrateGlobalKeys(I);               // 档案命名空间里的「本机级」设置搬到全局（见方法注释）
+            migrateDayMirror(I);                // d_ 计数镜像键改成 8 位日期（修「今日已刷恒 0」）
         }
         return I;
     }
@@ -227,6 +229,7 @@ public class Prefs {
         pr.p.edit().putString(K_ACTIVE, id).apply();
         DiaryStore.forget();                    // ← 只丢缓存（不再写盘），下次读的是新档案
         invalidateDistinct();                   // 掌握词数缓存是「当前档案」的，切档案必须重算
+        pr.invalidateBookCaches();              // 掌握位图/错题本解码缓存同理（P3-1/P3-2）
     }
 
     /** 建档案并切过去（useLegacy=true 时占用遗留命名空间 → 老进度归它） */
@@ -276,6 +279,7 @@ public class Prefs {
         }
         e.putString(K_PROFILES, profiles().encode()).apply();
         invalidateDistinct();
+        pr.invalidateBookCaches();
         return true;
     }
 
@@ -363,11 +367,67 @@ public class Prefs {
         if (e != null) e.apply();
     }
 
+    /**
+     * 一次性迁移：修「今日已刷一直是 0」（2026-10-11 bug）—— addToday 曾把日记的带横杠日期
+     * 直接拼进 d_ 镜像键（d_2026-10-11），而首页 todayCount()、进度码导出（exportDays 按
+     * 长度==10 过滤）只认 8 位数字的 d_20261011：刷了词首页恒 0、导出还丢天数。
+     * 这里把带横杠的老键并进规范键（两边都有取大，沿用进度码导入的规矩），老键删掉。
+     * 日记本体（Diary.days）没受过影响，热力图/目标卡一直是对的。
+     */
+    private static void migrateDayMirror(Prefs pr) {
+        SharedPreferences sp = pr.p;
+        java.util.Map<String, ?> all = sp.getAll();
+        SharedPreferences.Editor e = null;
+        for (String k : all.keySet()) {
+            String raw = stripNs(k);
+            if (!raw.startsWith("d_") || raw.length() != 12) continue;
+            String compact = Diary.compact(raw.substring(2));
+            if (compact.length() != 8 || !raw.substring(2).contains("-")) continue;
+            String prefix = k.substring(0, k.length() - raw.length());
+            String to = prefix + "d_" + compact;
+            Object v = all.get(k);
+            if (!(v instanceof Integer)) continue;
+            int cnt = (Integer) v;
+            if (e == null) e = sp.edit();
+            if (cnt > sp.getInt(to, 0)) e.putInt(to, Math.min(1000000, cnt));
+            e.remove(k);
+        }
+        if (e != null) e.apply();
+    }
+
     // ---------- per-book ----------
     public static String bk(String bid, String k) { return "b_" + bid + "_" + k; }
 
-    public java.util.BitSet mastered(String bid, int n) { return bitsOf(bid, "p", n); }
-    public void saveMastered(String bid, java.util.BitSet bs) { putBits(bid, "p", bs); invalidateDistinct(); }
+    /**
+     * 解码缓存（体检 P3-1/P3-2）：词书列表 getView 每行都要「掌握位图 + 错题本」，
+     * 23 行 × 每次 base64 解码 + WrongBook.parse，滚动时成千上万次。
+     * 缓存的是解码结果对象：读多写少、写都在主线程跟着 saveXxx 走，一致性没有窗口。
+     * 切档案 / 删档案 / 导入 / 清进度必须 {@link #invalidateBookCaches()}，否则读到别人的数据。
+     */
+    private final java.util.HashMap<String, java.util.BitSet> masteredCache =
+            new java.util.HashMap<String, java.util.BitSet>();
+    private final java.util.HashMap<String, WrongBook> wrongCache =
+            new java.util.HashMap<String, WrongBook>();
+
+    void invalidateBookCaches() {
+        masteredCache.clear();
+        wrongCache.clear();
+    }
+
+    public java.util.BitSet mastered(String bid, int n) {
+        String key = ns(bk(bid, "p"));
+        java.util.BitSet bs = masteredCache.get(key);
+        if (bs != null && bs.size() >= Math.max(1, n)) return bs;
+        bs = bitsOf(bid, "p", n);
+        masteredCache.put(key, bs);
+        return bs;
+    }
+
+    public void saveMastered(String bid, java.util.BitSet bs) {
+        putBits(bid, "p", bs);
+        masteredCache.put(ns(bk(bid, "p")), bs);
+        invalidateDistinct();
+    }
 
     /**
      * 错题本：规则见 {@link WrongBook}（错一次就进；连对 3 次算已掌握但**不出本**，要手动删；
@@ -376,15 +436,24 @@ public class Prefs {
      * 迁移结果写进新槽位 wc —— 老用户升级后错题本不会丢。
      */
     public WrongBook wrongBook(String bid) {
-        String s = p.getString(ns(bk(bid, "wc")), null);
-        if (s != null) return WrongBook.decode(s);
-        java.util.BitSet legacy = bitsOf(bid, "w", 0);
-        WrongBook wb = WrongBook.fromLegacy(legacy);
-        if (!wb.isEmpty()) saveWrongBook(bid, wb);
+        String key = ns(bk(bid, "wc"));
+        WrongBook cached = wrongCache.get(key);
+        if (cached != null) return cached;
+        String s = p.getString(key, null);
+        WrongBook wb;
+        if (s != null) {
+            wb = WrongBook.decode(s);
+        } else {
+            java.util.BitSet legacy = bitsOf(bid, "w", 0);
+            wb = WrongBook.fromLegacy(legacy);
+            if (!wb.isEmpty()) saveWrongBook(bid, wb);
+        }
+        wrongCache.put(key, wb);
         return wb;
     }
 
     public void saveWrongBook(String bid, WrongBook wb) {
+        wrongCache.put(ns(bk(bid, "wc")), wb);
         p.edit().putString(ns(bk(bid, "wc")), wb.encode()).apply();
     }
 
@@ -495,23 +564,12 @@ public class Prefs {
         return Profiles.isProfileKey(rawKey);               // 遗留命名空间：只认学习数据键
     }
 
-    public String lastBookId() {
-        String best = null; long bt = 0;
-        for (String k : p.getAll().keySet()) {
-            if (!mine(k)) continue;
-            String raw = stripNs(k);
-            if (raw.endsWith("_t") && raw.startsWith("b_")) {
-                long v = p.getLong(k, 0);
-                if (v > bt) { bt = v; best = raw.substring(2, raw.length() - 2); }
-            }
-        }
-        return best;
-    }
 
     public void clearBook(String bid) {
         SharedPreferences.Editor e = p.edit();
         for (String k : new String[]{"p", "n", "g", "o", "l", "r", "t", "w", "wc", "s"}) e.remove(ns(bk(bid, k)));
         distinctCache = -1;
+        invalidateBookCaches();
         e.apply();
     }
 
@@ -523,6 +581,7 @@ public class Prefs {
                 .putInt(ns(bk(bid, "n")), 0);
         e.apply();
         distinctCache = -1;
+        invalidateBookCaches();
     }
 
     // ---------- global stats（今日计数 = Diary 的镜像，老键继续保留以兼容进度码） ----------
@@ -531,17 +590,9 @@ public class Prefs {
         return new SimpleDateFormat("yyyyMMdd", Locale.US).format(new Date());
     }
 
-    static String dayBefore(String d, int back) {
-        try {
-            SimpleDateFormat f = new SimpleDateFormat("yyyyMMdd", Locale.US);
-            Calendar c = Calendar.getInstance(TimeZone.getDefault());
-            c.setTime(f.parse(d));
-            c.add(Calendar.DAY_OF_YEAR, -back);
-            return f.format(c.getTime());
-        } catch (Exception e) { return d; }
-    }
 
-    public int countDay(String d) { return p.getInt(ns("d_" + d), 0); }
+    /** 某天的新词计数（d_ 镜像键）。日期两种写法都认，镜像键统一按 8 位数字存（见 Diary.compact） */
+    public int countDay(String d) { return p.getInt(ns("d_" + Diary.compact(d)), 0); }
 
     public int todayCount() { return countDay(today()); }
 
@@ -551,19 +602,22 @@ public class Prefs {
     /**
      * 指定那天的新词计数 +x。
      *
-     * 两个坑，一起补上：
+     * 三个坑，一起补上：
      * ① **day 得是「这次作答发生时的那一天」**。跨零点还在刷的话，撤销要撤昨天那笔；
-     *    写「今天」会把还是 0 的今天减成负数，昨天那笔却原封不动留着（两头都错）。
+     * 写「今天」会把还是 0 的今天减成负数，昨天那笔却原封不动留着（两头都错）。
      * ② **下限钳到 0**。d_ 是日记的镜像键，两边各有写入路径（进度码导入「只增不减」地写 d_，
-     *    撤销却同时减两边），一旦对不上账就会出现负数 → 首页显示「今日已刷 -3」，
-     *    而 Diary.active() 判这天没学过 → 打卡勾消失、连续天数被截断。计数不该有负值这种状态。
+     * 撤销却同时减两边），一旦对不上账就会出现负数 → 首页显示「今日已刷 -3」，
+     * 而 Diary.active() 判这天没学过 → 打卡勾消失、连续天数被截断。计数不该有负值这种状态。
+     * ③ **镜像键只认 8 位数字的日期（d_20261011），日记本体只认带横杠的（2026-10-11）**。
+     * 以前把 sessionDay（带横杠）直接拼进 d_ 键 → 首页 todayCount() 永远查不到、
+     * 进度码导出也按长度把这种键跳过 —— 「今日已刷一直是 0」就是它（2026-10-11 bug）。
      */
     public void addToday(String day, int x) {
         String d = (day == null || day.isEmpty()) ? today() : day;
         int v = countDay(d) + x;
         if (v < 0) v = 0;
-        p.edit().putInt(ns("d_" + d), v).apply();
-        DiaryStore.learned(d, x);
+        p.edit().putInt(ns("d_" + Diary.compact(d)), v).apply();
+        DiaryStore.learned(Diary.dashed(d), x);
     }
 
     /** 连续打卡：以 Diary 为准（含温习/自测也算打卡） */
@@ -734,6 +788,7 @@ public class Prefs {
             }
         }
         invalidateDistinct();
+        invalidateBookCaches();                 // 导入直接改了掌握位/错题本：解码缓存作废
         return new int[]{books, added, daySet.size(), wrongBooks, wrongNew};
     }
 

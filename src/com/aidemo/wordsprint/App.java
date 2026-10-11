@@ -14,8 +14,14 @@ public class App extends Application {
     @Override public void onCreate() {
         super.onCreate();
         I = this;
+        // 用户数据「固定位置」（Documents/刷单词/，卸载重装还在）：必须赶在 Prefs.of 读缓存
+        // 之前把家里的快照倒回 SharedPreferences，否则档案/进度还是旧缓存里的那份
+        try { DataStore.install(this); } catch (Throwable ignored) {}
         try { Prefs.of(this); } catch (Throwable ignored) {}
         try { Look.watch(this); } catch (Throwable ignored) {}   // 外观改过：返回旧页面时自动重建
+        // 词库预热（体检 P3-8）：wdb.dat 在后台线程提前解析好，进首页就不用卡那一拍；
+        // 解析失败也不炸启动（Db.ensureLoaded 已兜底，MainActivity 给可读提示）
+        try { Db.loadAsync(this, null); } catch (Throwable ignored) {}
     }
 
     /** 进程级 Context；极端情况下（未被系统实例化）退回 null 安全路径 */

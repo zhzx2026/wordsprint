@@ -4,7 +4,6 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:background="@drawable/bg_card_20"
-    android:layout_marginTop="9dp"
     android:gravity="center_vertical"
     android:paddingStart="0dp"
     android:paddingEnd="14dp"
@@ -84,15 +83,11 @@
             android:textSize="13sp"
             android:textStyle="bold"/>
 
-        <ProgressBar
+        <com.aidemo.wordsprint.ProgBar
             android:id="@+id/bar"
-            style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="72dp"
             android:layout_height="6dp"
-            android:layout_marginTop="5dp"
-            android:max="100"
-            android:progress="0"
-            android:progressDrawable="@drawable/progress_line"/>
+            android:layout_marginTop="5dp"/>
     </LinearLayout>
 
     </LinearLayout>

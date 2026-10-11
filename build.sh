@@ -41,10 +41,12 @@ if [ "$SBS" = "1" ]; then
   PKG="com.aidemo.wordsprint.sbs.$BID"
   # provider authorities 必须等于 运行时 getPackageName()+".update"（ApkProvider.auth），
   # 否则同机装第二个双装包会因 authorities 撞车而失败 —— 所以 manifest 用改过的副本参与 link。
-  sed "s/android:authorities=\"com.aidemo.wordsprint.update\"/android:authorities=\"$PKG.update\"/" \
+  # 图标名加「·测试」：桌面两个图标一眼分得开（用户 2026-10-10：两个不同的 App）。
+  sed -e "s/android:authorities=\"com.aidemo.wordsprint.update\"/android:authorities=\"$PKG.update\"/" \
+      -e "s|android:label=\"@string/app_name\"|android:label=\"刷单词·测试\"|" \
       AndroidManifest.xml > $B/AndroidManifest.sbs.xml
   MANIFEST=$B/AndroidManifest.sbs.xml
-  echo "== SIDE_BY_SIDE：包名 $PKG（与正式包并存、数据隔离；应用内更新已禁用）"
+  echo "== SIDE_BY_SIDE：包名 $PKG（与正式包并存、数据隔离；图标名「刷单词·测试」）"
 fi
 
 echo "== aapt2 compile"
