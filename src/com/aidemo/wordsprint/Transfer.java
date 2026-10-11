@@ -123,7 +123,7 @@ public class Transfer {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         DataOutputStream d = new DataOutputStream(bos);
         d.writeByte(ver);
-        int nb = Math.min(bs.size(), 255);      // 24 本书到不了 255，防的是调用方手滑
+        int nb = Math.min(bs.size(), 255);      // 二进制格式的书数上限，防的是调用方手滑
         d.writeByte(nb);
         for (int i = 0; i < nb; i++) {
             BookRec b = bs.get(i);

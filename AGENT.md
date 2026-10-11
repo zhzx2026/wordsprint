@@ -59,8 +59,8 @@
   合并转正时由合并 PR 把结论摘回来。
 
 ## 项目一句话
-「刷单词」：纯离线 Android 背词 App（小学 PEP 8 册 + 初中 5 册 + 高中 7 册 + 高考 3500 + 四六级 3 本
-= **24 本词书 / 16,571 词**，`res/raw/wdb.dat` 736,423 字节），
+「刷单词」：纯离线 Android 背词 App（小学 PEP 8 册 + 初中 5 册 + 高中 7 册 + 高考 3500 + 高频 E–Z + 四六级 3 本
+= **25 本词书 / 17,199 词**，`res/raw/wdb.dat` 755,130 字节），
 无 Gradle、无第三方 UI 库，`bash build.sh` 直接出签名 APK；进度经 GitHub Releases OTA；
 用户数据在公共目录 `Documents/刷单词/`（卸载重装还在）。
 > 数字别手写猜：`test/scratch/Books.java` 会把 `wdb.dat` 里每本书的词数打出来（跑法见 `test/scratch/README.md`）。

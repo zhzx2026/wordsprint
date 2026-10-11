@@ -174,6 +174,17 @@ books.sort(key=lambda b: (pub_rank(b['pub']), b['pub'], b['sortk'], b['title']))
 # 位置固定排在词书库最后（大学在两屏之后，别插到高考 3500 前面）。
 import sys as _sys
 _sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import etl_high_frequency_ez as _hf_ez                        # noqa: E402
+_hf_book = _hf_ez.make_book()
+_hf_book['words'] = _hf_book.pop('rows')
+_hf_book['sortk'] = (8, 0, 0, 0, 0)
+# 固定紧跟原有 3500 词书，避免以后全量重生成时 E-Z 书跑到大学词书或其他学段后面。
+_i3500 = next((i for i, b in enumerate(books)
+               if b['pub'] == '大纲词表' and b['title'] == '高考英语 3500 词'), None)
+if _i3500 is None:
+    raise SystemExit('raw_xlsx 缺少保留的「高考英语 3500 词」词书，无法安放 E-Z 词书')
+books.insert(_i3500 + 1, _hf_book)
+
 import etl_cet as _cet                                          # noqa: E402
 _cet_books = _cet.cet_books()
 _cet.verify_books(_cet_books)

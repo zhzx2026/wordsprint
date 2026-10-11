@@ -180,7 +180,7 @@ public class MainActivity extends Activity {
         // progressDrawable 自身的 shape，部分 ROM 下会整根「隐形」（体检 P2-20）
         ProgBar bar = (ProgBar) findViewById(R.id.goalBar);
         bar.setProgress(t.pct());
-        int gcol = Skin.c(this, t.goalDone() ? R.attr.wpGreen : R.attr.wpBrand);
+        int gcol = Skin.c(this, t.goalDone() ? R.attr.wpGoalGreen : R.attr.wpBrand);
         int[] gbc = DlProg.barColors(Skin.c(this, R.attr.wpSurface), Skin.c(this, R.attr.wpText2), gcol, gcol);
         bar.setColors(gbc[0], gbc[1]);
         TextView badge = (TextView) findViewById(R.id.goalBadge);

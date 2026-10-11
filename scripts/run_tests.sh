@@ -5,6 +5,8 @@
 set -e
 cd "$(dirname "$0")/.."
 export LANG=C.UTF-8 LC_ALL=C.UTF-8
+echo "== E–Z 词书（TSV ↔ wdb.dat 一致性、词数与库内校验）"
+python3 scripts/etl_high_frequency_ez.py --check
 echo "== ci_sync_test（删除分支 → 清资产 / 清 App 名单 / 清 Release 索引，GitHub API 故障不能误删）"
 python3 -m unittest discover -s test -p ci_sync_test.py -v
 for cand in "$PWD/tools/jdk17/bin" /var/tmp/jdk17/bin "$JAVA_HOME/bin"; do
@@ -20,7 +22,7 @@ mkdir -p "$D"
 cp "$S"/Engine.java "$S"/QREnc.java "$S"/QRUtil.java "$S"/Transfer.java "$S"/ProgressCode.java "$S"/Pack.java \
    "$S"/ZipB64.java "$S"/Diary.java "$S"/Scale.java "$S"/Heat.java "$S"/BookEdit.java \
    "$S"/Vers.java "$S"/UpCh.java "$S"/Profiles.java "$S"/DlProg.java "$S"/Order.java \
-   "$S"/WrongBook.java "$S"/ShareGeom.java "$S"/Ges.java "$S"/DataCodec.java "$D"/
+   "$S"/WrongBook.java "$S"/ShareGeom.java "$S"/Ges.java "$S"/DataCodec.java "$S"/MarkdownNotes.java "$D"/
 rm -rf test/out && mkdir -p test/out
 
 echo "== javac（同一份源码）"
@@ -28,7 +30,7 @@ javac -encoding UTF-8 -nowarn -d test/out -cp libs/zxing-core.jar \
   "$D"/*.java test/T.java test/EngineTest.java test/QRHostTest.java test/CodeHostTest.java test/PackTest.java \
   test/SharePayloadTest.java test/ScaleTest.java test/GesTest.java test/WrongBookTest.java test/ShareGeomTest.java \
   test/HeatRampTest.java test/BookEditTest.java test/VersTest.java test/UpChTest.java test/ProfilesTest.java \
-  test/DlProgTest.java test/TransferExtTest.java test/OrderTest.java test/DiaryTest.java test/DataCodecTest.java
+  test/DlProgTest.java test/TransferExtTest.java test/OrderTest.java test/DiaryTest.java test/DataCodecTest.java test/MarkdownNotesTest.java
 
 CP=test/out:libs/zxing-core.jar
 echo "== EngineTest（刷词引擎 + 回炉区间断言）"
@@ -55,6 +57,8 @@ echo "== DiaryTest（每日日志：目标量程单一真相源、只读视图�
 java -cp "$CP" DiaryTest
 echo "== DataCodecTest（用户数据固定位置：文件格式全类型往返 + 行级容错）"
 java -cp "$CP" DataCodecTest
+echo "== MarkdownNotesTest（更新说明 Markdown 渲染 + HTML/链接安全转义）"
+java -cp "$CP" MarkdownNotesTest
 echo "== WrongBookTest（错题本：错一次就进 / 连对 3 次才出 / 再错多加一次）"
 java -cp "$CP" WrongBookTest
 # ⚠️ 只有文件末尾那一个 node 测试需要门控。

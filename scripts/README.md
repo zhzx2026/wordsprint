@@ -34,6 +34,7 @@
 | `etl.py` | 全量重生成：`raw_xlsx/` + `path_index.json`（都只在维护机、不入 git）→ `res/raw/wdb.dat`。需要 `openpyxl`。**册次排序的坑见 AGENT.md 第 14 条**（选择性必修必须在必修之前匹配 + 命中即 break） |
 | `etl_primary.py` | 追加式合并小学：`data/primary_words.tsv`（768 词 / 8 册）→ 并进 `wdb.dat`，旧字符串池与旧书索引逐字节不动，写完自解析校验 |
 | `etl_cet.py` | 追加式合并大学四六级：`--fetch` 先拉原始 JSON 重写 `data/cet_words.tsv.gz`；不带参数则把三本书（1162 + 3739 + 2078 词）并进 `wdb.dat`（幂等，排在词书库最后） |
+| `etl_high_frequency_ez.py` | 将已提供的 E–Z PDF 整理结果 `data/high_frequency_ez.tsv` 幂等追加为一本 628 词的 stage 3 高频词书；`--check` 只校验源数据与打包词库、不写文件。`etl.py` 全量重建也会一并加入 |
 | `fix_book_order.py` | 不重跑 ETL 就**只重排已打包的 `wdb.dat` 书目段**（字符串池与词条索引逐字节保留、尺寸不变）。先 `--check` 看当前顺序再决定写不写。进度按 `bookId` 存取，与顺序无关 → 不丢进度 |
 
 ## 编辑期的粗筛（没有 JDK 也能跑）

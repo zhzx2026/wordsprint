@@ -1,13 +1,13 @@
 # 刷单词 WordsPrint
 
-**当前版本：v10.0（stable）** <!-- CURRENT-VERSION -->
+**当前版本：v10.1（dev）** <!-- CURRENT-VERSION -->
 
 一个精致的**离线背单词 Android 应用**：以「整本课本」为单位刷词，覆盖小学到大学的主流词表。
 无 Gradle、无第三方 UI 库，`bash build.sh` 直接出签名 APK；更新走 GitHub Releases（App 内 OTA）。
 
 ## 词库（内置，零联网）
 
-**24 本词书 · 16,571 个单词**，打包成小端二进制 `res/raw/wdb.dat`（字符串池去重后 0.70MB），
+**25 本词书 · 17,199 个单词**，打包成小端二进制 `res/raw/wdb.dat`（字符串池去重后约 0.72 MiB），
 每条词条 = 单词 + 国际音标 + 精简中文释义：
 
 | 学段 | 册数 | 词数 | 说明 |
@@ -16,6 +16,7 @@
 | 初中（人教版） | 5 | 2,568 | 七上/七下/八上/八下/九年级全 |
 | 高中（人教版，新课标） | 7 | 2,634 | 必修第一/二/三册 + 选择性必修第一~四册；词书库按**先必修后选修**排列 |
 | 高考 3500（新课标词表） | 1 | 3,622 | 高考英语 3500 词 |
+| 高频词汇（E–Z） | 1 | 628 | 来自已提供的 E–Z PDF；数据 `data/high_frequency_ez.tsv` → `scripts/etl_high_frequency_ez.py` |
 | 大学（四六级） | 3 | 6,979 | 四级真题核心词 1,162 · 四级英语词汇 3,739 · 六级英语词汇 2,078 |
 
 词书库支持搜索 + 全部/小学/初中/高中/高考 3500/大学 筛选，按学段分节，每本书带掌握进度条；
@@ -113,8 +114,8 @@ bash build.sh                    # ⑤ aapt2 → javac → d8 → zipalign → a
 `ScaleTest`（字号缩放幂等）、`GesTest`（手势映射）、`WrongBookTest`（错题本规则）、
 `ShareGeomTest`（战绩图版面）、`HeatRampTest`（热力图在每套配色下都看得见格子）、
 `BookEditTest`（范围解析 + 批量改掌握）、`VersTest`（版本/更新通道）、`ProfilesTest`（多档案隔离）、
-`DlProgTest`（更新下载进度：百分比不卡 0 + 条子在 10 套配色下都看得见）、`UpChTest`（分支清单），
-外加 Python 的 `ci_sync_test.py`（删除分支后资产/索引/清单对账，不误删）和 node 的
+`DlProgTest`（更新下载进度：百分比不卡 0 + 条子在 10 套配色下都看得见）、`UpChTest`（分支清单）、
+`MarkdownNotesTest`（更新说明 Markdown 渲染与安全转义），外加 Python 的 `ci_sync_test.py`（删除分支后资产/索引/清单对账，不误删）和 node 的
 `share_page_test.js`（在线战绩页那个手写 inflate）。**发版前必过**。
 
 产物：minSdk 26 / targetSdk 34，自适应桌面图标（vector），APK 约 0.9MB（v4.0 实测 911,769 字节，含 ZXing 解码库与两套字体）。
@@ -170,8 +171,9 @@ src/com/aidemo/wordsprint/  全部 Java 源码（无第三方依赖，libs/ 只�
 res/                        布局 / 配色 / 字符串 / 字体；values-night/ 是深色配对；raw/wdb.dat 是词库
 test/                       主机侧 JVM 测试（CI 跑的那批）；test/scratch/ 是一次性调试脚本
 scripts/                    构建 / 版本 / 发布 / ETL 辅助脚本（清单见 scripts/README.md）
+docs/ARCHITECTURE.md         面向新手的项目架构导览、数据流和安全改动指南
 share/                      在线战绩页（GitHub Pages 从 main 托管，见 BRANCHING.md §4）
-data/                       词库源数据（小学 tsv、四六级 tsv.gz）
+data/                       词库源数据（小学 tsv、E–Z 高频词 tsv、四六级 tsv.gz）
 .github/workflows/          staging.yml（测试包）· sync_ci.yml（分支删除后对账）· auto_release.yml（合并转正）· release.yml（打 tag 发布）
 AGENT.md / AGENTS.md        给接手这个仓库的 AI 的交接说明（含踩坑清单）
 VERSIONING.md               版本迭代与转正规则

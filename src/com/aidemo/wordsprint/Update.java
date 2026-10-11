@@ -7,6 +7,8 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
+import android.text.Html;
+import android.text.method.LinkMovementMethod;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
@@ -253,9 +255,11 @@ public class Update {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         if (!info.notes.isEmpty()) {
             TextView notes = new TextView(a);
-            notes.setText(info.notes);
+            notes.setText(Html.fromHtml(MarkdownNotes.toHtml(info.notes), Html.FROM_HTML_MODE_COMPACT));
             notes.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
             notes.setTextColor(Skin.c(a, R.attr.wpText2));
+            notes.setLinkTextColor(Skin.c(a, R.attr.wpBrand));
+            notes.setMovementMethod(LinkMovementMethod.getInstance());
             notes.setLineSpacing(Ui.dp(a, 4), 1f);
             notes.setBackgroundResource(R.drawable.bg_card_field);
             int np = (int) Ui.dp(a, 11);

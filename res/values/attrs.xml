@@ -19,6 +19,8 @@
     <attr name="wpChipBg" format="color"/>
     <attr name="wpStatusBar" format="color"/>
     <attr name="wpGreen" format="color"/>
+    <attr name="wpGoalGreen" format="color"/>
+    <attr name="wpGoalText" format="color"/>
     <attr name="wpGreenBg" format="color"/>
     <attr name="wpGreen1" format="color"/>
     <attr name="wpGreen2" format="color"/>

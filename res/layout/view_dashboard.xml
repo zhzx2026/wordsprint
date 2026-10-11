@@ -55,7 +55,7 @@
                 android:paddingTop="4dp"
                 android:paddingBottom="4dp"
                 android:text="@string/goal_met"
-                android:textColor="?attr/wpGreen"
+                android:textColor="?attr/wpGoalText"
                 android:textSize="11.5sp"
                 android:textStyle="bold"
                 android:visibility="gone"/>
