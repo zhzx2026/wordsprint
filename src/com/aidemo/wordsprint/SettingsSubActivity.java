@@ -386,6 +386,9 @@ public class SettingsSubActivity extends Activity {
             ((TextView) findViewById(R.id.tvProfileNow)).setText(getString(R.string.profile_now_fmt,
                     Prefs.activeName(), Prefs.profiles().list.size()));
         } catch (Throwable ignored) {}
+        try {
+            ((TextView) findViewById(R.id.tvBackup)).setText(DataStore.backupStatus(this));
+        } catch (Throwable ignored) {}
     }
 
     @Override protected void onPause() {

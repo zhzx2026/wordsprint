@@ -327,6 +327,10 @@
     <string name="nav_data_desc">档案切换 · 进度码导出与扫码导入 · 战绩分享</string>
     <string name="nav_about">关于与更新</string>
     <string name="set_data_title">数据</string>
+    <string name="backup_ok">数据备份：✓ 已写入 %1$s（Documents/刷单词，卸载重装后自动恢复）</string>
+    <string name="backup_pending">数据备份：等待首次写入（刷几个词就会生成）…</string>
+    <string name="backup_fail">数据备份：✗ 上次写入失败——公共目录写不进，卸载重装会丢进度</string>
+    <string name="backup_no_perm">数据备份：✗ 未授权存储——不授权则卸载重装会丢进度</string>
     <string name="set_speak_desc">看卡与翻卡时自动发音</string>
     <string name="set_phonetic_desc">单词下方显示音标</string>
     <string name="set_sound_desc">记住 / 回炉的轻音效与振动</string>

@@ -16,23 +16,30 @@
 - dev 不合 main、不打 tag；tag 只打 stable（`v2.0`…）；旧 `1.0.x` 三段号已退役（`check` 判 legacy，CI 拒绝）。
 - `promote.sh` 不带版本号参数（自动从当前 dev 推导）；`push_release.sh` 是 dev 迭代（bump→构建→commit，不 tag 不 push）。
 
-## 📦 装机测试包 = 双装新 App（用户 2026-10-10 定版，与发版铁律同级）
-**出分支测试包 = 出一个「不同 id 的新 App」，不是应用内更新：**
-- `bash scripts/staging_build.sh`（默认就出双装包）→ CI 构建 → Actions Artifacts 里下载 apk → **手机手动安装**。
-- 双装包名 `com.aidemo.wordsprint.sbs.<分支id>`：桌面上多一个「刷单词」图标，与正式包**并存**、**数据隔离**；
-  应用内更新对它无效（它是独立 App）。
-- 想出「更新式」测试包（同包名覆盖安装、刷新 ci 坑位 / 分支通道）才用 `SBS=0 bash scripts/staging_build.sh`（备用路径）。
-- 同机对比旧版/新版：装一个双装包就够了（2 个图标并存，互不干扰）。
+## 📦 装机测试包 = 更新式，从正式版里下载安装（用户 2026-10-10 定版；同日二次修正，覆盖上午的双装决定）
+**用户原话：「我要的是从正式版下载安装的，不是手动！」——分支测试包默认出「更新式」：**
+- `bash scripts/staging_build.sh`（默认就出更新式包）→ CI 构建并刷预发布 Release `ci` 的分支坑位 →
+  **手机上打开正式版 → 设置 → 关于与更新 → 更新源「分支」→ 选本分支 → 检查更新 → 立即更新**
+  （应用内下载 + 系统安装器覆盖安装，同包名同签名，**进度直接带过去**）。
+- 更新式包 = 同包名 `com.aidemo.wordsprint` 覆盖安装（versionCode 比正式版高即可装）。
+- 「双装」降为备用：`SBS=1 bash scripts/staging_build.sh` 出 `.sbs.<分支id>` 后缀的新 App
+  （手动安装、与正式包并存、数据隔离）——只有用户明确要对比双机/双图标时才用。
+- **千万别手动改包名/签名**：覆盖安装要求同包名同签名（KEYSTORE_B64 与线上同一把钥匙）。
 
 ## 💾 用户数据 = 固定位置存储（用户 2026-10-10 定版，与发版铁律同级）
 **「用户数据存储在一个固定的位置，卸载重装还在。」** 实现在 `DataStore.java` + `DataCodec.java`：
 - 用户数据（学习进度 / 错题本 / 打卡 / 档案 / 设置，即 SharedPreferences `wp` 的全部内容）镜像到
   **公共目录 `Documents/刷单词/wp-<包名>.dat`** —— 那份文件是数据**真正的家**，卸载 App 后文件还在，重装回来原样恢复。
+- 家写**两份**：`Documents/刷单词/wp-<包名>.dat`（主）+ `Download/刷单词/wp-<包名>.dat`（备）；
+  读时哪份能解出合法快照用哪份（v9.4 加固，装机实测丢进度后定的）。
 - **文件名带包名** → 正式包与各双装包各存各的（数据隔离）。
-- SharedPreferences 只是工作缓存：启动时家里→缓存（家赢），此后任何变化防抖 ~700ms 写回家。
+- SharedPreferences 只是工作缓存。铁律（v9.4 修正）：**缓存非空就以缓存为准**，只有全新安装/清过数据
+  才从家里倒回 —— 家里的快照可能旧一截（防抖没到点就被系统杀），无脑「家赢」会把用户刚刷的词退掉。
+- 写盘：防抖 300ms + **每个页面退后台立刻补写**（ActivityLifecycleCallbacks）。
 - 分版本读写：API 26–29 走 File API（`WRITE_EXTERNAL_STORAGE`，Android 10 靠 `requestLegacyExternalStorage`）；
-  API 30+ 走 MediaStore 自己的 Documents 文件（免权限，卸载重装后 owner 仍是同包名，读得到）。
-  **任何失败都静默退回纯缓存，绝不让 App 用不了**。
+  API 30+ 走 MediaStore（Documents + Download 双写，免权限，卸载重装后 owner 仍是同包名，读得到）。
+- **备份状态可见**（设置 → 数据与档案）：成功/未授权/写入失败都写在脸上——别再静默失败。
+  任何 I/O 失败都退回纯缓存，绝不让 App 用不了。
 - 顺序死命令：`App.onCreate` 里 `DataStore.install()` 必须在 `Prefs.of()` **之前**（先倒回家里的数据，Prefs 才读得到）。
 - 主机测试：`DataCodecTest`（全类型往返 + 行级容错 + 魔数校验），随 `run_tests.sh` 跑。
 
@@ -112,10 +119,9 @@ bash scripts/version.sh status          # 先看当前版本/通道/code
 bash scripts/version.sh bump-dev        # 每轮迭代交付前：+0.1、code 取 max+1、同步三处标识
 # 然后把 RELEASE_NOTES.md 换成**这一版**的人话文案（旧文案挪 CHANGELOG.md，见坑 15）
 git add -A && git commit -m "dev vX.Y：……"
-bash scripts/staging_build.sh           # 推当前分支 → staging.yml：版本门禁 + run_tests.sh + 真钥匙构建
-#   产物：Actions Artifacts 里的 wordsprint-staging-vX.Y-<分支id>-r<run号>-sbs（zip，解压得 apk）
-#   手机装：下载 zip → 解压 → 直接安装（**新 App**，桌面多一个图标，与正式包数据隔离）
-#           （要「覆盖安装式」的包才用 SBS=0；那种才会刷 ci 坑位/分支通道）
+bash scripts/staging_build.sh           # 推当前分支 → staging.yml：版本门禁 + run_tests.sh + 真钥匙构建 + 刷 ci 坑位
+#   装机：手机打开**正式版** → 设置 → 关于与更新 → 更新源「分支」→ 选本分支 → 检查更新 → 立即更新
+#         （同包名覆盖安装、进度保留；要双装新 App 才用 SBS=1，产物在 Actions Artifacts 手动装）
 #   撤本分支坑位（仅更新式包才有）：gh release delete-asset ci update-<本分支id>.json -y
 # 本机有工具链 + keystore 时可以一条龙：bash scripts/push_release.sh "本次改动说明"（bump→build→commit，同样不 tag 不 push）
 ```
@@ -150,8 +156,8 @@ gh pr merge <n> --merge                  # 历史上都是用 merge commit（保
   fine-grained、只勾本仓库、Contents:RW、7 天，用完提醒撤销；**绝不把 token 写进任何文件/仓库内容/README**。
 - 手机侧更新行为（**正式版**）：内置默认源 `github.com/zhzx2026/wordsprint/releases/latest/download/update.json`；
   前台每 60 秒静默查一次（`Update.startWatch` 的 150 × 400ms）+ 进首页立刻查一次，发现新版首页亮横幅 + 弹窗，
-  同版本只弹一次窗。测试包（X.Y）默认盯自己的「分支」坑位（`VersTest` 有断言）——但**双装包的更新是关的**，
-  测试包怎么装见上文「装机测试包 = 双装新 App」。
+  同版本只弹一次窗。测试包（X.Y）默认盯自己的「分支」坑位（`VersTest` 有断言）；
+  测试包怎么装见上文「装机测试包 = 更新式」。
 - 发布完自证（沙箱 curl 不到 release-assets 域，一律用 API 元数据）：
 ```bash
 gh api /repos/zhzx2026/wordsprint/releases/tags/vX.Y --jq '.assets[]|{name,size,digest}'   # apk + update.json 在不在、多大
