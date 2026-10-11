@@ -106,13 +106,28 @@ public final class Heat {
      * 于是 x 落在星期标签区（网格左边）时算出 -0.4 → 截成 0 → 判成第 0 列，
      * 点标签会弹出最左边那一天的明细。这里改用 floor。
      */
+    /**
+     * 网格原点（视图内坐标）：**绘制与触点换算必须走同一套**。
+     * 2026-10-11「点的格子有偏移」：HeatView.onDraw 给 paint() 传原点时漏加了 labelW，
+     * 而 hitCell 按「padLeft + xOff + labelW」减 —— 画出来的和点下去的差一截（约两个格子）。
+     * 分享图（ShareGeom.gridLeft() = … + LABEL_W）一直是对的，抽成共用函数把两处钉死在一起。
+     */
+    public static float gridX(float padLeft, float xOff, float labelW) {
+        return padLeft + xOff + labelW;
+    }
+
+    /** 网格原点 y（见 {@link #gridX}） */
+    public static float gridY(float padTop, float labelH) {
+        return padTop + labelH;
+    }
+
     public static int hitCell(float x, float y, float padLeft, float padTop, float xOff,
                               float labelW, float labelH, float cell, float gap, int cols) {
         if (Float.isNaN(x) || Float.isNaN(y)) return -1;      // 脏坐标：(int) NaN 会截成 0，反而命中第一格
         float step = cell + gap;
         if (step <= 0f || cols <= 0) return -1;
-        float gx = x - padLeft - xOff - labelW;
-        float gy = y - padTop - labelH;
+        float gx = x - gridX(padLeft, xOff, labelW);
+        float gy = y - gridY(padTop, labelH);
         int col = (int) Math.floor(gx / step);
         int row = (int) Math.floor(gy / step);
         if (col < 0 || row < 0 || col >= cols || row > 6) return -1;

@@ -129,9 +129,13 @@ public class MainActivity extends Activity {
         heat = (HeatView) dash.findViewById(R.id.heat);
         heat.setContentDescription(getString(R.string.heat_title));   // 无障碍（体检 P4-5）
         heat.setOnPick(new HeatView.OnPick() {
-            @Override public void onPick(String day, Diary.Day d) {
-                if (d == null) { toast(getString(R.string.heat_none) + " · " + day); return; }
-                toast(getString(R.string.heat_day_info, day, d.learned, d.rev, d.goal));
+            @Override public void onPick(String day, Diary.Day d, float sx, float sy) {
+                // 自绘小气泡贴着点中的格子弹（用户 2026-10-11：不要系统 Toast），
+                // 顺便看清点的是哪一天
+                CharSequence s = d == null
+                        ? getString(R.string.heat_none) + " · " + day
+                        : getString(R.string.heat_day_info, day, d.learned, d.rev, d.goal);
+                Ui.bubble(MainActivity.this, heat, sx, sy, s);
             }
         });
         final View upBanner = dash.findViewById(R.id.upBanner);

@@ -34,7 +34,12 @@ import java.util.List;
  */
 public class HeatView extends View {
 
-    public interface OnPick { void onPick(String day, Diary.Day d); }
+    public interface OnPick {
+        /**
+         * @param sx/sy 被点格子中心的**屏幕坐标**（气泡贴着它弹，也方便用户看清点的是哪格）
+         */
+        void onPick(String day, Diary.Day d, float sx, float sy);
+    }
 
     /** 列数上限（曾经的一年档：53 周）—— 现在只当自适应时的上限用，界面上没有这一档 */
     public static final int WEEKS = 53;
@@ -154,8 +159,11 @@ public class HeatView extends View {
         // 两个字宽 = 偏移 + 一个字，所以永远不会切到字
         tp.setTextSize(Heat.labelFont(cell, LABEL_FONT_MIN_DP * dn, LABEL_FONT_MAX_DP * dn));
         tp.setColor(Skin.c(getContext(), R.attr.wpText2));
-        // 空格子用 ramp[0]（浅灰）——以前用 wpSurface，和卡片底色一样，整张网格「看不见格子」
-        paint(cv, diary, today, getPaddingLeft() + xOff, getPaddingTop() + labelH, cell, gap, cols, ramp,
+        // 空格子用 ramp[0]（浅灰）——以前用 wpSurface，和卡片底色一样，整张网格「看不见格子」。
+        // 原点必须走 Heat.gridX/gridY —— 2026-10-11「点的格子有偏移」就是这里漏加了 labelW，
+        // 画的比 hitCell 算的往左挪了一截，点哪格都偏约两个格子（分享图 ShareGeom 一直是加的）。
+        paint(cv, diary, today, Heat.gridX(getPaddingLeft(), xOff, labelW), Heat.gridY(getPaddingTop(), labelH),
+                cell, gap, cols, ramp,
                 Skin.c(getContext(), R.attr.wpText2), ramp[0],
                 Skin.c(getContext(), R.attr.wpText2), tp, cellDays, pc);
     }
@@ -170,7 +178,14 @@ public class HeatView extends View {
                 labelW, labelH, cell, gap, cols);
         if (idx >= 0 && idx < cellDays.size()) {
             String day = cellDays.get(idx);
-            if (day != null && !day.isEmpty()) pick.onPick(day, diary.peek(day));
+            if (day != null && !day.isEmpty()) {
+                float step = cell + gap;
+                float cx = Heat.gridX(getPaddingLeft(), xOff, labelW) + (idx / 7) * step + cell / 2f;
+                float cy = Heat.gridY(getPaddingTop(), labelH) + (idx % 7) * step + cell / 2f;
+                int[] loc = new int[2];
+                getLocationOnScreen(loc);
+                pick.onPick(day, diary.peek(day), loc[0] + cx, loc[1] + cy);
+            }
         }
         return true;
     }

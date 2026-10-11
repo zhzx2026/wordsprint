@@ -326,6 +326,46 @@ public class Ui {
         try { r.run(); } catch (Throwable ignored) {}
     }
 
+    /**
+     * 小气泡提示（用户 2026-10-11：「不要用系统的提示而是自己编写的」）：自己画的圆角纸卡，
+     * 贴在触点上方弹出，2.6 秒自动收；点外面 / 返回键也收。热力图点格子的当天明细用它，
+     * 不再用系统 Toast —— 气泡就贴在点中的格子上，顺便看清点的是哪一天。
+     */
+    public static void bubble(Activity a, View anchor, float screenX, float screenY, CharSequence text) {
+        try {
+            float d = a.getResources().getDisplayMetrics().density;
+            TextView tv = new TextView(a);
+            tv.setText(text);
+            tv.setTextSize(13f);
+            tv.setTextColor(Skin.c(a, R.attr.wpText));
+            tv.setBackgroundResource(R.drawable.bg_card_28);
+            int hp = (int) (14 * d), vp = (int) (10 * d);
+            tv.setPadding(hp, vp, hp, vp);
+            tv.setMaxWidth((int) (280 * d));
+            Fonts.scaleTree(tv, a);
+            final android.widget.PopupWindow pw = new android.widget.PopupWindow(tv,
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT, true);
+            pw.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(0x00000000));
+            pw.setOutsideTouchable(true);
+            pw.setAnimationStyle(R.style.Anim_Dialog_Card);     // 同卡片弹窗：微回弹进、干净淡出
+            tv.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+            int w = tv.getMeasuredWidth(), h = tv.getMeasuredHeight();
+            float sw = a.getResources().getDisplayMetrics().widthPixels;
+            float sh = a.getResources().getDisplayMetrics().heightPixels;
+            int x = Math.round(screenX - w / 2f);
+            x = Math.max((int) (8 * d), Math.min(x, (int) (sw - w - 8 * d)));
+            int y = Math.round(screenY - h - 12 * d);           // 贴在格子上方
+            if (y < (int) (24 * d)) y = Math.round(screenY + 12 * d);   // 顶不上去就翻到下方
+            y = Math.max((int) (8 * d), Math.min(y, (int) (sh - h - 8 * d)));
+            pw.showAtLocation(anchor, android.view.Gravity.NO_GRAVITY, x, y);
+            tv.postDelayed(new Runnable() {
+                @Override public void run() { try { pw.dismiss(); } catch (Throwable ignored) {} }
+            }, 2600);
+        } catch (Throwable ignored) {}
+    }
+
     /** 内容可能超高的弹窗（长文本码、更新说明）套一层"最多这么高、超出可滚动"的容器，
      *  否则按钮会被顶出屏幕外，用户点不到（表现就是"粘贴了却没反应"）。 */
     public static android.widget.ScrollView scrollable(View content, int maxDp) {

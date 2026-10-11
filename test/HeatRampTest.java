@@ -200,6 +200,12 @@ public class HeatRampTest {
                     "padLeft=8 / padTop=3 / xOff=5 时原点跟着挪");
             check(Heat.hitCell(25f, 20f, 8f, 3f, 5f, labelW, labelH, cell, gap, cols) == -1,
                     "不挪的话这个点就落到网格外了（说明偏移真的参与计算）");
+            // 2026-10-11「点的格子有偏移」回归：绘制与点击换算必须共用 Heat.gridX/gridY ——
+            // HeatView.onDraw 曾漏加 labelW，画的和点的差一截（约两个格子）
+            check(Heat.gridX(8f, 5f, 20f) == 33f, "网格原点 x = padLeft + xOff + labelW（漏加 labelW 就偏）");
+            check(Heat.gridY(3f, 16f) == 19f, "网格原点 y = padTop + labelH");
+            check(Heat.hitCell(33f + 1f, 19f + 1f, 8f, 3f, 5f, labelW, labelH, cell, gap, cols) == 0,
+                    "原点函数与 hitCell 对齐：原点内侧一格必中 idx 0");
             // 格间空隙不算命中：gap 有 cell 的 28% 那么宽，算给上一格会「点这格弹出隔壁那天」
             check(Heat.hitCell(32f, 20f, 0f, 0f, 0f, labelW, labelH, cell, gap, cols) == -1,
                     "落在格间空隙里不命中");
