@@ -350,7 +350,6 @@
     <string name="dir_both">两个方向都要</string>
     <string name="dir_saved">刷词方向已改为「%1$s」</string>
     <string name="tap_reveal_rev">中译英 · 想好了点一下，翻面对答案</string>
-    <string name="tap_reveal_rev2">反过来再考一遍 · 想好了点一下，翻面对答案</string>
     <string name="cta_with_dir">%1$s · %2$s</string>
     <string name="profile_rename">改名</string>
     <string name="ges_subtitle">六个位置，各挑一个动作</string>

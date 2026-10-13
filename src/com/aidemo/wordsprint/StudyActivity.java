@@ -194,8 +194,7 @@ public class StudyActivity extends Activity {
      * 会让「正在用的排列」和「存下来的种子」对不上，下一组的 pos 就指到另一副牌的位置去了。
      */
     private void buildEngine(boolean redo) {
-        // 刷词方向（用户 2026-10-13：可以设置英译中 / 中译英 / 两个方向都要）。
-        // 每次开组现读一遍（见 startGroup），一组之内不换方向 —— 半组英译中半组中译英最让人摸不着头脑。
+        // 出牌规则（方向 + 牌堆怎么摆）由 applyPlan() 统一喂给引擎，见那里的注释。
         final java.util.BitSet mastered = prefs.mastered(book.id, book.n);
         engine = new Engine(book.n, buildOrder(), mastered,
                 reviewMode ? 0 : prefs.next(book.id),
@@ -224,7 +223,22 @@ public class StudyActivity extends Activity {
                         if (mode == MODE_WORD) prefs.addToday(sessionDay, 1);
                     }
                 });
+        applyPlan();
+    }
+
+    /**
+     * 把「这一轮怎么出牌」告诉引擎（用户 2026-10-13 定的三条）：
+     *   · 方向：英译中 / 中译英 / 两个方向都要（{@link Prefs#direction}）；
+     *   · 牌堆洗不洗：跟这本书的「刷词顺序」走 —— 课本顺序 = 前面英译中、后面中译英；
+     *     随机打乱 = 张数翻倍后整体洗匀、中英混着出；
+     *   · 洗牌种子：跟刷词顺序用的是同一颗种子，所以同一轮里「重新开始」和现场恢复的牌堆对得上。
+     * 建引擎 / 开组 / 重新开始三处都调 —— 设置里改完，下一组生效，一组之内不换。
+     */
+    private void applyPlan() {
         engine.setDirMode(prefs.direction());
+        boolean shuffled = mode == MODE_WORD && prefs.order(book.id) == 1;
+        engine.setShuffleCards(shuffled);
+        if (shuffled) engine.setCardSeed(prefs.ensureOrderSeed(book.id));
     }
 
     /**
@@ -240,7 +254,7 @@ public class StudyActivity extends Activity {
     }
 
     private void startGroup() {
-        engine.setDirMode(prefs.direction());          // 设置里改完方向，下一组生效
+        applyPlan();                                   // 改了设置/换了顺序，下一组生效
         startTs = SystemClock.elapsedRealtime();
         result.setVisibility(View.GONE);
         confetti.setVisibility(View.GONE);
@@ -325,7 +339,7 @@ public class StudyActivity extends Activity {
      * 开头重扫（跳过已记住的词）。错题本、已掌握记录都原样保留。
      */
     private void startFresh() {
-        engine.setDirMode(prefs.direction());
+        applyPlan();
         startTs = SystemClock.elapsedRealtime();
         result.setVisibility(View.GONE);
         confetti.setVisibility(View.GONE);
@@ -433,9 +447,7 @@ public class StudyActivity extends Activity {
         meaningBox.setTranslationY(0f);
         // 释义要翻面才给（「看释义」是用户自己绑在某个手势上的动作之一）
         meaningBox.setVisibility(View.GONE);
-        tvHint.setText(getString(cn2en
-                ? (engine.secondPass() ? R.string.tap_reveal_rev2 : R.string.tap_reveal_rev)
-                : R.string.tap_reveal));
+        tvHint.setText(getString(cn2en ? R.string.tap_reveal_rev : R.string.tap_reveal));
         tvHint.setVisibility(View.VISIBLE);
         tvHint.setAlpha(1f);
         actions.animate().cancel();
