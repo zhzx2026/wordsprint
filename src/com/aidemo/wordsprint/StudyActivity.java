@@ -553,7 +553,8 @@ public class StudyActivity extends Activity {
     private void answer(final boolean ok) {
         if (engine.current() < 0 || engine.busy()) return;
         int w = engine.current();
-        final boolean second = engine.secondPass();       // 这一遍是不是「两个方向都要」里的第二遍
+        // 这一遍是不是「两个方向都要」里倒过来考的那一遍（倒着答对不加「今日已刷」，见 Engine.answer）
+        final boolean second = engine.secondPass();
         tick();                                    // 把这段停留时间记到今天的时长里
         // 撤销用：先把「这次作答会改到的东西」拍下来（错题本 / 是否首次记住 / 模式）
         wbSnap = wb.copy();
@@ -561,7 +562,7 @@ public class StudyActivity extends Activity {
         // 而撤销以前是无条件 -1。于是在错词复习里点「记住了」再点「上一个」，
         // 就会凭空减掉一个从没加过的数 → 今日已刷变负 → Diary.active() 判这天没学过
         // → 打卡勾消失、连续天数被截断，而用户明明刷了词。
-        // 第二遍不加「今日已刷」（掌握状态是第一遍定的，见 Engine.answer）——
+        // 倒着那一遍不加「今日已刷」（掌握状态是正着那遍定的，见 Engine.answer）——
         // 这里跟着判，否则撤销会把一个从没加过的数减掉
         lastFresh = ok && mode == MODE_WORD && !second && !engine.masteredBitSet().get(w);
         lastOk = ok;
@@ -579,21 +580,18 @@ public class StudyActivity extends Activity {
             sfx.miss();
         }
         updateHud();
-        // 「两个方向都要」：这一遍是英译中、且这个词的反方向还没考 → 不换词，把同一张卡反着再摆一遍
-        // （engine.beginSecondPass 会重新回调 onShow → fill 按新方向重铺）
-        final boolean again = engine.needSecondPass();
         long cd = dur(130);
         if (cd == 0) {
             card.setTranslationX(0f);
             card.setAlpha(1f);
-            if (again) engine.beginSecondPass(); else engine.next();
+            engine.next();
             return;
         }
         card.animate().alpha(0f).translationX(ok ? 70f : -70f).setDuration(cd).withEndAction(new Runnable() {
             @Override public void run() {
                 card.setTranslationX(0f);
                 card.setAlpha(1f);
-                if (again) engine.beginSecondPass(); else engine.next();
+                engine.next();
             }
         }).start();
     }

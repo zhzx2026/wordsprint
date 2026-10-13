@@ -27,6 +27,19 @@ public class Engine {
     /** 方向值兜底：越界/脏值一律当默认的英译中（绝不因为一个坏数字把卡片搞成空白） */
     public static int clampDir(int d) { return d < EN2CN || d > BOTH ? EN2CN : d; }
 
+    /**
+     * 「两个方向都要」时，同一个词的反向那一遍隔几张再出现：**本组张数的两成**，最少 2 张。
+     * 用户 2026-10-13：「同一个单词中译英和英译中不要太近」＋「距离不超过 0.2len」——
+     * 50 张的组 → 隔 10 张；5 张的小组也不会一张接一张（最少 2）。
+     */
+    public static final float BACK_GAP_RATIO = 0.2f;
+
+    /** 见 {@link #BACK_GAP_RATIO}：按本组张数算反向那一遍的间隔 */
+    public static int backGapFor(int groupTotal) {
+        int g = Math.round(Math.max(0, groupTotal) * BACK_GAP_RATIO);
+        return g < 2 ? 2 : g;
+    }
+
     public final int n;
     public final int[] order;
     public final BitSet mastered;
@@ -36,10 +49,20 @@ public class Engine {
     public int pos;
     private boolean review;          // 错词复习模式：不推进 pos
     private int dirMode = EN2CN;     // 本组用哪个方向（组开始时从设置读一次，组中不随设置变）
-    private int pass;                // 这张卡走到第几遍：0 第一遍 · 1 第二遍（只有 BOTH 模式有第二遍）
+    private int pass;                // 现在这张卡是哪个方向：0 正着（英译中）· 1 倒过来（中译英）
+    private int backGap = 2;         // 反向那一遍隔几张再出现（开组时按本组张数算，见 backGapFor）
 
     private final ArrayDeque<Integer> q = new ArrayDeque<>();
     private final List<int[]> due = new ArrayList<>();
+    /**
+     * 「两个方向都要」里**反向那一遍**的排期表：{词号, 到期序号}。
+     *
+     * 用户 2026-10-13：「同一个单词中译英和英译中不要太近」—— 同一个词先英译中，
+     * 过几张再倒过来考一遍，别一张接一张地出（那样只是把同一张卡连读两遍，不进脑子）。
+     * 到期条件、消费规则跟 {@link #due}（回炉表）一模一样，只是优先级别排在回炉之后：
+     * 到期回炉 → 到期反向遍 → 新词 → 组尾按最早到期收尾。
+     */
+    private final List<int[]> back = new ArrayList<>();
     private final Set<Integer> firstShown = new HashSet<>();
     private int drawn, groupTotal, okCount, answers, firstOk, requeues;
     /**
@@ -61,7 +84,7 @@ public class Engine {
     // ---- 撤销上一步作答（点错「记住了 / 不认识」时救回来）----
     // 每次 answer() 前整份状态拍一张快照；undo() 原样还原并把当前卡摆回那张（没翻面的状态）。
     private int[] snapQ;
-    private int[][] snapDue;
+    private int[][] snapDue, snapBack;
     private int[] snapFirst;
     private BitSet snapMastered;
     private int snapDrawn, snapTotal, snapOk, snapAns, snapFirstOk, snapRequeue, snapCurrent, snapPos, snapGroupEnd;
@@ -93,27 +116,14 @@ public class Engine {
     /** 现在这张卡该按哪个方向出（BOTH 模式下第一遍英译中、第二遍中译英） */
     public int dir() { return dirMode == BOTH ? (pass == 0 ? EN2CN : CN2EN) : dirMode; }
 
-    /** 现在这张卡是不是「两个方向都要」里的第二遍 */
+    /**
+     * 现在这张卡是不是「两个方向都要」里**倒过来**的那一遍（中译英）。
+     * 掌握状态只看正着的那一遍；这一遍答不出来算这个词还没真会，会回炉。
+     */
     public boolean secondPass() { return pass == 1; }
 
-    /**
-     * 第一遍答完了、这张卡还差反方向那一遍（「两个方向都要」模式）。
-     * 交给上层在换卡动画之后调用 —— 和 {@link #next()} 一样，会在同一张词上回调
-     * {@link Listener#onShow}，但**不推进队列**（这个词还没走完）。
-     */
-    public boolean needSecondPass() { return dirMode == BOTH && pass == 0 && current >= 0; }
-
-    /**
-     * 把同一张卡摆成第二遍（反方向）：只把 pass 推到 1、清掉「忙」和「已翻面」，队列/掌握位/计数都不动。
-     * 词的掌握状态在第一遍就定了 —— 第二遍只判「反方向答没答出来」，见 {@link #answer(boolean)}。
-     */
-    public void beginSecondPass() {
-        if (current < 0) return;
-        pass = 1;
-        busy = false;
-        flipped = false;
-        L.onShow(current);
-    }
+    /** 排期表里还压着几个词的反向遍（测试用；界面不读） */
+    public int backCount() { return back.size(); }
     public int doneInGroup() { return Math.max(0, groupTotal - (q.size() + due.size())); }
     public int accuracy() { return answers == 0 ? 100 : (int) Math.round(firstOk * 100.0 / answers); }
     public boolean redoAll() { return redoAll; }
@@ -142,9 +152,10 @@ public class Engine {
         review = false;
         q.clear(); due.clear(); firstShown.clear();
         drawn = 0; okCount = 0; answers = 0; firstOk = 0; requeues = 0;
-        current = -1; busy = false; flipped = false; resumeElapsed = 0; pass = 0;
+        current = -1; busy = false; flipped = false; resumeElapsed = 0; pass = 0; back.clear();
         groupEnd = slice(pos);
         groupTotal = q.size();
+        backGap = backGapFor(groupTotal);           // 本组张数定了，反向那一遍的间隔跟着定
         if (groupTotal == 0 && !redoAll && pos > 0 && !allMastered()) {
             // 从 pos 往后一个未掌握的词都没有，但全书并没有刷完 → 组指针被挪过头了。
             // 三条来路都可能：旧版本 pos += groupSize 的漂移、随机模式下批量改进度把词号
@@ -187,7 +198,7 @@ public class Engine {
         review = false;
         q.clear(); due.clear(); firstShown.clear();
         drawn = 0; okCount = 0; answers = 0; firstOk = 0; requeues = 0;
-        current = -1; busy = false; flipped = false; resumeElapsed = 0; pass = 0;
+        current = -1; busy = false; flipped = false; resumeElapsed = 0; pass = 0; back.clear();
         q.addAll(head);
         int p = from < 0 ? 0 : from;
         while (q.size() < groupSize && p < order.length) {
@@ -198,6 +209,7 @@ public class Engine {
         }
         groupEnd = p;
         groupTotal = q.size();
+        backGap = backGapFor(groupTotal);
         if (groupTotal == 0) {
             // 一个都没拼到：多半是剩余的词全被别处标成「记住了」。同 startGroup 的自愈 ——
             // 全书其实没刷完就回 0 重扫（可能还有回炉中的错词散在后面），确实刷完才算学完。
@@ -218,11 +230,12 @@ public class Engine {
         review = true;
         q.clear(); due.clear(); firstShown.clear();
         drawn = 0; okCount = 0; answers = 0; firstOk = 0; requeues = 0;
-        current = -1; busy = false; flipped = false; resumeElapsed = 0; pass = 0;
+        current = -1; busy = false; flipped = false; resumeElapsed = 0; pass = 0; back.clear();
         groupEnd = pos;                      // 复习不推进组指针，groupEnd 也就等于 pos
         if (idxs == null || idxs.length == 0) { L.onBookEmpty(); return; }
         for (int w : idxs) q.addLast(w);
         groupTotal = q.size();
+        backGap = backGapFor(groupTotal);
         next();
     }
 
@@ -234,25 +247,42 @@ public class Engine {
      * 4) 两者皆空 → 组完成。
      */
     public void next() {
-        if (q.isEmpty() && due.isEmpty()) { finishGroup(); return; }
-        int best = -1;
+        if (q.isEmpty() && due.isEmpty() && back.isEmpty()) { finishGroup(); return; }
+        int bestDue = -1;
         for (int i = 0; i < due.size(); i++) {
-            if (due.get(i)[1] <= drawn && (best < 0 || due.get(i)[1] < due.get(best)[1])) best = i;
+            if (due.get(i)[1] <= drawn && (bestDue < 0 || due.get(i)[1] < due.get(bestDue)[1])) bestDue = i;
         }
-        if (best >= 0) {
-            current = due.remove(best)[0];
+        int bestBack = -1;
+        for (int i = 0; i < back.size(); i++) {
+            if (back.get(i)[1] <= drawn && (bestBack < 0 || back.get(i)[1] < back.get(bestBack)[1])) bestBack = i;
+        }
+        if (bestDue >= 0) {
+            current = due.remove(bestDue)[0];        // 到期的回炉词最优先（真「隔 N 张再出现」）
+            pass = 0;
+        } else if (bestBack >= 0) {
+            current = back.remove(bestBack)[0];      // 到期的反向遍：这个词该倒过来考了
+            pass = 1;
         } else if (!q.isEmpty()) {
-            current = q.pollFirst();
+            current = q.pollFirst();                 // 新词
+            pass = 0;
+        } else if (!due.isEmpty()) {
+            current = due.remove(earliest(due))[0];  // 组尾：新词出完，按最早到期收尾
+            pass = 0;
         } else {
-            best = 0;
-            for (int i = 1; i < due.size(); i++) if (due.get(i)[1] < due.get(best)[1]) best = i;
-            current = due.remove(best)[0];
+            current = back.remove(earliest(back))[0];
+            pass = 1;
         }
         drawn++;
         busy = false;
         flipped = false;
-        pass = 0;                     // 新出的这张从第一遍开始
         L.onShow(current);
+    }
+
+    /** 最早到期的那个下标（列表非空时才调用） */
+    private static int earliest(List<int[]> list) {
+        int best = 0;
+        for (int i = 1; i < list.size(); i++) if (list.get(i)[1] < list.get(best)[1]) best = i;
+        return best;
     }
 
     /** 记录一次作答（不含动画）；随后应调用 next() */
@@ -261,10 +291,10 @@ public class Engine {
         snapshot();                       // 先拍照，答错了还能撤销
         busy = true;
         if (pass == 1) {
-            // 第二遍（中译英）：**掌握状态在第一遍就定了**，这里不再动它 —— 否则一个词会在两遍之间
-            // 忽而掌握忽而不掌握，「今日已刷」也会跟着来回加减。
-            // 这一遍只判「反方向答没答出来」：答不出来 = 这个词还得再见，按「已掌握」的间隔回炉，
-            // 并计入回炉数（卡片上的「本组已错 N 次」、结算页的「回炉」都看得见）。
+            // 倒过来那一遍（中译英）：**掌握状态在正着那遍就定了**，这里不再动它 —— 否则一个词会在
+            // 两遍之间忽而掌握忽而不掌握，「今日已刷」也会跟着来回加减。
+            // 这一遍只判「倒着答没答出来」：答不出来 = 这个词还得再见，按「已掌握」的间隔回炉，
+            // 并计入回炉数（卡片上的「本组已错 N 次」、结算页的「回炉」都看得见），回来时先正着再考。
             // 不进 answers/正确率的分母：两个方向都考，分母翻倍的话全答对也只有 50%，
             // 那个数字就成了一句假话。
             if (!ok) {
@@ -287,6 +317,9 @@ public class Engine {
                 mastered.set(current);
                 L.onMastered(current);
             }
+            // 「两个方向都要」：答对了才排反向那一遍 —— 连正着都没认出来的词，先回炉慢慢认，
+            // 别一上来就两个方向轮着轰炸（它回炉重来时路线一样：正着对了才排队倒着考）。
+            if (dirMode == BOTH) back.add(new int[]{current, drawn + backGap});
         } else {
             requeues++;
             due.add(new int[]{current, drawn + (already ? Math.max(1, lag - 1) : lag)});
@@ -307,6 +340,8 @@ public class Engine {
         for (int w : q) snapQ[i++] = w;
         snapDue = new int[due.size()][];
         for (int k = 0; k < due.size(); k++) snapDue[k] = due.get(k).clone();
+        snapBack = new int[back.size()][];
+        for (int k = 0; k < back.size(); k++) snapBack[k] = back.get(k).clone();
         snapFirst = new int[firstShown.size()];
         i = 0;
         for (int w : firstShown) snapFirst[i++] = w;
@@ -328,6 +363,8 @@ public class Engine {
         for (int w : snapQ) q.addLast(w);
         due.clear();
         for (int[] d : snapDue) due.add(d);
+        back.clear();
+        for (int[] d : snapBack) back.add(d);
         firstShown.clear();
         for (int w : snapFirst) firstShown.add(w);
         mastered.clear();
@@ -363,8 +400,9 @@ public class Engine {
     // （见 StudyActivity 的 onShow 回调），回来时原样摆回那张卡。
     //
     // 快照格式（一行文本，`;` 分段、`,` 分列）：
-    //   v=wps1;p=组指针;g=本组消耗到的位置;d=drawn;t=组内总张数;o=记住数;a=作答数;k=首答即对数;r=回炉数;c=当前词;e=本组已用毫秒
-    //   ;q=剩余队列;u=回炉表(词@到期序号);f=本组出过的词
+    //   v=wps1;p=组指针;g=本组消耗到的位置;d=drawn;t=组内总张数;o=记住数;a=作答数;k=首答即对数;r=回炉数;c=当前词;n=这张卡第几遍;e=本组已用毫秒
+    //   ;q=剩余队列;u=回炉表(词@到期序号);f=本组出过的词;b=反向遍排期表(词@到期序号，两个方向都要才有)
+    // 现场格式**故意不升版本**：n / b 都是新增键，老快照缺它们就当 0 / 空表，新快照老版本读不懂也只是整份忽略重开组。
     // 读不上的版本 / 解析失败 / 索引越界一律当「没有现场」处理（resume 返回 false，调用方正常开组）。
 
     /** 快照格式版本：换格式就 +1，老快照会被 {@link #resume} 拒掉（退回正常开组，不会读出错数据） */
@@ -379,12 +417,13 @@ public class Engine {
      */
     public String snapshot(long elapsedMs) {
         if (review) return "";
-        if (current < 0 && q.isEmpty() && due.isEmpty()) return "";
+        if (current < 0 && q.isEmpty() && due.isEmpty() && back.isEmpty()) return "";
         StringBuilder sb = new StringBuilder(96);
         sb.append("v=").append(SNAP_V).append(";p=").append(pos).append(";g=").append(groupEnd)
           .append(";d=").append(drawn)
           .append(";t=").append(groupTotal).append(";o=").append(okCount).append(";a=").append(answers)
           .append(";k=").append(firstOk).append(";r=").append(requeues).append(";c=").append(current)
+          .append(";n=").append(pass)                       // 现在这张卡是正着还是倒着那一遍
           .append(";e=").append(Math.max(0, elapsedMs));
         sb.append(";q=");
         boolean first = true;
@@ -395,6 +434,10 @@ public class Engine {
         sb.append(";f=");
         first = true;
         for (int w : firstShown) { if (!first) sb.append(','); first = false; sb.append(w); }
+        // 反向遍的排期表（两个方向都要才有）。老版本读到这个键会整个忽略，新版本缺这个键当空表
+        sb.append(";b=");
+        first = true;
+        for (int[] e : back) { if (!first) sb.append(','); first = false; sb.append(e[0]).append('@').append(e[1]); }
         return sb.toString();
     }
 
@@ -424,9 +467,13 @@ public class Engine {
                                           // 都挪过组指针）→ 整份作废，按新指针重切，别拿别人的半截队列刷
         if (review) return false;         // 订正队列里没有「组」可续
         int[] nq = nums(kv.get("q")), nd = pairs(kv.get("u")), nf = nums(kv.get("f"));
-        if (nq == null || nd == null || nf == null) return false;         // 有脏字符：整份快照作废
+        int[] nb = pairs(kv.get("b"));                                    // 老快照没有这个键：空表
+        if (nq == null || nd == null || nf == null || nb == null) return false;   // 有脏字符：整份快照作废
+        int nPass = num(kv.get("n"), 0) == 1 ? 1 : 0;
         int cur = num(kv.get("c"), -1);
-        if (cur >= n || (cur >= 0 && mastered.get(cur))) cur = -1;         // 那张卡已经被记住 → 不必再出
+        // 那张卡已经被记住 → 不必再出；但「倒着那一遍」本来就发生在词已掌握之后（见 answer），
+        // 所以这一条只对正着的那遍成立，否则恢复现场会把待考的反向遍直接吞掉。
+        if (cur >= n || (cur >= 0 && nPass == 0 && mastered.get(cur))) cur = -1;
 
         ArrayDeque<Integer> rq = new ArrayDeque<Integer>();
         for (int w : nq) if (w >= 0 && w < n && !mastered.get(w)) rq.addLast(w);
@@ -435,14 +482,21 @@ public class Engine {
             int w = nd[i];
             if (w >= 0 && w < n && !mastered.get(w)) rd.add(new int[]{w, nd[i + 1]});
         }
+        List<int[]> rb = new ArrayList<int[]>();
+        for (int i = 0; i + 1 < nb.length; i += 2) {
+            int w = nb[i];
+            if (w >= 0 && w < n) rb.add(new int[]{w, nb[i + 1]});         // 反向遍的词本来就该是已掌握
+        }
         // 组其实已经打空：没有现场可恢复，让调用方正常开组（会自然走到结算/空组页）
-        if (cur < 0 && rq.isEmpty() && rd.isEmpty()) return false;
+        if (cur < 0 && rq.isEmpty() && rd.isEmpty() && rb.isEmpty()) return false;
 
         // pos 不在这儿改：上面 p != pos 那道闸已经把「组指针挪走过」的现场挡掉了（pos 仍以持久化的组指针为准）
         q.clear();
         q.addAll(rq);
         due.clear();
         due.addAll(rd);
+        back.clear();
+        back.addAll(rb);
         firstShown.clear();
         for (int w : nf) if (w >= 0 && w < n) firstShown.add(w);
         drawn = Math.max(0, num(kv.get("d"), 0));
@@ -451,8 +505,9 @@ public class Engine {
         firstOk = Math.min(Math.max(0, num(kv.get("k"), 0)), answers);
         requeues = Math.max(0, num(kv.get("r"), 0));
         // 分母取快照里的，别跟着剔除后的队列缩水：被别处标成已掌握的那些词算「本组已完成」
-        groupTotal = Math.max(num(kv.get("t"), 0), q.size() + due.size() + (cur < 0 ? 0 : 1));
+        groupTotal = Math.max(num(kv.get("t"), 0), q.size() + due.size() + back.size() + (cur < 0 ? 0 : 1));
         current = cur;
+        backGap = backGapFor(groupTotal);
         // groupEnd 决定「这组打完时 pos 推进到哪」（见字段注释）。
         // g >= 0 是新版现场，原样带回；老现场没有这个字段 —— 这里**故意不升 SNAP_V**：
         // 升版本号会让用户升级前存下的所有现场直接作废（闪退一次就丢一整轮进度），
@@ -460,7 +515,7 @@ public class Engine {
         int g = num(kv.get("g"), -1);
         groupEnd = g >= 0 ? clampEnd(g) : recomputeGroupEnd(cur);
         review = false;
-        pass = 0;                                     // 现场不带 pass：见下面注释
+        pass = nPass;                                 // 这张卡当时是正着还是倒着那一遍，原样接着考
         flipped = false;
         busy = false;
         snapQ = null;

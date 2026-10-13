@@ -344,13 +344,14 @@
     <string name="default_size_desc">每组刷多少词</string>
     <!-- 刷词方向（用户 2026-10-13）：「两个方向都要」= 一张卡先英译中、翻完紧接着反着再来一遍 -->
     <string name="set_dir">刷词方向</string>
-    <string name="set_dir_desc">卡片先给哪一面：英译中 = 看英文想中文；中译英 = 看中文想英文；两个方向都要 = 一张卡过两遍</string>
+    <string name="set_dir_desc">英译中时正面给英文，翻面看中文释义；中译英反过来，正面给中文，翻面才给英文；选「两个方向都要」的话，同一个词先英译中，过几张再倒过来考一遍</string>
     <string name="dir_en2cn">英译中</string>
     <string name="dir_cn2en">中译英</string>
     <string name="dir_both">两个方向都要</string>
     <string name="dir_saved">刷词方向已改为「%1$s」</string>
     <string name="tap_reveal_rev">中译英 · 想好了点一下，翻面对答案</string>
-    <string name="tap_reveal_rev2">中译英（第二遍）· 想好了点一下，翻面对答案</string>
+    <string name="tap_reveal_rev2">反过来再考一遍 · 想好了点一下，翻面对答案</string>
+    <string name="cta_with_dir">%1$s · %2$s</string>
     <string name="profile_rename">改名</string>
     <string name="ges_subtitle">六个位置，各挑一个动作</string>
     <string name="ges_reset_desc">改回出厂那套（上滑收藏 · 下滑释义 · 左右判定）</string>
@@ -375,7 +376,7 @@
     <string name="pv_batch">批量改进度</string>
     <string name="pv_start">去刷这本</string>
     <string name="pv_batch_title">批量改进度</string>
-    <string name="pv_batch_tip">先输词号范围（这本共 %1$d 词，写法随意：100-300 / 1~50 / 第100到300 / 留空=整本），再选动作：标记/取消已掌握，或让刷词从这段开始（继续刷=跳过已会的；重新刷=整段重来）。</string>
+    <string name="pv_batch_tip">先输词号范围（这本共 %1$d 词，写法随意：100-300 / 1~50 / 第100到300，留空就是整本），再选动作：标记或取消已掌握，也可以让刷词从这一段开始（「继续刷」会跳过已经会的词，「重新刷」整段重来）。</string>
     <string name="pv_range_hint">例如 100-300</string>
     <string name="pv_range_ok">第 %1$d–%2$d 个词（共 %3$d 个）· 其中已掌握 %4$d 个</string>
     <string name="pv_act_mark">标记已掌握</string>

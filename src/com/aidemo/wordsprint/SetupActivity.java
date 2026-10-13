@@ -104,6 +104,22 @@ public class SetupActivity extends Activity {
                     @Override public void onTap(int idx, TextView chip) { order = idx; }
                 });
 
+        // 刷词方向（用户 2026-10-13：选好方向再点开始刷词，不用绕去设置页）。
+        // 跟「设置 → 学习 → 刷词方向」是同一份值（跟档案走），这里选了那边也变 ——
+        // 点一下就存下来：只调了方向却没开刷，下次进来还应该是刚选的那个。
+        final int[] dirs = {Engine.EN2CN, Engine.CN2EN, Engine.BOTH};
+        final String[] dirNames = {getString(R.string.dir_en2cn), getString(R.string.dir_cn2en),
+                getString(R.string.dir_both)};
+        int selDir = 0;
+        for (int i = 0; i < dirs.length; i++) if (dirs[i] == prefs.direction()) selDir = i;
+        Ui.fillRowEqual((LinearLayout) findViewById(R.id.dirChips), dirNames, selDir, new Ui.ChipTap() {
+            @Override public void onTap(int idx, TextView chip) {
+                if (prefs.direction() == dirs[idx]) return;
+                prefs.setDirection(dirs[idx]);
+                refresh();                     // 开始刷词那颗按钮的文案要跟着变（见 refresh）
+            }
+        });
+
 
         redoSw = (android.widget.Switch) findViewById(R.id.swRedo);
         final android.widget.Switch redoSwF = redoSw;
@@ -205,8 +221,16 @@ public class SetupActivity extends Activity {
         // 而首页列表里同一本书明明已经标着「N 词 ✓ 已学完」，两处说法对不上。
         // 顺带把「包含已掌握（重新刷整本）」开关自动打开 —— 不打开的话进去必然是空组。
         boolean allDone = book.n > 0 && done >= book.n;
-        tvCta.setText(allDone ? getString(R.string.brush_whole_book)
-                : done == 0 ? getString(R.string.start_brush) : getString(R.string.continue_brush));
+        String cta = allDone ? getString(R.string.brush_whole_book)
+                : done == 0 ? getString(R.string.start_brush) : getString(R.string.continue_brush);
+        // 按钮上顺带写清这次按哪个方向上卡：选了非默认方向（中译英 / 两个方向都要）时补一小段，
+        // 免得「我明明选过了」到刷词页才发现没生效。英译中是默认，不占字数。
+        int d = p.direction();
+        if (d != Engine.EN2CN) {
+            cta = getString(R.string.cta_with_dir, cta,
+                    getString(d == Engine.CN2EN ? R.string.dir_cn2en : R.string.dir_both));
+        }
+        tvCta.setText(cta);
         if (allDone && !redoAutoDone) {
             redoAutoDone = true;
             if (redoSw != null) redoSw.setChecked(true);
