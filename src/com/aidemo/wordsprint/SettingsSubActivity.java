@@ -148,6 +148,22 @@ public class SettingsSubActivity extends Activity {
         // 进刷单词问不问「上次继续 / 重新开始」（问句里勾「记住这次的选择」会把这开关关掉）
         bindGlobal(R.id.swResumeAsk, Prefs.K_RESUME_ASK, true);
 
+        // 刷词方向（用户 2026-10-13：可以设置中译英、英译中、both）
+        // 0 英译中（老手感）· 1 中译英 · 2 两个方向都要（一张卡过两遍）
+        final int[] dirs = {Engine.EN2CN, Engine.CN2EN, Engine.BOTH};
+        String[] dirLabels = {getString(R.string.dir_en2cn), getString(R.string.dir_cn2en),
+                getString(R.string.dir_both)};
+        int selDir = 0;
+        for (int i = 0; i < dirs.length; i++) if (dirs[i] == pr.direction()) selDir = i;
+        Ui.fillRow((LinearLayout) findViewById(R.id.dirChips), dirLabels, selDir, new Ui.ChipTap() {
+            @Override public void onTap(int idx, TextView chip) {
+                if (pr.direction() == dirs[idx]) return;
+                pr.setDirection(dirs[idx]);
+                toast(getString(R.string.dir_saved, getString(idx == 0 ? R.string.dir_en2cn
+                        : idx == 1 ? R.string.dir_cn2en : R.string.dir_both)));
+            }
+        });
+
         // 默认每组词数
         final int[] sizes = {20, 30, 50, 80, 100};
         String[] labels = new String[sizes.length];

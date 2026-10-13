@@ -60,7 +60,7 @@ public final class DiaryStore {
 
     /**
      * 落盘节流（体检 P3-3）：以前每记一笔（learned/reviewed/addTime）都当场 encode+写盘，
-     * 一张卡最多触发 3 次（今日已刷 + 用时 + 温习），大档案的 encode 不便宜。
+     * 一张卡最多触发 3 次（今日已刷 + 用时 + 订正），大档案的 encode 不便宜。
      * 现在这几个高频口只标脏，500ms 内的多次记账合成一次写；切档案/退后台/进结算页
      * （调用方都会走 {@link #save}）仍立即落盘，不给「丢一笔」留窗口。
      */
@@ -188,10 +188,14 @@ public final class DiaryStore {
         fire();
     }
 
-    /** 温习答对一张（今天） */
+    /**
+     * 错词订正答对一张（今天）。
+     * ⚠️ 2026-10-13 起**只记进日记的历史字段**：不再计入热力图深浅、不再算打卡（见 Diary 类头）。
+     * 订正本身该不该算，用户已经定过：「功能中所有的温习都删除」，连统计一起清。
+     */
     public static synchronized void reviewed(boolean ok) { reviewed(Diary.today(), ok); }
 
-    /** 温习答对一张，记在 {@code dayKey} 那天 */
+    /** 错词订正答对一张，记在 {@code dayKey} 那天（不进统计，只作历史/同步用） */
     public static synchronized void reviewed(String dayKey, boolean ok) {
         if (!ok) return;
         Diary.Day d = day(dayKey);
@@ -200,10 +204,10 @@ public final class DiaryStore {
         fire();
     }
 
-    /** 撤销一次温习记录（今天） */
+    /** 撤销一次订正记录（今天） */
     public static synchronized void undoReviewed() { undoReviewed(Diary.today()); }
 
-    /** 撤销一次温习记录，撤在 {@code dayKey} 那天 */
+    /** 撤销一次订正记录，撤在 {@code dayKey} 那天 */
     public static synchronized void undoReviewed(String dayKey) {
         Diary.Day d = view(dayKey);
         if (d.rev <= 0) return;                 // 没什么可撤的：别为它凭空建一条记录
@@ -212,25 +216,22 @@ public final class DiaryStore {
         fire();
     }
 
-    /** 计时（秒）：kind 0=刷词 1=温习 2=自测（今天） */
+    /** 计时（秒）：kind 0=刷词 1=错词订正 2=自测（今天） */
     public static synchronized void addTime(int kind, long ms) { addTime(Diary.today(), kind, ms); }
 
     /**
      * 计时（秒），记在 {@code dayKey} 那天。
-     * 字段语义（体检 P4-5）：{@code sec} = **当天学习总用时**（刷词 + 温习都算），
-     * {@code revSec} = 其中温习的部分 —— 所以 kind=1 要同时加 sec 和 revSec（总分关系，不是重复记账）。
+     * 字段语义（体检 P4-5）：{@code sec} = **当天学习总用时**（刷词 + 订正都算）。
+     *
+     * 2026-10-13：{@code revSec}/{@code revDone} 不再写 —— 温习（订正）从统计里整体摘掉，
+     * 那两个字段只剩「老数据解码 / 进度码同步」的读路径（见 {@link Diary.Day}）。
      */
     public static synchronized void addTime(String dayKey, int kind, long ms) {
         int s = (int) Math.max(0, ms / 1000);
         if (s <= 0) return;
         Diary.Day d = day(dayKey);
         d.sec += s;
-        if (kind == 1) {
-            d.revSec += s;
-            if (d.revSec >= Diary.MIN_REV_MIN * 60) { d.revDone = true; fire(); }
-        } else if (kind == 2) {
-            d.testSec += s;
-        }
+        if (kind == 2) d.testSec += s;
         touch();
     }
 

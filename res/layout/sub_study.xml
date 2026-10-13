@@ -53,6 +53,23 @@
         </LinearLayout>
     </LinearLayout>
 
+    <TextView style="@style/SectionHead" android:text="@string/set_dir"/>
+
+    <LinearLayout style="@style/CardBox">
+        <LinearLayout style="@style/SettingRow">
+            <LinearLayout style="@style/SettingRowText">
+                <TextView style="@style/SettingTitle" android:text="@string/set_dir"/>
+                <TextView style="@style/SettingDesc" android:text="@string/set_dir_desc"/>
+            </LinearLayout>
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/dirChips"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingBottom="12dp"/>
+    </LinearLayout>
+
     <TextView style="@style/SectionHead" android:text="@string/default_size"/>
 
     <LinearLayout style="@style/CardBox">

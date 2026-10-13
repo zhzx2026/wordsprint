@@ -430,6 +430,78 @@ public class EngineTest {
             check(emptyCb && !ended, "20d：拼不到词 → onBookEmpty");
         }
 
-        System.out.println("ENGINE OK — 20 组断言全部通过（含撤销 + 意外退出续存 + 组指针推进 + 重刷正确率 + 重新开始重切）");
+        // 21) 刷词方向（用户 2026-10-13：可以设置英译中 / 中译英 / both）
+        {
+            // 21a) both：一张卡过两遍 —— 先英译中，答完紧接着中译英，队列不推进
+            BitSet mb = new BitSet(5);
+            Engine eb = new Engine(5, o9(5), mb, 0, 5, 3, false, new Sink(mb));
+            eb.setDirMode(Engine.BOTH);
+            eb.startGroup();
+            check(eb.dir() == Engine.EN2CN, "both：每张卡的第一遍是英译中");
+            int w0 = eb.current();
+            eb.answer(true);                                   // 第一遍答对
+            check(eb.needSecondPass(), "both：答完第一遍还差反方向那一遍");
+            check(mb.get(w0), "both：掌握只看第一遍（不必等第二遍）");
+            eb.beginSecondPass();
+            check(eb.current() == w0, "both：第二遍还是同一个词（不推进队列）");
+            check(eb.dir() == Engine.CN2EN, "both：第二遍是中译英");
+            int ans = eb.answers(), okk = eb.okCount(), rq = eb.requeues();
+            eb.answer(true);
+            check(!eb.needSecondPass() && eb.answers() == ans && eb.okCount() == okk,
+                    "both：第二遍不进正确率分母（否则两个方向都答对也只有 50%）");
+            check(eb.requeues() == rq, "both：第二遍答对了不计回炉");
+            eb.next();
+            check(eb.current() == 1 && eb.dir() == Engine.EN2CN,
+                    "both：换到下一个词，又从第一遍开始（实际 " + eb.current() + "/" + eb.dir() + "）");
+
+            // 21b) 第二遍答不出来 → 这个词回炉（还得再见），并计入回炉数
+            eb.answer(true);                                   // 词 1 第一遍答对
+            eb.beginSecondPass();
+            eb.answer(false);                                  // 词 1 第二遍（中译英）没答出来
+            check(eb.requeues() == rq + 1, "both：中译英答不出来记一次回炉（卡片上「本组已错 N 次」）");
+            check(eb.dueCount() == 1, "both：中译英答不出来的词进回炉表，过几张还会回来");
+            eb.next();
+            check(eb.current() == 2, "both：回炉的词不插队，先出队列里的下一个（实际 " + eb.current() + "）");
+            int gu = 0;
+            while (eb.current() != 1 && gu++ < 20) {            // 老老实实刷完后面的卡，等那个词回来
+                eb.answer(true);
+                if (eb.needSecondPass()) { eb.beginSecondPass(); eb.answer(true); }
+                eb.next();
+            }
+            check(eb.current() == 1 && gu < 20, "both：回炉的词过几张确实又出现了（同一个词重考两个方向）");
+
+            // 21c) 只选中译英：每张卡一遍，方向就是中译英
+            BitSet mc = new BitSet(3);
+            Engine ec = new Engine(3, o9(3), mc, 0, 3, 5, false, new Sink(mc));
+            ec.setDirMode(Engine.CN2EN);
+            ec.startGroup();
+            check(ec.dir() == Engine.CN2EN, "中译英模式：方向就是中译英");
+            check(!ec.needSecondPass(), "中译英模式：一张卡一遍就够（没有第二遍）");
+            ec.answer(true);
+            check(ec.canUndo(), "中译英模式：答完照样能撤销");
+
+            // 21d) 方向脏值兜底 + 撤销跨两遍
+            Engine ed = new Engine(3, o9(3), new BitSet(3), 0, 3, 5, false, new Sink(new BitSet(3)));
+            ed.setDirMode(99);
+            check(ed.dirMode() == Engine.EN2CN, "方向脏值（99）兜底成英译中");
+            ed.setDirMode(Engine.BOTH);
+            ed.startGroup();
+            int wd = ed.current();
+            ed.answer(true);
+            ed.beginSecondPass();
+            ed.undo();                                          // 第二遍还没作答就点「上一个」
+            check(ed.dir() == Engine.EN2CN && ed.current() == wd,
+                    "both：第二遍没作答时撤销 → 回到第一遍那张");
+            check(!ed.masteredBitSet().get(wd), "both：这次撤销把第一遍的掌握也撤回去了");
+            ed.answer(true);
+            ed.beginSecondPass();
+            ed.answer(true);                                    // 第二遍也答了
+            ed.undo();                                          // 撤销刚才那一遍
+            check(ed.dir() == Engine.CN2EN && ed.current() == wd,
+                    "both：第二遍答完撤销 → 回到第二遍那张（第一遍的掌握保留）");
+            check(ed.masteredBitSet().get(wd), "both：这次撤销不动第一遍的掌握");
+        }
+
+        System.out.println("ENGINE OK — 21 组断言全部通过（含撤销 + 意外退出续存 + 组指针推进 + 重刷正确率 + 重新开始重切 + 刷词方向）");
     }
 }

@@ -502,6 +502,15 @@ public class Prefs {
     /** 回炉间隔的全局默认（不认识后隔几张再出现）：3/5/8，设置 → 学习里改 */
     public static final String K_LAG_DEF = "g_lag";
 
+    /**
+     * 刷词方向（用户 2026-10-13 定）：见 {@link Engine#EN2CN} / {@link Engine#CN2EN} / {@link Engine#BOTH}。
+     * 跟档案走 —— 和「默认每组词数 / 回炉间隔」同一类：这是学习者的习惯，不是这台机器的外观。
+     */
+    public static final String K_DIRECTION = "g_dir";
+
+    public int direction() { return Engine.clampDir(i(K_DIRECTION, Engine.EN2CN)); }
+    public void setDirection(int d) { set(K_DIRECTION, Engine.clampDir(d)); }
+
     public void touchBook(String bid) { p.edit().putLong(ns(bk(bid, "t")), System.currentTimeMillis()).apply(); }
 
     /** 这条键是不是当前档案的（多档案下「上次打开的书」「导出」都别把别人的数据算进来） */
@@ -568,7 +577,7 @@ public class Prefs {
         DiaryStore.learned(Diary.dashed(d), x);
     }
 
-    /** 连续打卡：以 Diary 为准（含温习/自测也算打卡） */
+    /** 连续打卡：以 Diary 为准（**只认新词** —— 自测/温习这两个退休功能都不算，见 Diary.active） */
     public int streak() { return DiaryStore.diary().streak(Diary.today()); }
 
     /** 历史最高连续打卡 */
@@ -622,11 +631,13 @@ public class Prefs {
     }
 
     /**
-     * 完整日记导出（v7.1+ 扩展区）：新词/目标/温习/用时/完成标记全带（v1 段只有新词数）。
+     * 完整日记导出（v7.1+ 扩展区）：新词/目标/用时/完成标记全带（v1 段只有新词数）。
+     * 退休的 rev/revSec/revDone 也原样带 —— 它们只是历史字段（老设备/老码互读要用），
+     * 新版本里任何界面都不再读它们。
      *
      * 体积控制（否则 365 天 × 19B 直接把二维码撑爆）：一天只在“v1 段表达不了它”时才进日记段——
-     *  ① v1 段没覆盖这天（v1 只留最近 255 天；只温习没刷词的天 v1 也没有）→ 必须带，否则丢；
-     *  ② 这天有增量信息（温习过/计过时/改过目标/打过勾/目标不是默认）→ 带；
+     *  ① v1 段没覆盖这天（v1 只留最近 255 天；只有订正/用时没有新词的天 v1 也没有）→ 必须带，否则丢；
+     *  ② 这天有增量信息（订正过/计过时/改过目标/打过勾/目标不是默认）→ 带；
      *  ③ 纯刷词 + 默认目标的天 → v1 那 6 个字节就够了，这里跳过。
      * 导入侧两者叠加即完整（v1 先合新词数，日记段再合细节），见 importDecoded。
      */

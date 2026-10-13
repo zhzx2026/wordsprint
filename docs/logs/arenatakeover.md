@@ -183,3 +183,60 @@
 ### 版本
 
 - `version.sh bump-dev`：v10.2/72 → **v10.3 / code 73**。v10.2 文案归档 CHANGELOG；未转正、未打 tag、main 未动。
+
+## 2026-10-13（第四轮）· v10.4 — 温习彻底清掉 + 刷词方向三档
+
+用户两条需求原文：
+1. 「功能中所有的温习都删除」
+2. 「可以设置中译英、英译中、both」
+
+追问澄清后定的口径（用户的选项）：
+- 温习 = **显示 + 统计一起清**（错题本/订正功能保留）；
+- 中译英 = 翻卡自评（不是选择题、不是手打拼写）；
+- both = **同一张卡两个方向都考**（先英译中，翻完再中译英，一张卡过两遍）。
+
+### 摸底：App 里已经没有叫「温习」的功能
+
+`grep 温习` 全仓库只命中三处用户可见的东西：热力图气泡（`heat_day_info`「… 温习 N」）、
+战绩分享页（「温习 X 分钟」，负载键 `r=`）、以及日记里的 `rev` 计数（同时供热力图分档与连续打卡）。
+功能入口早就叫「错题本 → 开始订正」了。所以「删除」= 清显示层 + 清统计口径，订正功能本身保留。
+
+### 需求①：温习出局（显示 + 统计）
+
+- `Diary.Day.total()`：`learned + rev` → **`learned`**。它同时喂热力图分档（`HeatView`）、
+  战绩图 182 天等级串（`ShareCard`）和 `active()`（连续打卡）—— 一处改，三处一起干净。
+- `DiaryStore.addTime`：不再写 `revSec`、不再置 `revDone`（`MIN_REV_MIN` 死常量删掉）；
+  这两个字段只留解码/同步路径（进度码格式一个字没动，老码新码互读照旧）。
+- `heat_day_info` 去参、`MainActivity` 跟着改；`ShareCard.payload()` 不写 `r=` 键，
+  在线页 `share/index.html` 也不再渲染「温习 X 分钟」（老链接带着 r 照样能开，页面忽略）。
+- 日记 `rev` 仍然照记（历史 + 同步用），但**任何界面都不再读它**。
+- 顺手修了两处过期文档：share 页那句「App『设置 → 更新源 → 分支』可锁定任意一条」（上一版已删选择 UI）、
+  `Prefs` 里「含温习/自测也算打卡」的注释。
+
+### 需求②：刷词方向（Engine + StudyActivity + 设置）
+
+- `Engine`：新增 `EN2CN/CN2EN/BOTH` + `clampDir`，字段 `dirMode`/`pass`，
+  API `setDirMode/dirMode/dir/secondPass/needSecondPass/beginSecondPass`。
+  `next()` 把 `pass` 归零；`answer()` 在 `pass == 1` 时走第二遍分支
+  （**不动掌握位、不进 answers 分母**，答不出来才 `requeues++` + 回炉）；
+  撤销快照多带一个 `snapPass`；`resume()` 不带 pass（现场格式一个字段没加 ——
+  崩在第二遍上最多重问一遍第一遍，而那一遍的掌握状态本来就在快照里）。
+- `StudyActivity`：`fill()` 按 `engine.dir()` 铺卡面 —— 中译英正面是中文大字（`cnFrontSp`：
+  sp ≈ 632/字数，夹 15..30），单词和音标都藏着；`reveal()` 翻面时把英文顶到词面上 + 念出来；
+  `answer()` 答完第一遍若 `needSecondPass()` 就不换词、`beginSecondPass()` 反着再摆一遍。
+  `lastFresh` 加了「第二遍不算」的闸（不然撤销会减一个从没加过的「今日已刷」）。
+- 设置 → 学习新增「刷词方向」三档 chips（`dirChips`），`Prefs.K_DIRECTION`（跟档案走），
+  开组时读一次（组中不换方向）。
+
+### 测试
+
+- `EngineTest` 新增第 21 组（both 两遍 / 第二遍不进分母 / 第二遍答错回炉并再考 / 只选中译英 /
+  脏值兜底 / 两遍各自的撤销语义），21 组断言全过。
+- `DiaryTest`：`total()` 只认 learned、只订正过的一天不算打卡也不算热力图格子。
+- `SharePayloadTest`：负载镜像跟着去掉 `r=` 键。
+- `bash scripts/run_tests.sh` ALL HOST TESTS PASS（Engine 21 组 / Diary 72 / SharePayload 29 / 其余原样）。
+- 全量 javac（gen_r_stub 728 entries + android-34.jar）0 error / 303 class；res+Manifest XML 0 bad；refcheck OK。
+
+### 版本
+
+`version.sh bump-dev` → **v10.4 / code 74**。v10.3 文案归档 CHANGELOG；未转正、不打 tag、main 未动。

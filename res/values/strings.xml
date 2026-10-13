@@ -177,7 +177,7 @@
     <string name="heat_none">这天没学</string>
     <string name="heat_less">少</string>
     <string name="heat_more">多</string>
-    <string name="heat_day_info">%1$s · 新词 %2$d · 温习 %3$d（目标 %4$d）</string>
+    <string name="heat_day_info">%1$s · 新词 %2$d（目标 %3$d）</string>
     <string name="streak_cur">连续打卡</string>
     <string name="streak_best">最高连续</string>
     <string name="streak_done_days">达标天数</string>
@@ -342,6 +342,15 @@
     <string name="set_sound_desc">记住 / 回炉的轻音效与振动</string>
     <string name="set_anim_desc">释义淡入与换卡动画</string>
     <string name="default_size_desc">每组刷多少词</string>
+    <!-- 刷词方向（用户 2026-10-13）：「两个方向都要」= 一张卡先英译中、翻完紧接着反着再来一遍 -->
+    <string name="set_dir">刷词方向</string>
+    <string name="set_dir_desc">卡片先给哪一面：英译中 = 看英文想中文；中译英 = 看中文想英文；两个方向都要 = 一张卡过两遍</string>
+    <string name="dir_en2cn">英译中</string>
+    <string name="dir_cn2en">中译英</string>
+    <string name="dir_both">两个方向都要</string>
+    <string name="dir_saved">刷词方向已改为「%1$s」</string>
+    <string name="tap_reveal_rev">中译英 · 想好了点一下，翻面对答案</string>
+    <string name="tap_reveal_rev2">中译英（第二遍）· 想好了点一下，翻面对答案</string>
     <string name="profile_rename">改名</string>
     <string name="ges_subtitle">六个位置，各挑一个动作</string>
     <string name="ges_reset_desc">改回出厂那套（上滑收藏 · 下滑释义 · 左右判定）</string>

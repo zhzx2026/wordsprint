@@ -17,6 +17,16 @@ public class Engine {
         void onMastered(int wordIdx); // 持久化回调
     }
 
+    /**
+     * 刷词方向（用户 2026-10-13 定，设置 → 学习 →「刷词方向」）：
+     *   {@link #EN2CN} 英译中（默认，老手感）· {@link #CN2EN} 中译英（正面中文、翻面给英文）
+     *   {@link #BOTH} 两个方向都要：**一张卡过两遍** —— 先英译中，翻完接着反向再来一遍。
+     */
+    public static final int EN2CN = 0, CN2EN = 1, BOTH = 2;
+
+    /** 方向值兜底：越界/脏值一律当默认的英译中（绝不因为一个坏数字把卡片搞成空白） */
+    public static int clampDir(int d) { return d < EN2CN || d > BOTH ? EN2CN : d; }
+
     public final int n;
     public final int[] order;
     public final BitSet mastered;
@@ -25,6 +35,8 @@ public class Engine {
     private boolean redoAll;
     public int pos;
     private boolean review;          // 错词复习模式：不推进 pos
+    private int dirMode = EN2CN;     // 本组用哪个方向（组开始时从设置读一次，组中不随设置变）
+    private int pass;                // 这张卡走到第几遍：0 第一遍 · 1 第二遍（只有 BOTH 模式有第二遍）
 
     private final ArrayDeque<Integer> q = new ArrayDeque<>();
     private final List<int[]> due = new ArrayList<>();
@@ -53,6 +65,7 @@ public class Engine {
     private int[] snapFirst;
     private BitSet snapMastered;
     private int snapDrawn, snapTotal, snapOk, snapAns, snapFirstOk, snapRequeue, snapCurrent, snapPos, snapGroupEnd;
+    private int snapPass;
     private boolean snapFlipped, snapReview;
 
     public Engine(int n, int[] order, BitSet mastered, int pos,
@@ -74,6 +87,33 @@ public class Engine {
     public int groupTotal() { return groupTotal; }
     public int dueCount() { return due.size(); }
     public boolean review() { return review; }
+    public int dirMode() { return dirMode; }
+    public void setDirMode(int d) { dirMode = clampDir(d); }
+
+    /** 现在这张卡该按哪个方向出（BOTH 模式下第一遍英译中、第二遍中译英） */
+    public int dir() { return dirMode == BOTH ? (pass == 0 ? EN2CN : CN2EN) : dirMode; }
+
+    /** 现在这张卡是不是「两个方向都要」里的第二遍 */
+    public boolean secondPass() { return pass == 1; }
+
+    /**
+     * 第一遍答完了、这张卡还差反方向那一遍（「两个方向都要」模式）。
+     * 交给上层在换卡动画之后调用 —— 和 {@link #next()} 一样，会在同一张词上回调
+     * {@link Listener#onShow}，但**不推进队列**（这个词还没走完）。
+     */
+    public boolean needSecondPass() { return dirMode == BOTH && pass == 0 && current >= 0; }
+
+    /**
+     * 把同一张卡摆成第二遍（反方向）：只把 pass 推到 1、清掉「忙」和「已翻面」，队列/掌握位/计数都不动。
+     * 词的掌握状态在第一遍就定了 —— 第二遍只判「反方向答没答出来」，见 {@link #answer(boolean)}。
+     */
+    public void beginSecondPass() {
+        if (current < 0) return;
+        pass = 1;
+        busy = false;
+        flipped = false;
+        L.onShow(current);
+    }
     public int doneInGroup() { return Math.max(0, groupTotal - (q.size() + due.size())); }
     public int accuracy() { return answers == 0 ? 100 : (int) Math.round(firstOk * 100.0 / answers); }
     public boolean redoAll() { return redoAll; }
@@ -102,7 +142,7 @@ public class Engine {
         review = false;
         q.clear(); due.clear(); firstShown.clear();
         drawn = 0; okCount = 0; answers = 0; firstOk = 0; requeues = 0;
-        current = -1; busy = false; flipped = false; resumeElapsed = 0;
+        current = -1; busy = false; flipped = false; resumeElapsed = 0; pass = 0;
         groupEnd = slice(pos);
         groupTotal = q.size();
         if (groupTotal == 0 && !redoAll && pos > 0 && !allMastered()) {
@@ -147,7 +187,7 @@ public class Engine {
         review = false;
         q.clear(); due.clear(); firstShown.clear();
         drawn = 0; okCount = 0; answers = 0; firstOk = 0; requeues = 0;
-        current = -1; busy = false; flipped = false; resumeElapsed = 0;
+        current = -1; busy = false; flipped = false; resumeElapsed = 0; pass = 0;
         q.addAll(head);
         int p = from < 0 ? 0 : from;
         while (q.size() < groupSize && p < order.length) {
@@ -178,7 +218,7 @@ public class Engine {
         review = true;
         q.clear(); due.clear(); firstShown.clear();
         drawn = 0; okCount = 0; answers = 0; firstOk = 0; requeues = 0;
-        current = -1; busy = false; flipped = false; resumeElapsed = 0;
+        current = -1; busy = false; flipped = false; resumeElapsed = 0; pass = 0;
         groupEnd = pos;                      // 复习不推进组指针，groupEnd 也就等于 pos
         if (idxs == null || idxs.length == 0) { L.onBookEmpty(); return; }
         for (int w : idxs) q.addLast(w);
@@ -211,6 +251,7 @@ public class Engine {
         drawn++;
         busy = false;
         flipped = false;
+        pass = 0;                     // 新出的这张从第一遍开始
         L.onShow(current);
     }
 
@@ -219,6 +260,20 @@ public class Engine {
         if (current < 0 || busy) return;
         snapshot();                       // 先拍照，答错了还能撤销
         busy = true;
+        if (pass == 1) {
+            // 第二遍（中译英）：**掌握状态在第一遍就定了**，这里不再动它 —— 否则一个词会在两遍之间
+            // 忽而掌握忽而不掌握，「今日已刷」也会跟着来回加减。
+            // 这一遍只判「反方向答没答出来」：答不出来 = 这个词还得再见，按「已掌握」的间隔回炉，
+            // 并计入回炉数（卡片上的「本组已错 N 次」、结算页的「回炉」都看得见）。
+            // 不进 answers/正确率的分母：两个方向都考，分母翻倍的话全答对也只有 50%，
+            // 那个数字就成了一句假话。
+            if (!ok) {
+                requeues++;
+                due.add(new int[]{current, drawn + Math.max(1, lag - 1)});
+            }
+            flipped = true;
+            return;
+        }
         answers++;
         boolean already = mastered.get(current);
         if (ok) {
@@ -259,6 +314,7 @@ public class Engine {
         snapDrawn = drawn; snapTotal = groupTotal; snapOk = okCount; snapAns = answers;
         snapFirstOk = firstOk; snapRequeue = requeues; snapCurrent = current; snapPos = pos;
         snapGroupEnd = groupEnd;
+        snapPass = pass;
         snapFlipped = flipped; snapReview = review;
     }
 
@@ -279,6 +335,7 @@ public class Engine {
         drawn = snapDrawn; groupTotal = snapTotal; okCount = snapOk; answers = snapAns;
         firstOk = snapFirstOk; requeues = snapRequeue; current = snapCurrent; pos = snapPos;
         groupEnd = snapGroupEnd;
+        pass = snapPass;
         flipped = snapFlipped; review = snapReview;
         busy = false;
         snapQ = null;
@@ -403,6 +460,7 @@ public class Engine {
         int g = num(kv.get("g"), -1);
         groupEnd = g >= 0 ? clampEnd(g) : recomputeGroupEnd(cur);
         review = false;
+        pass = 0;                                     // 现场不带 pass：见下面注释
         flipped = false;
         busy = false;
         snapQ = null;

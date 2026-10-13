@@ -11,7 +11,8 @@ import com.aidemo.wordsprint.Diary;
  *   ② 首页仪表盘、战绩图这些「只想看一眼」的地方在调一个**有写副作用**的查询（老名字 get()），
  *      每刷新一次就往 days 里塞一条零活动的今天；现在拆成 getOrCreate / view；
  *   ③ total() 把已删除的「自测」算进去，老版本导过来的日记能凭一个新版里根本不存在的功能
- *      点亮热力图格子、甚至维持连续打卡，而用户没有任何入口去核查或改变这个数。
+ *      点亮热力图格子、甚至维持连续打卡。现在只认 learned —— 连 rev（错词订正）也不算，
+ *      用户 2026-10-13「功能中所有的温习都删除」并明确要连统计一起清。
  * 跑法：bash scripts/run_tests.sh
  */
 public class DiaryTest {
@@ -43,22 +44,26 @@ public class DiaryTest {
             if (i > 0) check(Diary.GOALS[i] > Diary.GOALS[i - 1], "档位严格递增（chip 的高亮索引才对得上）");
         }
 
-        // 3) 当天总量：不含已删除的「自测」
+        // 3) 当天总量：只认新词（自测 2026-09-16 删、温习 2026-10-13 连统计一起删）
         Diary.Day d = new Diary.Day();
         d.learned = 30; d.rev = 7; d.test = 99;
-        check(d.total() == 37, "total() = learned + rev");
+        check(d.total() == 30, "total() = 只有 learned");
+        check(d.total() != 37, "total() 不把 rev（订正）算进去");
         check(d.total() != 136, "total() 不把 test 算进去（自测功能 2026-09-16 已整体删除）");
         d.learned = 0; d.rev = 0;
         check(d.total() == 0, "只有 test 的一天 total() == 0");
 
-        // 4) 打卡判定 / 热力图分档也跟着 total() 走：老数据里的 test 不能替用户点亮格子
+        // 4) 打卡判定 / 热力图分档也跟着 total() 走：退休功能的计数不能替用户点亮格子
         Diary dy = new Diary();
         Diary.Day ghost = dy.getOrCreate("2026-08-01", 50);
         ghost.test = 40;                       // 只有已删除功能的计数
         check(!dy.active("2026-08-01"), "只有 test 的一天不算打卡");
         check(Diary.level(ghost.total()) == 0, "只有 test 的一天热力图是空档");
         ghost.rev = 1;
-        check(dy.active("2026-08-01"), "温习过 1 张就算打卡");
+        check(!dy.active("2026-08-01"), "只订正过（rev>0）的一天不算打卡（用户 2026-10-13 定的）");
+        check(Diary.level(ghost.total()) == 0, "只订正过的一天热力图也是空档");
+        ghost.learned = 3;
+        check(dy.active("2026-08-01"), "有新生词才算打卡");
 
         // 5) getOrCreate 是写路径：会建、会塞进 days、defGoal 也钳位
         Diary w = new Diary();

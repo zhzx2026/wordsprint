@@ -14,13 +14,18 @@ import java.util.TimeZone;
  *
  * 一天四条计数（都按「张」算）：
  *   learned  新生词（第一次点「记住了」的词，与老的今日打卡数等价）
- *   rev      温习（错词/收藏复习里答对的张数）
+ *   rev      错词订正答对的张数（**不再参与任何统计**：见下）
  *   test     自测（当天点过「开始测试」后作答的张数）
  *   sec/revSec/testSec  各自耗时秒数
  *
  * 目标：goal = 当天要刷的新生词数（默认 50，可 50/100/自定义）。
  * 达成判定：learned >= goal（这就是「勾选」，一天一勾，第二天清零重来）。
- * 打卡（连续天数）：只要当天有任意活动（learned/rev/test 任一 > 0）就算，跟老版本 d_YYYYMMDD 语义一致。
+ * 打卡（连续天数）：当天 learned > 0 才算 —— 跟老版本 d_YYYYMMDD 语义一致。
+ *
+ * ⚠️ 为什么 rev 不算数（用户 2026-10-13「功能中所有的温习都删除」，并明确要连统计一起清）：
+ * 订正过的张数以前会让热力图格子变深、甚至替用户维持连续打卡 —— 而「订正」只是把错题本里
+ * 已经错过的词再过一遍，既不产生新词，也不该让「今天学过了」成立。现在 rev/revSec 只留在
+ * 日记记录里（老数据解码与进度码同步的原样保留），**total()/active() 一律不看它**。
  */
 public class Diary {
 
@@ -32,7 +37,7 @@ public class Diary {
         public int learned, goal = 50;
         public int rev, test;
         public int sec, revSec, testSec;
-        public boolean revDone, testDone;   // 温习 是否已勾选（按天）；testDone 只留给老数据解码（自测功能 2026-09-16 已删）
+        public boolean revDone, testDone;   // 退休功能的历史标记：只用于老数据解码/进度码同步，界面上没有任何地方读它
         public boolean custom;              // 目标是否被单独改过
 
         /**
@@ -43,7 +48,7 @@ public class Diary {
          * 于是老版本导过来的日记能凭一个**在新版里根本不存在的功能**点亮热力图格子、
          * 甚至维持连续打卡 —— 用户没有任何入口去核查或改变这个数。
          */
-        public int total() { return learned + rev; }
+        public int total() { return learned; }
         /** 今日「刷词」目标达成 —— 每日学习指标里那个勾 */
         public boolean goalDone() { return goal > 0 && learned >= goal; }
         public boolean goalPct100() { return goal <= 0 || learned >= goal; }
@@ -69,8 +74,6 @@ public class Diary {
         return g < GOAL_MIN ? GOAL_MIN : (g > GOAL_MAX ? GOAL_MAX : g);
     }
 
-    /** 温习「算完成」的门槛（分钟）。（自测门槛 MIN_TEST 是死常量：decode 根本没用它，删） */
-    public static final int MIN_REV_MIN = 3;
     /** 默认值（纯 java 常量放这里，避免纯模型依赖 android 的 Prefs） */
     public static final int DEF_SIZE = 50, DEF_LAG = 5, DEF_GOAL = 50;
 
@@ -201,7 +204,10 @@ public class Diary {
 
     public Day peek(String key) { return days.get(key); }
 
-    /** 当天有活动 = 打了卡 */
+    /**
+     * 当天有活动 = 打了卡（**只认新词**）。
+     * 2026-10-13 起错词订正不再算活动：只订正没刷新词的那天不算打卡，连续天数也不靠它续命。
+     */
     public boolean active(String key) {
         Day d = days.get(key);
         return d != null && d.total() > 0;
@@ -229,7 +235,7 @@ public class Diary {
      * 没打卡的那天必须把 cur **归零**：以前只是 `continue` 而保留 cur，
      * 于是「学了 → 空一天（这天在 days 里有记录但 total()==0）→ 又学」会被算成连续 3 天 ——
      * 那个空白天当了桥。days 里会有这种记录（老数据解码、进度码导入、
-     * 只有已删除的「自测」计数的一天），所以这不是理论问题。
+     * 只有已删除的「自测」或「温习」计数的一天），所以这不是理论问题。
      */
     public int bestStreak() {
         if (bestCache >= 0) return bestCache;
