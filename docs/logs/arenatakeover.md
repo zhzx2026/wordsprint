@@ -344,3 +344,14 @@
 ### 版本
 
 `version.sh bump-dev` → **v10.6 / code 76**。v10.5 文案归档 CHANGELOG；未转正、不打 tag、main 未动。
+
+## 转正 v11.0（2026-10-14）
+
+用户一句「转正」→ `version.sh promote`：dev **v10.6 / code 76 → stable v11.0 / code 77**
+（main 停在 v10.0 / code 70，远端只有本分支，无撞号）。RELEASE_NOTES 换成正式版口径，
+覆盖 v10.0 以来的用户可见全量：E–Z 词性补齐、跨词书释义合并去重（义项粒度）、温习彻底下线、
+刷词方向三档（入口在词本弹层）、「两个方向都要」按刷词顺序的两种排法、更新通道锁死无选择；
+v10.6 dev 文案归档 CHANGELOG。
+
+流程：六轮提交（v10.1~v10.6）合 PR 到 main → `auto-release` 自动跑测试、验签、打 tag **v11.0**、
+发正式 Release（手机 OTA 走 releases/latest）。main 之外什么都没动：没碰其他分支、没改 Secret。
