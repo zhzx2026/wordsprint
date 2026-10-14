@@ -132,7 +132,7 @@ case "$ROLE" in
   main)  printf '  · main 只接收转正 PR；不要在 main 上直接改代码\n' ;;
   dev)   printf '  · dev 聚合分支已退役：测试通道 = 预发布 Release ci 的资产；撤坑位 gh release delete-asset ci update-<id>.json -y\n' ;;
   *)     printf '  · 出装机测试包：bash scripts/version.sh bump-dev && bash scripts/staging_build.sh\n'
-         printf '  · 装机实测：App 更新源选「分支」锁 %s（App 直连 GitHub，无需手填地址）\n' "$BID"
+         printf '  · 装机实测：测试包（sbs %s）自己就认本分支坑位，界面无需选源（2026-10-11 起）\n' "$BID"
          printf '  · 用户确认转正：bash scripts/version.sh promote → 开 PR 合进 main（合并即发布）\n' ;;
 esac
 printf '  · 规则全文：BRANCHING.md §1 分支分工 · §4 Pages · §5 多会话并行\n\n'

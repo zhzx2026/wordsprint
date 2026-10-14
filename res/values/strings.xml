@@ -116,12 +116,8 @@
     <string name="update_auto">自动检查更新</string>
     <string name="update_src_stable">stable</string>
     <string name="update_src_branch">分支</string>
-    <string name="update_branch_refresh">刷新</string>
-    <string name="update_branch_list_loading">正在读取分支…</string>
-    <string name="update_branch_list_empty">还没有任何分支的测试包（先跑一次 staging 构建）</string>
-    <string name="update_branch_list_fail">读取分支失败（%1$s），点「刷新」重试</string>
-    <string name="update_branch_none">还没有可认领的分支（先点上面任意一条分支）</string>
-    <string name="update_branch_empty">该分支还没有测试包（先跑一次 staging 构建）</string>
+    <string name="update_branch_none">这个包没有编译进分支坑位（本机手编的包），无法自查测试包更新</string>
+    <string name="update_branch_empty">本分支还没有测试包（先跑一次 staging 构建）</string>
     <string name="update_default_src" translatable="false">https://github.com/zhzx2026/wordsprint/releases/latest/download/update.json</string>
     <string name="update_ci_base" translatable="false">https://github.com/zhzx2026/wordsprint/releases/download/ci</string>
     <string name="update_checking">正在检查…</string>
@@ -181,7 +177,7 @@
     <string name="heat_none">这天没学</string>
     <string name="heat_less">少</string>
     <string name="heat_more">多</string>
-    <string name="heat_day_info">%1$s · 新词 %2$d · 温习 %3$d（目标 %4$d）</string>
+    <string name="heat_day_info">%1$s · 新词 %2$d（目标 %3$d）</string>
     <string name="streak_cur">连续打卡</string>
     <string name="streak_best">最高连续</string>
     <string name="streak_done_days">达标天数</string>
@@ -346,11 +342,24 @@
     <string name="set_sound_desc">记住 / 回炉的轻音效与振动</string>
     <string name="set_anim_desc">释义淡入与换卡动画</string>
     <string name="default_size_desc">每组刷多少词</string>
+    <!-- 刷词方向（用户 2026-10-13）：「两个方向都要」= 一张卡先英译中、翻完紧接着反着再来一遍 -->
+    <string name="set_dir">刷词方向</string>
+    <string name="set_dir_desc">英译中时正面给英文，翻面看中文释义；中译英反过来，正面给中文，翻面才给英文；选「两个方向都要」的话，同一个词先英译中，过几张再倒过来考一遍</string>
+    <string name="dir_en2cn">英译中</string>
+    <string name="dir_cn2en">中译英</string>
+    <string name="dir_both">两个方向都要</string>
+    <string name="dir_saved">刷词方向已改为「%1$s」</string>
+    <string name="tap_reveal_rev">中译英 · 想好了点一下，翻面对答案</string>
+    <string name="cta_with_dir">%1$s · %2$s</string>
     <string name="profile_rename">改名</string>
     <string name="ges_subtitle">六个位置，各挑一个动作</string>
     <string name="ges_reset_desc">改回出厂那套（上滑收藏 · 下滑释义 · 左右判定）</string>
     <string name="export_progress">导出 / 导入进度码</string>
     <string name="update_src_title">更新源</string>
+    <string name="update_ver_title">当前版本</string>
+    <!-- 更新源不可切换（用户 2026-10-11「不要有选择的地方」）：正式版只看正式发布 / 测试包只看自己那条分支 -->
+    <string name="update_src_locked_stable">固定：正式版（stable）· 只认正式发布的版本，不可切换</string>
+    <string name="update_src_locked_sbs">固定：分支 %1$s · 只认本分支的测试包，不可切换</string>
     <string name="update_auto_desc">前台每 60 秒自动检查，有新版时在「设置 → 关于」提示更新</string>
     <string name="update_check_now">检查更新</string>
     <string name="update_desc">覆盖安装不丢进度</string>
@@ -366,7 +375,7 @@
     <string name="pv_batch">批量改进度</string>
     <string name="pv_start">去刷这本</string>
     <string name="pv_batch_title">批量改进度</string>
-    <string name="pv_batch_tip">先输词号范围（这本共 %1$d 词，写法随意：100-300 / 1~50 / 第100到300 / 留空=整本），再选动作：标记/取消已掌握，或让刷词从这段开始（继续刷=跳过已会的；重新刷=整段重来）。</string>
+    <string name="pv_batch_tip">先输词号范围（这本共 %1$d 词，写法随意：100-300 / 1~50 / 第100到300，留空就是整本），再选动作：标记或取消已掌握，也可以让刷词从这一段开始（「继续刷」会跳过已经会的词，「重新刷」整段重来）。</string>
     <string name="pv_range_hint">例如 100-300</string>
     <string name="pv_range_ok">第 %1$d–%2$d 个词（共 %3$d 个）· 其中已掌握 %4$d 个</string>
     <string name="pv_act_mark">标记已掌握</string>

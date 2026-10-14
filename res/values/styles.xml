@@ -19,6 +19,8 @@
         <item name="wpChipBg">@color/chip_bg</item>
         <item name="wpStatusBar">@color/status_bar</item>
         <item name="wpGreen">@color/green</item>
+        <item name="wpGoalGreen">@color/goal_green</item>
+        <item name="wpGoalText">@color/goal_text</item>
         <item name="wpGreenBg">@color/green_bg</item>
         <item name="wpGreen1">@color/green_grad1</item>
         <item name="wpGreen2">@color/green_grad2</item>

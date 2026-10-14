@@ -430,6 +430,250 @@ public class EngineTest {
             check(emptyCb && !ended, "20d：拼不到词 → onBookEmpty");
         }
 
-        System.out.println("ENGINE OK — 20 组断言全部通过（含撤销 + 意外退出续存 + 组指针推进 + 重刷正确率 + 重新开始重切）");
+        // 21) 刷词方向（用户 2026-10-13：可以设置英译中 / 中译英 / both；排列方式见 21b/21c）
+        {
+            // 21a) 两张之间的最小间隔：本组词数的两成，最少 2 张
+            check(Engine.pairGapFor(5) == 2, "5 个词的组：最少隔 2 张（实际 " + Engine.pairGapFor(5) + "）");
+            check(Engine.pairGapFor(9) == 2, "9 个词 → 0.2×9 四舍五入 2");
+            check(Engine.pairGapFor(10) == 2, "10 个词 → 2");
+            check(Engine.pairGapFor(50) == 10, "50 个词 → 10");
+            check(Engine.pairGapFor(500) == 100, "500 个词 → 100");
+            check(Engine.pairGapFor(0) == 2 && Engine.pairGapFor(-3) == 2, "空组/负数也不炸，兜底 2");
+
+            // 21b) 课本顺序：前面全是英译中，后面全是中译英（张数 = 词数 × 2）
+            BitSet mb = new BitSet(5);
+            Engine eb = new Engine(5, o9(5), mb, 0, 5, 3, false, new Sink(mb));
+            eb.setDirMode(Engine.BOTH);
+            eb.setShuffleCards(false);
+            eb.startGroup();
+            check(eb.groupTotal() == 10, "两个方向都要：张数翻倍（实际 " + eb.groupTotal() + "）");
+            StringBuilder seq = new StringBuilder();
+            int guardB = 0;
+            while (eb.current() >= 0 && guardB++ < 60) {
+                seq.append(eb.current()).append(eb.secondPass() ? 'b' : 'a').append(',');
+                eb.answer(true);
+                eb.next();
+            }
+            String gotB = seq.toString();
+            check(gotB.equals("0a,1a,2a,3a,4a,0b,1b,2b,3b,4b,"),
+                    "顺序模式：前面英译中、后面中译英（实际 " + gotB + "）");
+            check(mb.cardinality() == 5, "扫完全组 5 个词都掌握了");
+            check(ended, "顺序模式：整组照样收尾");
+
+            // 21c) 随机打乱：2N 张洗匀、中英混着出，同一个词的两张至少隔 gap 张
+            BitSet mc = new BitSet(10);
+            Engine ec = new Engine(10, o9(10), mc, 0, 10, 3, false, new Sink(mc));
+            ec.setDirMode(Engine.BOTH);
+            ec.setShuffleCards(true);
+            ec.setCardSeed(20261013L);
+            ec.startGroup();
+            check(ec.groupTotal() == 20, "随机模式：20 张（10 个词 × 2）");
+            int[] pos0 = new int[10], pos1 = new int[10];
+            for (int i = 0; i < 10; i++) { pos0[i] = -1; pos1[i] = -1; }
+            StringBuilder seqC = new StringBuilder();
+            int idx = 0, guardC = 0;
+            while (ec.current() >= 0 && guardC++ < 80) {
+                int w = ec.current();
+                boolean rev = ec.secondPass();
+                if (rev) { check(pos1[w] < 0, "每个词的倒着那张只出现一次（" + w + "）"); pos1[w] = idx; }
+                else { check(pos0[w] < 0, "每个词的正着那张只出现一次（" + w + "）"); pos0[w] = idx; }
+                seqC.append(w).append(rev ? 'b' : 'a').append(',');
+                idx++;
+                ec.answer(true);
+                ec.next();
+            }
+            check(idx == 20, "随机模式：正好 20 张（实际 " + idx + "）");
+            check(ended, "随机模式：整组收尾");
+            int gapC = Engine.pairGapFor(10), bad = 0, minGap = 999;
+            for (int i = 0; i < 10; i++) {
+                int d = Math.abs(pos0[i] - pos1[i]);
+                if (d <= gapC) bad++;
+                if (d < minGap) minGap = d;
+            }
+            check(bad == 0, "随机模式：同一个词的两张都隔开了（最小 " + minGap + " > " + gapC + "）");
+            int firstHalfBack = 0;
+            for (int i = 0; i < 10; i++) if (pos1[i] < 10) firstHalfBack++;
+            check(firstHalfBack > 0 && firstHalfBack < 10,
+                    "随机模式：中英混着出（前一半里有 " + firstHalfBack + " 张中译英，不是整段排）");
+
+            // 21d) 掌握只认正着那张；倒着那张答对不掌握（随机模式下它会混在前面出现）
+            BitSet md = new BitSet(6);
+            Engine ed = new Engine(6, o9(6), md, 0, 6, 3, false, new Sink(md));
+            ed.setDirMode(Engine.BOTH);
+            ed.setShuffleCards(true);
+            ed.setCardSeed(7L);
+            ed.startGroup();
+            int guardD = 0, sawReverseBeforeMaster = 0;
+            java.util.BitSet snapBefore = new java.util.BitSet(6);
+            while (ed.current() >= 0 && guardD++ < 60) {
+                int w = ed.current();
+                boolean rev = ed.secondPass();
+                snapBefore.clear();
+                snapBefore.or(md);
+                ed.answer(true);
+                if (rev && !snapBefore.get(w)) sawReverseBeforeMaster++;
+                if (rev) {
+                    check(md.get(w) == snapBefore.get(w),
+                            "倒着那张答对不改掌握位（词 " + w + "）");
+                }
+                ed.next();
+            }
+            check(md.cardinality() == 6, "随机模式下 6 个词最后都掌握（靠正着那张）");
+            System.out.println("   （这一轮里有 " + sawReverseBeforeMaster + " 张倒着卡出现在该词正着卡之前，掌握位都没被它动过）");
+
+            // 21e) 正着那张答不出来 → 回炉（隔 lag 张再见，回来还是正着）；答对之后才掌握
+            BitSet me = new BitSet(3);
+            Engine ee = new Engine(3, o9(3), me, 0, 3, 3, false, new Sink(me));
+            ee.setDirMode(Engine.BOTH);
+            ee.setShuffleCards(false);
+            ee.startGroup();
+            StringBuilder seqE = new StringBuilder();
+            boolean firstE = true;
+            int guardE = 0;
+            while (ee.current() >= 0 && guardE++ < 40) {
+                seqE.append(ee.current()).append(ee.secondPass() ? 'b' : 'a').append(',');
+                if (firstE) { firstE = false; ee.answer(false); } else ee.answer(true);
+                ee.next();
+            }
+            String gotE = seqE.toString();
+            check(gotE.equals("0a,1a,2a,0b,0a,1b,2b,"), "回炉的正着卡隔 3 张回来（实际 " + gotE + "）");
+            check(me.cardinality() == 3 && ee.requeues() == 1, "回炉答对之后 3 个词都掌握，只记一次回炉");
+
+            // 21f) 倒着那张答不出来 → 也回炉，回来还是倒着（还要倒着再见一次）
+            BitSet mf = new BitSet(2);
+            Engine ef = new Engine(2, o9(2), mf, 0, 2, 3, false, new Sink(mf));
+            ef.setDirMode(Engine.BOTH);
+            ef.setShuffleCards(false);
+            ef.startGroup();
+            ef.answer(true); ef.next();                     // 0 正着
+            ef.answer(true); ef.next();                     // 1 正着
+            check(ef.current() == 0 && ef.secondPass(), "顺序模式下第二遍从词 0 开始倒着考");
+            int rq = ef.requeues();
+            ef.answer(false);                               // 倒着不认识
+            check(ef.requeues() == rq + 1, "倒着不认识记一次回炉（「本组已错 N 次」）");
+            check(ef.dueCount() == 1, "倒着不认识的词进回炉表");
+            ef.next();
+            check(ef.current() == 1 && ef.secondPass(), "先消化排在前面的那张倒着卡");
+            ef.answer(true); ef.next();
+            check(ef.current() == 0 && ef.secondPass(), "回炉的倒着卡回来还是倒着（实际 "
+                    + ef.current() + "/" + ef.secondPass() + "）");
+
+            // 21g) 正确率按张数：两遍全对也是 100%
+            BitSet mg = new BitSet(5);
+            Engine eg = new Engine(5, o9(5), mg, 0, 5, 3, false, new Sink(mg));
+            eg.setDirMode(Engine.BOTH);
+            eg.setShuffleCards(false);
+            eg.startGroup();
+            int gg = 0;
+            while (eg.current() >= 0 && gg++ < 40) { eg.answer(true); eg.next(); }
+            check(eg.answers() == 10 && eg.accuracy() == 100,
+                    "两遍都答对 → 正确率 100%（实际 " + eg.accuracy() + "% / " + eg.answers() + " 张）");
+            check(eg.okCount() == 10 && eg.requeues() == 0, "一次记住就是把 10 张都算上");
+
+            // 21h) 只选一个方向：不翻倍；中译英模式方向就是中译英
+            BitSet mh = new BitSet(3);
+            Engine eh = new Engine(3, o9(3), mh, 0, 3, 5, false, new Sink(mh));
+            eh.setDirMode(Engine.CN2EN);
+            eh.setShuffleCards(true);                       // 洗不洗都不该翻倍
+            eh.startGroup();
+            check(eh.groupTotal() == 3, "单方向模式：张数不翻倍（实际 " + eh.groupTotal() + "）");
+            check(eh.dir() == Engine.CN2EN && !eh.secondPass(), "中译英模式：方向是中译英，也不算倒着那张");
+            eh.answer(true);
+            check(mh.get(0), "中译英模式：答对就掌握（跟英译中一样的账）");
+            eh.setDirMode(99);
+            check(eh.dirMode() == Engine.EN2CN, "方向脏值（99）兜底成英译中");
+
+            // 21i) 撤销：正着那张能把掌握撤回；倒着那张只撤它自己
+            BitSet mi = new BitSet(4);
+            Engine ei = new Engine(4, o9(4), mi, 0, 4, 3, false, new Sink(mi));
+            ei.setDirMode(Engine.BOTH);
+            ei.setShuffleCards(false);
+            ei.startGroup();
+            ei.answer(true);
+            check(mi.get(0), "正着答对 → 掌握");
+            ei.undo();
+            check(!mi.get(0) && !ei.secondPass() && ei.current() == 0, "撤销正着那张：掌握一起撤回");
+            ei.answer(true); ei.next();
+            ei.answer(true); ei.next();
+            ei.answer(true); ei.next();
+            ei.answer(true); ei.next();                     // 走完正着那遍
+            check(ei.secondPass() && ei.current() == 0, "走到倒着那遍");
+            ei.answer(true);
+            check(ei.current() == 0 && ei.secondPass(), "倒着那张答对了还没换卡");
+            ei.undo();
+            check(ei.current() == 0 && ei.secondPass() && mi.get(0),
+                    "撤销倒着那张：回到倒着这张，正着的掌握保留");
+
+            // 21j) 现场（意外退出续存）：剩下的牌带方向、当前卡是哪一面，都要接得回来
+            BitSet mj = new BitSet(6);
+            Engine ej = new Engine(6, o9(6), mj, 0, 6, 3, false, new Sink(mj));
+            ej.setDirMode(Engine.BOTH);
+            ej.setShuffleCards(false);
+            ej.startGroup();
+            ej.answer(true); ej.next(); ej.answer(true); ej.next();     // 正着答对 0、1
+            String snapJ = ej.snapshot(1234);
+            BitSet mj2 = (BitSet) mj.clone();
+            Engine ej2 = new Engine(6, o9(6), mj2, 0, 6, 3, false, new Sink(mj2));
+            ej2.setDirMode(Engine.BOTH);
+            ej2.setShuffleCards(false);
+            check(ej2.resume(snapJ), "两个方向都要：现场装得回来");
+            check(ej2.current() == 2 && !ej2.secondPass(), "接着刷：当前卡是词 2 的正着那张");
+            check(ej2.groupTotal() == 12, "现场里的总张数还是 12（实际 " + ej2.groupTotal() + "）");
+            StringBuilder seqJ = new StringBuilder();
+            int guardJ = 0;
+            while (ej2.current() >= 0 && guardJ++ < 40) {
+                seqJ.append(ej2.current()).append(ej2.secondPass() ? 'b' : 'a').append(',');
+                ej2.answer(true);
+                ej2.next();
+            }
+            check(seqJ.toString().equals("2a,3a,4a,5a,0b,1b,2b,3b,4b,5b,"),
+                    "接着刷：把这一组走完（实际 " + seqJ + "）");
+
+            // 21k) 现场里「当前卡正是已掌握词的倒着那张」不能被当成答完吞掉
+            BitSet mk = new BitSet(2);
+            Engine ek = new Engine(2, o9(2), mk, 0, 2, 3, false, new Sink(mk));
+            ek.setDirMode(Engine.BOTH);
+            ek.setShuffleCards(false);
+            ek.startGroup();
+            ek.answer(true); ek.next(); ek.answer(true); ek.next();     // 正着两张都答对
+            check(ek.current() == 0 && ek.secondPass(), "现在这张是词 0 的倒着卡");
+            String snapK = ek.snapshot(0);
+            BitSet mk2 = (BitSet) mk.clone();
+            Engine ek2 = new Engine(2, o9(2), mk2, 0, 2, 3, false, new Sink(mk2));
+            ek2.setDirMode(Engine.BOTH);
+            ek2.setShuffleCards(false);
+            check(ek2.resume(snapK), "倒着那两张的现场也装得回来");
+            check(ek2.current() == 0 && ek2.secondPass(),
+                    "「当前卡是已掌握词的倒着那张」不会被吞掉（实际 " + ek2.current() + "/" + ek2.secondPass() + "）");
+
+            // 21l) 重新开始：重拼出来的组还是一组两张，已经答对的英译中卡不再摆
+            BitSet ml = new BitSet(10);
+            Engine el = new Engine(10, o9(10), ml, 0, 4, 3, false, new Sink(ml));
+            el.setDirMode(Engine.BOTH);
+            el.setShuffleCards(false);
+            el.startGroup();                                 // 词 0..3，共 8 张
+            check(el.groupTotal() == 8, "重开前：4 个词 8 张");
+            el.answer(true); el.next();                      // 0 正着答对 → 当前 = 词 1 的正着卡（还没作答）
+            String snapL = el.snapshot(0);                    // 现场就是「每出一张卡存一次」的那一份
+            BitSet ml2 = (BitSet) ml.clone();
+            Engine el2 = new Engine(10, o9(10), ml2, 0, 4, 3, false, new Sink(ml2));
+            el2.setDirMode(Engine.BOTH);
+            el2.setShuffleCards(false);
+            check(el2.resume(snapL), "重开前：现场装回");
+            el2.startGroupRestart();
+            check(el2.groupTotal() == 7, "重开后 7 张：词 0 的英译中已答对，只留它的倒着那张（实际 "
+                    + el2.groupTotal() + "）");
+            StringBuilder seqL = new StringBuilder();
+            int guardL = 0;
+            while (el2.current() >= 0 && guardL++ < 40) {
+                seqL.append(el2.current()).append(el2.secondPass() ? 'b' : 'a').append(',');
+                el2.answer(true);
+                el2.next();
+            }
+            check(seqL.toString().equals("1a,2a,3a,1b,2b,3b,0b,"),
+                    "重开后的牌堆：没考过的词两张都在、答对过的词只留倒着那张（实际 " + seqL + "）");
+        }
+
+        System.out.println("ENGINE OK — 21 组断言全部通过（含撤销 + 意外退出续存 + 组指针推进 + 重刷正确率 + 重新开始重切 + 刷词方向的牌堆排列）");
     }
 }

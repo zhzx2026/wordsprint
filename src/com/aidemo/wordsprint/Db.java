@@ -112,6 +112,15 @@ public class Db {
                     b.stage = pb.stage; b.n = pb.n; b.wI = pb.wI; b.pI = pb.pI; b.mI = pb.mI;
                     books.add(b);
                 }
+                // 跨词书释义合并索引（用户 2026-10-11）：一遍扫完全部词书，刷词卡显示
+                // 「这个词在所有词书里的释义」。在加载线程里建，主线程零开销。
+                final List<Book> bs = books;
+                Meanings.install(new Meanings.Src() {
+                    @Override public int bookCount() { return bs.size(); }
+                    @Override public int words(int b) { return bs.get(b).n; }
+                    @Override public String word(int b, int i) { return bs.get(b).word(i); }
+                    @Override public String mean(int b, int i) { return bs.get(b).mean(i); }
+                });
                 I = new Db();
             } catch (Throwable e) {
                 // 词库读不出来**不再当场抛 RuntimeException 炸掉启动页**（体检 P3-8）：

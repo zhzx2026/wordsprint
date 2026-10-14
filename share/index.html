@@ -106,8 +106,8 @@ a{color:var(--brand);text-decoration:none}
     <div id="fBuilds" style="margin-top:6px"></div>
     <div class="meta" style="margin-top:8px;line-height:1.7">
       正式版 = Releases/latest，只有转正才更新；每条开发分支的测试包挂在预发布
-      <a href="https://github.com/zhzx2026/wordsprint/releases/tag/ci" target="_blank" rel="noopener" style="color:var(--brand)">Release ci</a>，
-      App「设置 → 更新源 → 分支」可锁定任意一条。
+      <a href="https://github.com/zhzx2026/wordsprint/releases/tag/ci" target="_blank" rel="noopener" style="color:var(--brand)">Release ci</a>。
+      每个包只认自己的那一条（测试包只认本分支、正式版只认正式发布），App 里没有可切换的入口。
       想尝鲜可直接装<a class="dlink" href="https://github.com/zhzx2026/wordsprint/releases/download/ci/wordsprint.apk">最新测试包</a>
       （新版本 App 会自动更新，不用反复来下）。
     </div>
@@ -124,7 +124,8 @@ a{color:var(--brand);text-decoration:none}
    战绩负载解码
    App 侧（ShareCard.payload）：键值行 → raw deflate → base64url（去掉 =）
    键：n 名字 · d 日期 · t 今日新词 · g 目标 · s 连续 · b 最高连续
-       m 累计掌握 · k 达标天数 · r 温习分钟 · f 收藏数 · h 182 天等级串
+       m 累计掌握 · k 达标天数 · h 182 天等级串
+   （r 温习分钟 / f 收藏 / x 自测 是老二维码里的退休键，用户已让删，这里读到也直接忽略）
    本文件自带一个最小 inflate，方便任何浏览器/微信内置浏览器都能打开。
    ========================================================================= */
 var WPI = (function(){
@@ -304,8 +305,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = WPI;   /* 
 
   function render(p){
     var name = p.n || '我', date = p.d || '', total = num(p.m), today = num(p.t), goal = Math.max(1, num(p.g, 50));
-    var streak = num(p.s), best = num(p.b), days = num(p.k), rev = num(p.r);
-    var heat = p.h || '';   /* 收藏(f)/自测(x) 两栏 2026-09-16 已从 App 里删除，老链接里还带着这两个键，忽略即可 */
+    var streak = num(p.s), best = num(p.b), days = num(p.k);
+    var heat = p.h || '';   /* 温习(r)/收藏(f)/自测(x) 都是退休的键：老二维码里还带着，这里忽略即可 */
     var done = today >= goal;
 
     $('fName').textContent = name;
@@ -346,7 +347,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = WPI;   /* 
 
     $('fMeta').innerHTML =
       '连续打卡 <b>' + streak + ' 天</b> · 历史最高 <b>' + best + ' 天</b><br>' +
-      '达标天数 <b>' + days + ' 天</b> · 温习 <b>' + rev + ' 分钟</b>';
+      '达标天数 <b>' + days + ' 天</b>';
   }
   function cell(big, small){ return '<div><b>' + big + '</b><span>' + small + '</span></div>'; }
 

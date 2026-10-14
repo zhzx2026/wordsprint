@@ -37,11 +37,14 @@ public class Prefs {
     public static final String K_FONT = "g_font";
     /** 字号缩放：0 标准 · 1 大屏自适应 · 2 特大 */
     public static final String K_SCALE = "g_scale";
-    /** 目标类型默认值：刷词 / 温习 / 自测 */
-    public static final String K_UP_URL = "u_url", K_UP_CH = "u_ch", K_UP_AUTO = "u_auto",
+    /**
+     * 应用内更新的开关与账本。更新**源**不再是用户设置项：每个包只认自己该认的那一个源
+     * （正式版只看正式发布，测试包只看自己那条分支的坑位，见 {@link UpCh#ownSlot}），
+     * 用户 2026-10-11 定版「不要有选择的地方」—— 于是 K_UP_CH（选中的通道）与
+     * K_UP_BR（选中的分支坑位）双双退役，行里的存量值也不再读（放那儿不碍事）。
+     */
+    public static final String K_UP_URL = "u_url", K_UP_AUTO = "u_auto",
             K_UP_LAST = "u_last", K_UP_SEEN = "u_seen";
-    /** 「分支」通道选中的坑位 id（预发布 Release ci 的 update-<id>.json，见 BRANCHING.md §3） */
-    public static final String K_UP_BR = "u_br";
     public static final String K_PROFILES = "p_profiles", K_ACTIVE = "p_active";
     /** 手势提示（首次进刷词页显示一行提示） */
     public static final String K_GES_HINT = "g_ges_hint";
@@ -51,61 +54,6 @@ public class Prefs {
 
     public static final int FONT_POPPINS = 0, FONT_QUICKSAND = 1, FONT_SYSTEM = 2;
     public static final int SCALE_AUTO = 1;
-
-    /**
-     * 0 正式版（Release）· 2 分支（ci 预发布的 update-&lt;id&gt;.json）。
-     * 只有两档（用户 2026-09-22「安装界面 dev 还在」→ dev 档整个退役）；
-     * 存量值 1（旧 dev 档）迁到「分支」，老版本手填的 dev 地址同理。
-     */
-    public int updateChannel() {
-        if (p.contains(K_UP_CH)) {
-            int v = gi(K_UP_CH, 0);
-            return v == 1 ? UpCh.BRANCH : UpCh.sanitize(v);         // 旧「dev」→「分支」（测试包只认分支）
-        }
-        // 老版本手填过地址的：先读全局键，再兜一手档案命名空间里的存量（迁移在 of() 里做，
-        // 但 updateChannel() 有可能在 migrate 之前被调到，这里两个都看一眼更稳）
-        String old = gstr(K_UP_URL, null);
-        if (old == null) old = p.getString(ns(K_UP_URL), "");
-        if (old != null && old.contains("/dev")) return UpCh.BRANCH;
-        // 没显式选过通道：装的是测试包（X.Y）就默认盯「分支」。
-        // （否则刚装完测试包的人点「检查更新」，查到的是正式版 —— 永远「已经是最新版本」）
-        return Vers.channel(installedName(), null);
-    }
-
-    /** 本机安装包的显示版本号（判断「装的是 dev 包还是正式版」用；拿不到就按稳定版处理） */
-    private static String installedName() {
-        try {
-            Context c = App.get();
-            return c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionName;
-        } catch (Throwable t) {
-            return null;
-        }
-    }
-
-    public void setUpdateChannel(int ch) { gset(K_UP_CH, UpCh.sanitize(ch)); }
-
-    /**
-     * 「分支」通道当前认的分支 id：显式点选过的优先；没选过 → 默认认**本包自己**的分支
-     * （构建标识 BuildInfo.STAMP 第一段 = branch_id，build.sh 编译期生成）——
-     * 用户 2026-09-22「分支都没用」：装了哪条分支的包还得再手动点一次同名分支，纯属多余。
-     */
-    public String upBranch() {
-        String saved = UpCh.sanitizeSlot(gstr(K_UP_BR, ""));
-        if (!saved.isEmpty()) return saved;
-        return ownBranchId();
-    }
-
-    public void setUpBranch(String id) { gset(K_UP_BR, UpCh.sanitizeSlot(id)); }
-
-    /** 本包出自哪条分支（构建标识第一段；双装包/解析失败返回空 —— 双装包应用内更新本来就关着） */
-    private static String ownBranchId() {
-        try {
-            if (BuildInfo.SBS) return "";
-            String st = BuildInfo.STAMP;
-            int i = st.indexOf('·');
-            return i > 0 ? UpCh.sanitizeSlot(st.substring(0, i)) : "";
-        } catch (Throwable t) { return ""; }
-    }
 
     public String str(String key, String def) { return p.getString(ns(key), def); }
     public void set(String key, String v) { p.edit().putString(ns(key), v).apply(); }
@@ -332,7 +280,7 @@ public class Prefs {
     /** 从档案命名空间搬出来、改成全局的那些键（见 {@link #migrateGlobalKeys}） */
     private static final String[] GLOBALIZED = {
             K_SPEAK, K_PHON, K_SOUND, K_ANIM,
-            K_UP_URL, K_UP_AUTO, K_UP_LAST, K_UP_SEEN, K_UP_BR
+            K_UP_URL, K_UP_AUTO, K_UP_LAST, K_UP_SEEN
     };
 
     /**
@@ -554,6 +502,15 @@ public class Prefs {
     /** 回炉间隔的全局默认（不认识后隔几张再出现）：3/5/8，设置 → 学习里改 */
     public static final String K_LAG_DEF = "g_lag";
 
+    /**
+     * 刷词方向（用户 2026-10-13 定）：见 {@link Engine#EN2CN} / {@link Engine#CN2EN} / {@link Engine#BOTH}。
+     * 跟档案走 —— 和「默认每组词数 / 回炉间隔」同一类：这是学习者的习惯，不是这台机器的外观。
+     */
+    public static final String K_DIRECTION = "g_dir";
+
+    public int direction() { return Engine.clampDir(i(K_DIRECTION, Engine.EN2CN)); }
+    public void setDirection(int d) { set(K_DIRECTION, Engine.clampDir(d)); }
+
     public void touchBook(String bid) { p.edit().putLong(ns(bk(bid, "t")), System.currentTimeMillis()).apply(); }
 
     /** 这条键是不是当前档案的（多档案下「上次打开的书」「导出」都别把别人的数据算进来） */
@@ -620,7 +577,7 @@ public class Prefs {
         DiaryStore.learned(Diary.dashed(d), x);
     }
 
-    /** 连续打卡：以 Diary 为准（含温习/自测也算打卡） */
+    /** 连续打卡：以 Diary 为准（**只认新词** —— 自测/温习这两个退休功能都不算，见 Diary.active） */
     public int streak() { return DiaryStore.diary().streak(Diary.today()); }
 
     /** 历史最高连续打卡 */
@@ -674,11 +631,13 @@ public class Prefs {
     }
 
     /**
-     * 完整日记导出（v7.1+ 扩展区）：新词/目标/温习/用时/完成标记全带（v1 段只有新词数）。
+     * 完整日记导出（v7.1+ 扩展区）：新词/目标/用时/完成标记全带（v1 段只有新词数）。
+     * 退休的 rev/revSec/revDone 也原样带 —— 它们只是历史字段（老设备/老码互读要用），
+     * 新版本里任何界面都不再读它们。
      *
      * 体积控制（否则 365 天 × 19B 直接把二维码撑爆）：一天只在“v1 段表达不了它”时才进日记段——
-     *  ① v1 段没覆盖这天（v1 只留最近 255 天；只温习没刷词的天 v1 也没有）→ 必须带，否则丢；
-     *  ② 这天有增量信息（温习过/计过时/改过目标/打过勾/目标不是默认）→ 带；
+     *  ① v1 段没覆盖这天（v1 只留最近 255 天；只有订正/用时没有新词的天 v1 也没有）→ 必须带，否则丢；
+     *  ② 这天有增量信息（订正过/计过时/改过目标/打过勾/目标不是默认）→ 带；
      *  ③ 纯刷词 + 默认目标的天 → v1 那 6 个字节就够了，这里跳过。
      * 导入侧两者叠加即完整（v1 先合新词数，日记段再合细节），见 importDecoded。
      */
@@ -862,8 +821,8 @@ public class Prefs {
      * 用户实际认得约 5000 个词，首页却显示 8800 —— 而这个数字还会印到分享卡片上
      * （ShareCard.java:54），等于对外报了一个自己都没法解释的战绩。
      *
-     * 按词面去重才是「认识多少个词」。开销：24 本书 × 位图 + 一次 HashSet，
-     * 16571 个词条目；结果缓存起来，改动掌握位图时才失效（首页/个人页/分享卡都会连着读几次）。
+     * 按词面去重才是「认识多少个词」。开销：25 本书 × 位图 + 一次 HashSet，
+     * 17199 个词条目；结果缓存起来，改动掌握位图时才失效（首页/个人页/分享卡都会连着读几次）。
      */
     public int totalMastered() {
         if (!Db.ready()) return 0;

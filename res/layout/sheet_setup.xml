@@ -160,6 +160,31 @@
                 android:orientation="horizontal"/>
         </LinearLayout>
 
+        <!-- 刷词方向（用户 2026-10-13：在「开始刷词」这个弹层里就能选） -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card_20"
+            android:padding="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/set_dir"
+                android:textColor="?attr/wpText2"
+                android:textSize="11sp"
+                android:letterSpacing="0.1"/>
+
+            <LinearLayout
+                android:id="@+id/dirChips"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal"/>
+        </LinearLayout>
+
         <!-- 重刷整本 -->
         <LinearLayout
             android:id="@+id/rowRedo"

@@ -3,6 +3,20 @@ import java.io.*;
 import java.util.*;
 
 public class PackTest {
+
+    /** 释义是不是以词性标注开头（与 scripts/etl_high_frequency_ez.py 的 POS_TAGS 同一套） */
+    static boolean hasPos(String mean) {
+        String[] tags = {"n.", "v.", "adj.", "adv.", "prep.", "conj.", "pron.", "art.", "num.", "phr."};
+        int sp = mean.indexOf(' ');
+        if (sp <= 0) return false;
+        for (String tag : mean.substring(0, sp).split("/", -1)) {
+            boolean ok = false;
+            for (String t : tags) if (t.equals(tag)) { ok = true; break; }
+            if (!ok) return false;
+        }
+        return true;
+    }
+
     public static void main(String[] args) throws Exception {
         long t0 = System.currentTimeMillis();
         Pack.Data d;
@@ -13,18 +27,34 @@ public class PackTest {
         System.out.println("parse ms=" + (t1 - t0) + " books=" + d.books.size() + " pool=" + d.pool.length);
         long words = 0; int empties = 0, badPh = 0;
         Set<String> ids = new HashSet<>();
+        int ezBooks = 0;
         for (Pack.Book b : d.books) {
             if (!ids.add(b.id)) throw new RuntimeException("dup id " + b.id);
             if (b.n <= 0) throw new RuntimeException("empty book " + b.title);
             words += b.n;
+            Set<String> ezWords = new HashSet<>();
             for (int i = 0; i < b.n; i++) {
                 String w = d.pool[b.wI[i]], m = d.pool[b.mI[i]], p = d.pool[b.pI[i]];
                 if (w == null || w.isEmpty() || m == null || m.isEmpty()) empties++;
                 if (p.length() > 40) badPh++;
                 if (!w.matches(".*[A-Za-z].*")) throw new RuntimeException("bad word in " + b.title + ": " + w);
+                if (b.title.equals("3500词汇高频使用词汇（E–Z）")) {
+                    ezWords.add(w.toLowerCase());
+                    // 词性（用户 2026-10-11「把 E-Z 的词性加上」）：628 条**每一条**的释义都要以
+                    // 词性开头（`n. 生态` / `v./n. 缓解`），与词库里其他词书同一种形态。
+                    if (!hasPos(m)) throw new RuntimeException("E-Z 词条缺少词性：" + w + " -> " + m);
+                }
+            }
+            if (b.title.equals("3500词汇高频使用词汇（E–Z）")) {
+                ezBooks++;
+                if (!"高频词汇".equals(b.pub) || b.stage != 3 || b.n != 628)
+                    throw new RuntimeException("bad E-Z book metadata/count: " + b.pub + " stage=" + b.stage + " n=" + b.n);
+                for (String sample : new String[]{"ease", "side effect", "at random", "spiritual", "widespread"})
+                    if (!ezWords.contains(sample)) throw new RuntimeException("E-Z book missing " + sample);
             }
         }
-        System.out.println("words=" + words + " empties=" + empties + " badPh=" + badPh);
+        if (ezBooks != 1) throw new RuntimeException("expected one E-Z book, found " + ezBooks);
+        System.out.println("words=" + words + " empties=" + empties + " badPh=" + badPh + " E-Z=628");
         // spot check a known word
         for (Pack.Book b : d.books) {
             if (b.pub.contains("人教版") && b.title.contains("三年级上") && b.series.contains("三年级起点")) {

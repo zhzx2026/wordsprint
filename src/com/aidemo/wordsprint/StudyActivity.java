@@ -194,6 +194,7 @@ public class StudyActivity extends Activity {
      * 会让「正在用的排列」和「存下来的种子」对不上，下一组的 pos 就指到另一副牌的位置去了。
      */
     private void buildEngine(boolean redo) {
+        // 出牌规则（方向 + 牌堆怎么摆）由 applyPlan() 统一喂给引擎，见那里的注释。
         final java.util.BitSet mastered = prefs.mastered(book.id, book.n);
         engine = new Engine(book.n, buildOrder(), mastered,
                 reviewMode ? 0 : prefs.next(book.id),
@@ -218,10 +219,26 @@ public class StudyActivity extends Activity {
                     @Override public boolean isMastered(int i) { return mastered.get(i); }
                     @Override public void onMastered(int i) {
                         prefs.saveMastered(book.id, mastered);
-                        // 新生词才算「今日已刷」。温习（错词订正）走 DiaryStore.reviewed，不重复计数
+                        // 新生词才算「今日已刷」。错词订正走 DiaryStore.reviewed，不重复计数
                         if (mode == MODE_WORD) prefs.addToday(sessionDay, 1);
                     }
                 });
+        applyPlan();
+    }
+
+    /**
+     * 把「这一轮怎么出牌」告诉引擎（用户 2026-10-13 定的三条）：
+     *   · 方向：英译中 / 中译英 / 两个方向都要（{@link Prefs#direction}）；
+     *   · 牌堆洗不洗：跟这本书的「刷词顺序」走 —— 课本顺序 = 前面英译中、后面中译英；
+     *     随机打乱 = 张数翻倍后整体洗匀、中英混着出；
+     *   · 洗牌种子：跟刷词顺序用的是同一颗种子，所以同一轮里「重新开始」和现场恢复的牌堆对得上。
+     * 建引擎 / 开组 / 重新开始三处都调 —— 设置里改完，下一组生效，一组之内不换。
+     */
+    private void applyPlan() {
+        engine.setDirMode(prefs.direction());
+        boolean shuffled = mode == MODE_WORD && prefs.order(book.id) == 1;
+        engine.setShuffleCards(shuffled);
+        if (shuffled) engine.setCardSeed(prefs.ensureOrderSeed(book.id));
     }
 
     /**
@@ -237,6 +254,7 @@ public class StudyActivity extends Activity {
     }
 
     private void startGroup() {
+        applyPlan();                                   // 改了设置/换了顺序，下一组生效
         startTs = SystemClock.elapsedRealtime();
         result.setVisibility(View.GONE);
         confetti.setVisibility(View.GONE);
@@ -321,6 +339,7 @@ public class StudyActivity extends Activity {
      * 开头重扫（跳过已记住的词）。错题本、已掌握记录都原样保留。
      */
     private void startFresh() {
+        applyPlan();
         startTs = SystemClock.elapsedRealtime();
         result.setVisibility(View.GONE);
         confetti.setVisibility(View.GONE);
@@ -398,21 +417,37 @@ public class StudyActivity extends Activity {
         // 其余卡片统一显示「本组」，组内进度看下面的「3 / 50」和进度条就够。
         tvGroupPill.setText(firstOfGroup && mode == MODE_WORD ? gesHint() : getString(R.string.this_group));
         firstOfGroup = false;
+        final boolean cn2en = engine.dir() == Engine.CN2EN;      // 中译英：正面给中文，英文要翻面才给
         tvWord.setVisibility(View.VISIBLE);
         tvMeaning.setVisibility(View.VISIBLE);
-        tvWord.setText(book.word(w));
-        tvWord.setTextSize(Fonts.wordSize(this, book.word(w).length()));
-        tvMeaning.setText(book.mean(w));
-        String ph = book.ph(w);
-        boolean showPh = prefs.gbool(Prefs.K_PHON, true) && !ph.isEmpty();
-        tvPhonetic.setText(ph.isEmpty() ? "" : "/" + ph + "/");
-        tvPhonetic.setVisibility(showPh ? View.VISIBLE : View.GONE);
+        String word = book.word(w);
+        // 释义 = 这个词在**全部词书**里的释义合并去重（用户 2026-10-11：别的书里叫 y，
+        // 就显示 x；y；在哪本书刷到都一个样）。词库没加载好/没这个索引时退回本书释义。
+        String mean = Meanings.display(word, book.mean(w));
+        if (cn2en) {
+            // 中译英的正面：中文大字（按字数缩），**单词和音标都藏着** —— 音标也会剧透拼写。
+            tvWord.setText(mean);
+            tvWord.setTextSize(cnFrontSp(mean.length()));
+            tvPhonetic.setText("");
+            tvPhonetic.setVisibility(View.GONE);
+        } else {
+            tvWord.setText(word);
+            tvWord.setTextSize(Fonts.wordSize(this, word.length()));
+            String ph = book.ph(w);
+            boolean showPh = prefs.gbool(Prefs.K_PHON, true) && !ph.isEmpty();
+            tvPhonetic.setText(ph.isEmpty() ? "" : "/" + ph + "/");
+            tvPhonetic.setVisibility(showPh ? View.VISIBLE : View.GONE);
+        }
+        // 释义框里的这条：英译中 = 中文释义（翻面后看到的答案）；
+        // 中译英 = 中文释义原样留着（翻面时英文顶到词面上、中文退到这条里，两面看清）
+        tvMeaning.setText(mean);
+        tvMeaning.setTextSize(Meanings.meaningSp(mean.length()) * Fonts.scale(this));
         meaningBox.animate().cancel();
         meaningBox.setAlpha(1f);
         meaningBox.setTranslationY(0f);
         // 释义要翻面才给（「看释义」是用户自己绑在某个手势上的动作之一）
         meaningBox.setVisibility(View.GONE);
-        tvHint.setText(getString(R.string.tap_reveal));
+        tvHint.setText(getString(cn2en ? R.string.tap_reveal_rev : R.string.tap_reveal));
         tvHint.setVisibility(View.VISIBLE);
         tvHint.setAlpha(1f);
         actions.animate().cancel();
@@ -421,7 +456,20 @@ public class StudyActivity extends Activity {
         colMain.setAlpha(0f);
         colMain.setTranslationY(Ui.dp(this, 16));
         colMain.animate().alpha(1f).translationY(0f).setDuration(dur(200)).start();
-        if (prefs.gbool(Prefs.K_SPEAK, true)) sfx.speak(book.word(w));
+        // 中译英的正面**不能朗读**：一念出来答案就没了（那正是要考的）。它的朗读在 reveal() 里。
+        if (!cn2en && prefs.gbool(Prefs.K_SPEAK, true)) sfx.speak(word);
+    }
+
+    /**
+     * 中译英正面的字号：中文大字按字数缩，别把卡片顶爆。
+     * 预算按「铺满卡片内宽约两行」估：sp ≈ 632 / 字数，夹在 15～30sp，最后乘系统字号倍率。
+     * （全库 8,258 个词的合并释义平均 14 字，绝大多数落在上限 30sp。）
+     */
+    private float cnFrontSp(int len) {
+        float sp = 632f / Math.max(4, len);
+        if (sp > 30f) sp = 30f;
+        if (sp < 15f) sp = 15f;
+        return sp * Fonts.scale(this);
     }
 
     /** 按当前映射拼一句提示（用户自己改过映射后，这句话要跟着变） */
@@ -464,6 +512,19 @@ public class StudyActivity extends Activity {
     /** 翻卡 = 布局重排 + 淡入（非 3D 翻转） */
     private void reveal() {
         engine.markFlipped();
+        final int w = engine.current();
+        if (engine.dir() == Engine.CN2EN && w >= 0) {
+            // 中译英翻面：答案（英文单词 + 音标）顶到词面位置，中文留在下面那条释义里 ——
+            // 于是无论从哪个方向进来，翻面之后的卡片长得一模一样。
+            String word = book.word(w);
+            tvWord.setText(word);
+            tvWord.setTextSize(Fonts.wordSize(this, word.length()));
+            String ph = book.ph(w);
+            boolean showPh = prefs.gbool(Prefs.K_PHON, true) && !ph.isEmpty();
+            tvPhonetic.setText(ph.isEmpty() ? "" : "/" + ph + "/");
+            tvPhonetic.setVisibility(showPh ? View.VISIBLE : View.GONE);
+            if (prefs.gbool(Prefs.K_SPEAK, true)) sfx.speak(word);   // 正面憋着的那一嗓子，翻面才念
+        }
         tvHint.animate().cancel();
         long hd = dur(110);
         if (hd == 0) {
@@ -504,6 +565,8 @@ public class StudyActivity extends Activity {
     private void answer(final boolean ok) {
         if (engine.current() < 0 || engine.busy()) return;
         int w = engine.current();
+        // 这一遍是不是「两个方向都要」里倒过来考的那一遍（倒着答对不加「今日已刷」，见 Engine.answer）
+        final boolean second = engine.secondPass();
         tick();                                    // 把这段停留时间记到今天的时长里
         // 撤销用：先把「这次作答会改到的东西」拍下来（错题本 / 是否首次记住 / 模式）
         wbSnap = wb.copy();
@@ -511,7 +574,9 @@ public class StudyActivity extends Activity {
         // 而撤销以前是无条件 -1。于是在错词复习里点「记住了」再点「上一个」，
         // 就会凭空减掉一个从没加过的数 → 今日已刷变负 → Diary.active() 判这天没学过
         // → 打卡勾消失、连续天数被截断，而用户明明刷了词。
-        lastFresh = ok && mode == MODE_WORD && !engine.masteredBitSet().get(w);
+        // 倒着那一遍不加「今日已刷」（掌握状态是正着那遍定的，见 Engine.answer）——
+        // 这里跟着判，否则撤销会把一个从没加过的数减掉
+        lastFresh = ok && mode == MODE_WORD && !second && !engine.masteredBitSet().get(w);
         lastOk = ok;
         lastWasReview = reviewMode;
         engine.answer(ok);
@@ -562,7 +627,7 @@ public class StudyActivity extends Activity {
         updateHud();
     }
 
-    /** 计时：把「距上次作答」的时间按模式记账（刷词 / 温习） */
+    /** 计时：把「距上次作答」的时间按模式记账（kind 0 刷词 / 1 错词订正） */
     private void tick() {
         long now = SystemClock.elapsedRealtime();
         long ms = now - lastTick;

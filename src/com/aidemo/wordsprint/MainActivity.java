@@ -132,9 +132,11 @@ public class MainActivity extends Activity {
             @Override public void onPick(String day, Diary.Day d, float sx, float sy) {
                 // 自绘小气泡贴着点中的格子弹（用户 2026-10-11：不要系统 Toast），
                 // 顺便看清点的是哪一天
+                // 「温习 N」已按用户 2026-10-13 去掉（订正既不影响格子深浅也不影响打卡，
+                // 摆在这里只会让人以为它在算数）——气泡里只留新词与目标
                 CharSequence s = d == null
                         ? getString(R.string.heat_none) + " · " + day
-                        : getString(R.string.heat_day_info, day, d.learned, d.rev, d.goal);
+                        : getString(R.string.heat_day_info, day, d.learned, d.goal);
                 Ui.bubble(MainActivity.this, heat, sx, sy, s);
             }
         });
@@ -180,7 +182,7 @@ public class MainActivity extends Activity {
         // progressDrawable 自身的 shape，部分 ROM 下会整根「隐形」（体检 P2-20）
         ProgBar bar = (ProgBar) findViewById(R.id.goalBar);
         bar.setProgress(t.pct());
-        int gcol = Skin.c(this, t.goalDone() ? R.attr.wpGreen : R.attr.wpBrand);
+        int gcol = Skin.c(this, t.goalDone() ? R.attr.wpGoalGreen : R.attr.wpBrand);
         int[] gbc = DlProg.barColors(Skin.c(this, R.attr.wpSurface), Skin.c(this, R.attr.wpText2), gcol, gcol);
         bar.setColors(gbc[0], gbc[1]);
         TextView badge = (TextView) findViewById(R.id.goalBadge);

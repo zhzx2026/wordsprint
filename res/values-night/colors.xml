@@ -10,6 +10,8 @@
     <color name="green_grad2">#1EC97B</color>
     <color name="status_bar">#101827</color>
     <color name="green">#2EBD85</color>
+    <color name="goal_green">#38C88A</color>
+    <color name="goal_text">#101827</color>
     <color name="green_bg">#17332A</color>
     <color name="red">#FF6B6B</color>
     <color name="red_bg">#3A2226</color>

@@ -1,13 +1,13 @@
 # 刷单词 WordsPrint
 
-**当前版本：v10.0（stable）** <!-- CURRENT-VERSION -->
+**当前版本：v11.0（stable）** <!-- CURRENT-VERSION -->
 
 一个精致的**离线背单词 Android 应用**：以「整本课本」为单位刷词，覆盖小学到大学的主流词表。
 无 Gradle、无第三方 UI 库，`bash build.sh` 直接出签名 APK；更新走 GitHub Releases（App 内 OTA）。
 
 ## 词库（内置，零联网）
 
-**24 本词书 · 16,571 个单词**，打包成小端二进制 `res/raw/wdb.dat`（字符串池去重后 0.70MB），
+**25 本词书 · 17,199 个单词**，打包成小端二进制 `res/raw/wdb.dat`（字符串池去重后约 0.72 MiB），
 每条词条 = 单词 + 国际音标 + 精简中文释义：
 
 | 学段 | 册数 | 词数 | 说明 |
@@ -16,6 +16,7 @@
 | 初中（人教版） | 5 | 2,568 | 七上/七下/八上/八下/九年级全 |
 | 高中（人教版，新课标） | 7 | 2,634 | 必修第一/二/三册 + 选择性必修第一~四册；词书库按**先必修后选修**排列 |
 | 高考 3500（新课标词表） | 1 | 3,622 | 高考英语 3500 词 |
+| 高频词汇（E–Z） | 1 | 628 | 来自已提供的 E–Z PDF；数据 `data/high_frequency_ez.tsv` → `scripts/etl_high_frequency_ez.py` |
 | 大学（四六级） | 3 | 6,979 | 四级真题核心词 1,162 · 四级英语词汇 3,739 · 六级英语词汇 2,078 |
 
 词书库支持搜索 + 全部/小学/初中/高中/高考 3500/大学 筛选，按学段分节，每本书带掌握进度条；
@@ -61,7 +62,7 @@
 
 - 设置 →「数据与档案」→ **导出二维码**：内容**可选**（词书进度 / 错题本 / 打卡记录 / 学习设置四枚开关 +
   逐本勾选，改完当场重算）。一枚码里有：各书掌握位图 + 组指针 + **错题本**（每词还差几次）+
-  **完整打卡日记**（目标/温习/用时/完成勾）+ **学习设置**（手势/目标/分组）+ 档案名
+  **完整打卡日记**（目标/新词/用时/完成勾）+ **学习设置**（手势/目标/分组/刷词方向）+ 档案名
   （自定义二进制 → Deflate → Base64URL → 自研 QR 编码器 `QREnc.java`，EC-M / v1–40；
   每张图生成前用与扫码端同一套 zxing **自解码校验**，读不通就换掩码，保证「扫得到」；
   扩展段附在 v1 字节后面，**老版本 App 读到原来位置就停**，新码旧机照扫不报错）
@@ -81,12 +82,15 @@
 
 - 内置更新源 `github.com/zhzx2026/wordsprint/releases/latest/download/update.json`；
   App 在前台每 60 秒静默查一次、进首页立刻查一次，发现新版首页亮横幅 + 弹窗（同版本只弹一次窗）
-> **测试包装机不走 OTA**（用户 2026-10-10 定版）：分支测试包是**双装新 App**（不同包名、手动安装、
-  与正式包数据隔离），应用内更新对它无效。下面的「分支」更新源只服务**更新式测试包**（SBS=0，备用）：
-  装的是更新式测试包（版本号形如 X.Y，Y≥1）就默认盯本包自己的「分支」坑位；
-  也可在设置里切换正式源 / 其他测试分支。分支列表来自 ci 根 `update.json`，只显示现存且已有
-  完整测试包的分支；删除分支后 CI 会清理它的坑位和列表。「已是最新版本」会写清查了哪个通道、
-  服务器什么版本、本机什么版本（判断逻辑见 `VersTest` / `UpChTest` 主机测试）
+- **更新源不可选**（用户 2026-10-11 定版：「如果是 sbs 就只更新 arena takeover 的更新包，不要有选择；
+  相同的 main 就只有 main，不要有选择的地方」）：**每个包只认自己该认的那一个源**，
+  设置页不再有任何 chips / 分支下拉 ——
+  · 正式版（`X.0`，就是 main 那条线）→ 只认 `releases/latest`；
+  · 双装测试包（刷单词·测试）/「更新式」dev 包（`X.Y`）→ 只认**自己那条分支**在预发布 Release `ci`
+    里的坑位 `update-<分支id>.json`（坑位 id 编译期写进构建标识，见 `UpCh.ownSlot`）。
+  测试包因此能自己升级（同包同签 → 系统框写「更新」），首次装则从 Actions Artifacts 取。
+  判断逻辑在 `Vers.channel`，被 `VersTest` / `UpChTest` 主机测试盯住；
+  「已是最新版本」会写清查了哪个源、服务器什么版本、本机什么版本
 - 下载有进度弹窗（百分比 / 已下 / 总量 / 速度），下完按长度核对 + 用 zip 读一遍（必须有 `AndroidManifest.xml`），
   被截断或拿到错误页一律判失败并**自动重下一次**；装包走 `ApkProvider` + `REQUEST_INSTALL_PACKAGES`
 - **进度条是自己画的**（更新弹窗 `UpdateBar`、词书行/目标卡 `ProgBar`，都不用系统 ProgressBar）：用户前后四次反馈「更新没有进度条」，
@@ -113,8 +117,8 @@ bash build.sh                    # ⑤ aapt2 → javac → d8 → zipalign → a
 `ScaleTest`（字号缩放幂等）、`GesTest`（手势映射）、`WrongBookTest`（错题本规则）、
 `ShareGeomTest`（战绩图版面）、`HeatRampTest`（热力图在每套配色下都看得见格子）、
 `BookEditTest`（范围解析 + 批量改掌握）、`VersTest`（版本/更新通道）、`ProfilesTest`（多档案隔离）、
-`DlProgTest`（更新下载进度：百分比不卡 0 + 条子在 10 套配色下都看得见）、`UpChTest`（分支清单），
-外加 Python 的 `ci_sync_test.py`（删除分支后资产/索引/清单对账，不误删）和 node 的
+`DlProgTest`（更新下载进度：百分比不卡 0 + 条子在 10 套配色下都看得见）、`UpChTest`（分支清单）、
+`MarkdownNotesTest`（更新说明 Markdown 渲染与安全转义），外加 Python 的 `ci_sync_test.py`（删除分支后资产/索引/清单对账，不误删）和 node 的
 `share_page_test.js`（在线战绩页那个手写 inflate）。**发版前必过**。
 
 产物：minSdk 26 / targetSdk 34，自适应桌面图标（vector），APK 约 0.9MB（v4.0 实测 911,769 字节，含 ZXing 解码库与两套字体）。
@@ -170,8 +174,9 @@ src/com/aidemo/wordsprint/  全部 Java 源码（无第三方依赖，libs/ 只�
 res/                        布局 / 配色 / 字符串 / 字体；values-night/ 是深色配对；raw/wdb.dat 是词库
 test/                       主机侧 JVM 测试（CI 跑的那批）；test/scratch/ 是一次性调试脚本
 scripts/                    构建 / 版本 / 发布 / ETL 辅助脚本（清单见 scripts/README.md）
+docs/ARCHITECTURE.md         面向新手的项目架构导览、数据流和安全改动指南
 share/                      在线战绩页（GitHub Pages 从 main 托管，见 BRANCHING.md §4）
-data/                       词库源数据（小学 tsv、四六级 tsv.gz）
+data/                       词库源数据（小学 tsv、E–Z 高频词 tsv、四六级 tsv.gz）
 .github/workflows/          staging.yml（测试包）· sync_ci.yml（分支删除后对账）· auto_release.yml（合并转正）· release.yml（打 tag 发布）
 AGENT.md / AGENTS.md        给接手这个仓库的 AI 的交接说明（含踩坑清单）
 VERSIONING.md               版本迭代与转正规则

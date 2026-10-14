@@ -148,6 +148,22 @@ public class SettingsSubActivity extends Activity {
         // 进刷单词问不问「上次继续 / 重新开始」（问句里勾「记住这次的选择」会把这开关关掉）
         bindGlobal(R.id.swResumeAsk, Prefs.K_RESUME_ASK, true);
 
+        // 刷词方向（用户 2026-10-13：可以设置中译英、英译中、both）
+        // 0 英译中（老手感）· 1 中译英 · 2 两个方向都要（一张卡过两遍）
+        final int[] dirs = {Engine.EN2CN, Engine.CN2EN, Engine.BOTH};
+        String[] dirLabels = {getString(R.string.dir_en2cn), getString(R.string.dir_cn2en),
+                getString(R.string.dir_both)};
+        int selDir = 0;
+        for (int i = 0; i < dirs.length; i++) if (dirs[i] == pr.direction()) selDir = i;
+        Ui.fillRow((LinearLayout) findViewById(R.id.dirChips), dirLabels, selDir, new Ui.ChipTap() {
+            @Override public void onTap(int idx, TextView chip) {
+                if (pr.direction() == dirs[idx]) return;
+                pr.setDirection(dirs[idx]);
+                toast(getString(R.string.dir_saved, getString(idx == 0 ? R.string.dir_en2cn
+                        : idx == 1 ? R.string.dir_cn2en : R.string.dir_both)));
+            }
+        });
+
         // 默认每组词数
         final int[] sizes = {20, 30, 50, 80, 100};
         String[] labels = new String[sizes.length];
@@ -237,28 +253,14 @@ public class SettingsSubActivity extends Activity {
 
     // ---------------- 关于与更新 ----------------
 
-    private android.view.ViewGroup brScroll;      // 「分支」坑位选择行（只在第 3 档选中时出现）
-    private LinearLayout brRow;
-
     private void buildAbout() {
-        // 更新通道：stable / 分支 两档（用户 2026-09-22「安装界面 dev 还在」→ dev 档退役，
-        // 测试包一律按分支锁定；App 直连 GitHub 看分支，不用手填地址）。
-        String[] srcNames = {getString(R.string.update_src_stable), getString(R.string.update_src_branch)};
-        brScroll = (android.view.ViewGroup) findViewById(R.id.brScroll);
-        brRow = (LinearLayout) findViewById(R.id.brChips);
-        // chips 下标（0/1）↔ 通道号（0/2）必须双向换算：v6.3/v6.4 只顾了显示没顾写入，
-        // 点「分支」实际存成 stable（用户 2026-09-23「分支还是显示stable」）。换算规则在 UpCh。
-        int selChip = pr.updateChannel() == UpCh.BRANCH ? 1 : 0;
-        Ui.fillRowEqual((LinearLayout) findViewById(R.id.srcChips), srcNames, selChip, new Ui.ChipTap() {
-            @Override public void onTap(int idx, TextView chip) {
-                pr.setUpdateChannel(UpCh.channelForChip(idx));
-                syncBranchRow();
-                refreshState();
-            }
-        });
+        // 更新源 = 包自己那一个，**没有任何选择控件**（用户 2026-10-11「不要有选择的地方」）：
+        // 正式版只认正式发布，双装测试包 / dev 包只认自己那条分支在预发布 Release ci 里的坑位。
+        // 这里只把「认的是哪个源」写清楚 —— 早先那两排 chips（stable/分支 + 分支下拉 + 刷新）
+        // 连同 UpCh.channelForChip / parseChannels 一起删掉了。
+        ((TextView) findViewById(R.id.tvUpdateSrc)).setText(Update.lockedSourceText(this));
         state = (TextView) findViewById(R.id.tvUpdateState);
         refreshState();
-        syncBranchRow();                          // 冷启动就选着「分支」时，把坑位行直接亮出来
         bindGlobal(R.id.swUpdate, Prefs.K_UP_AUTO, true);
         ((TextView) findViewById(R.id.tvAbout)).setText(
                 getString(R.string.about_line, Db.I.books().size(), Db.I.totalWords()));
@@ -269,8 +271,8 @@ public class SettingsSubActivity extends Activity {
 
         findViewById(R.id.btnUpdateCheck).setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
-                final int ch = pr.updateChannel();
-                state.setText(getString(R.string.update_checking_ch, Update.channelName(SettingsSubActivity.this, ch)));
+                state.setText(getString(R.string.update_checking_ch,
+                        Update.channelName(SettingsSubActivity.this, Update.lockedChannel(SettingsSubActivity.this))));
                 Update.checkResAsync(SettingsSubActivity.this, new Update.Cb2() {
                     @Override public void onRes(Update.Res r) {
                         if (r.err != null) {
@@ -294,80 +296,11 @@ public class SettingsSubActivity extends Activity {
         });
     }
 
-    /** 当前版本 + 通道（「分支」通道带坑位 id），通道/坑位一变就重写 */
+    /** 当前版本 + 固定更新源，进页面时重写一次 */
     private void refreshState() {
         if (state == null) return;
         state.setText(getString(R.string.update_cur_ver_ch, Update.myName(this), Update.myCode(this),
-                Update.channelName(this, pr.updateChannel())));
-    }
-
-    /** 「分支」选择行：选中第 2 档才显示；先按上次的结果画，再异步刷新（默认已认领本包自己的分支） */
-    private void syncBranchRow() {
-        if (brScroll == null) return;
-        if (pr.updateChannel() != UpCh.BRANCH) {
-            brScroll.setVisibility(View.GONE);
-            return;
-        }
-        brScroll.setVisibility(View.VISIBLE);
-        renderBranchRow(Update.lastBranches(), null);   // 先照上次的画（没有就显示「正在读取」）
-        Update.fetchBranchesAsync(this, new Update.BranchCb() {
-            @Override public void onRes(java.util.List<String> ids, String err) {
-                if (pr.updateChannel() != UpCh.BRANCH) return;   // 请求回来时用户已经切走
-                renderBranchRow(ids, err);
-            }
-        });
-    }
-
-    private void renderBranchRow(java.util.List<String> ids, String err) {
-        if (brRow == null) return;
-        brRow.removeAllViews();
-        if (ids == null || ids.isEmpty()) {
-            TextView hint = new TextView(this);
-            hint.setText(err != null ? getString(R.string.update_branch_list_fail, err)
-                    : getString(R.string.update_branch_list_loading));
-            hint.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12f);
-            hint.setTextColor(Skin.c(this, R.attr.wpText2));
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-            lp.rightMargin = (int) Ui.dp(this, 8);
-            hint.setLayoutParams(lp);
-            brRow.addView(hint);
-        } else {
-            String sel = pr.upBranch();          // 没显式选过 = 本包自己的分支，直接亮着
-            for (final String id : ids) {
-                TextView tv = Ui.chip(this, id, id.equals(sel));
-                tv.setOnClickListener(new View.OnClickListener() {
-                    @Override public void onClick(View v) {
-                        pr.setUpBranch(id);
-                        markBranchSel(v);
-                        refreshState();
-                    }
-                });
-                brRow.addView(tv);
-            }
-        }
-        TextView rf = Ui.chip(this, getString(R.string.update_branch_refresh), false);
-        rf.setTag("rf");                           // 选中态轮播时跳过它
-        rf.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                renderBranchRow(null, null);       // 先变回「正在读取」，失败原因会写在这行
-                Update.fetchBranchesAsync(SettingsSubActivity.this, new Update.BranchCb() {
-                    @Override public void onRes(java.util.List<String> ids, String err) {
-                        if (pr.updateChannel() != UpCh.BRANCH) return;
-                        renderBranchRow(ids, err);
-                    }
-                });
-            }
-        });
-        brRow.addView(rf);
-    }
-
-    /** 点中的坑位亮、别的灭（末尾的「刷新」chip 永远不亮） */
-    private void markBranchSel(View sel) {
-        for (int j = 0; j < brRow.getChildCount(); j++) {
-            View c = brRow.getChildAt(j);
-            c.setActivated("rf".equals(c.getTag()) ? false : c == sel);
-        }
+                Update.channelName(this, Update.lockedChannel(this))));
     }
 
     @Override protected void onResume() {

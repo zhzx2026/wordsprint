@@ -31,8 +31,6 @@ public final class ShareCard {
     public static class Stats {
         public String name = "", date = Diary.today(), headline = "";
         public int today, goal = 50, streak, best, total, doneDays;
-        /** 温习分钟数（自测、收藏两栏已按用户要求在 2026-09-16 删除） */
-        public int revMin;
         public Diary diary;
         public String url = "";
     }
@@ -47,7 +45,6 @@ public final class ShareCard {
         s.name = Prefs.activeName();
         s.today = d.learned;
         s.goal = d.goal;
-        s.revMin = d.revSec / 60;
         s.streak = dy.streak(t);
         s.best = dy.bestStreak();
         s.doneDays = dy.doneDays();
@@ -76,14 +73,21 @@ public final class ShareCard {
         return pageBase(a) + "?d=" + payload(s);
     }
 
-    /** 分享负载：极简键值行 → deflate → base64url（放二维码里，越短越清楚） */
+    /**
+     * 分享负载：极简键值行 → deflate → base64url（放二维码里，越短越清楚）。
+     *
+     * 键（2026-10-13 现状）：n 名字 · d 日期 · t 今日新词 · g 目标 · s 连续 · b 最高连续 ·
+     * m 累计掌握 · k 达标天数 · h 182 天等级串。
+     * 退休的键（r 温习分钟 / f 收藏 / x 自测）不再写 —— 老二维码里还带着它们，
+     * 在线页解析时一律忽略（见 share/index.html）。
+     */
     public static String payload(Stats s) {
         StringBuilder heat = new StringBuilder();
         List<Diary.Day> win = s.diary.window(s.date, 182);       // 26 周
         for (Diary.Day d : win) heat.append(d == null ? '0' : (char) ('0' + Diary.level(d.total())));
         String raw = "n=" + s.name + "\nd=" + s.date + "\nt=" + s.today + "\ng=" + s.goal
                 + "\ns=" + s.streak + "\nb=" + s.best + "\nm=" + s.total + "\nk=" + s.doneDays
-                + "\nr=" + s.revMin + "\nh=" + heat;
+                + "\nh=" + heat;
         return ZipB64.pack(raw);        // zlib deflate + base64url，与 share/index.html 的解析端同源
     }
 

@@ -5,6 +5,8 @@
 set -e
 cd "$(dirname "$0")/.."
 export LANG=C.UTF-8 LC_ALL=C.UTF-8
+echo "== E–Z 词书（TSV ↔ wdb.dat 一致性、词数与库内校验）"
+python3 scripts/etl_high_frequency_ez.py --check
 echo "== ci_sync_test（删除分支 → 清资产 / 清 App 名单 / 清 Release 索引，GitHub API 故障不能误删）"
 python3 -m unittest discover -s test -p ci_sync_test.py -v
 for cand in "$PWD/tools/jdk17/bin" /var/tmp/jdk17/bin "$JAVA_HOME/bin"; do
@@ -20,7 +22,8 @@ mkdir -p "$D"
 cp "$S"/Engine.java "$S"/QREnc.java "$S"/QRUtil.java "$S"/Transfer.java "$S"/ProgressCode.java "$S"/Pack.java \
    "$S"/ZipB64.java "$S"/Diary.java "$S"/Scale.java "$S"/Heat.java "$S"/BookEdit.java \
    "$S"/Vers.java "$S"/UpCh.java "$S"/Profiles.java "$S"/DlProg.java "$S"/Order.java \
-   "$S"/WrongBook.java "$S"/ShareGeom.java "$S"/Ges.java "$S"/DataCodec.java "$D"/
+   "$S"/WrongBook.java "$S"/ShareGeom.java "$S"/Ges.java "$S"/DataCodec.java "$S"/MarkdownNotes.java \
+   "$S"/Meanings.java "$D"/
 rm -rf test/out && mkdir -p test/out
 
 echo "== javac（同一份源码）"
@@ -28,7 +31,8 @@ javac -encoding UTF-8 -nowarn -d test/out -cp libs/zxing-core.jar \
   "$D"/*.java test/T.java test/EngineTest.java test/QRHostTest.java test/CodeHostTest.java test/PackTest.java \
   test/SharePayloadTest.java test/ScaleTest.java test/GesTest.java test/WrongBookTest.java test/ShareGeomTest.java \
   test/HeatRampTest.java test/BookEditTest.java test/VersTest.java test/UpChTest.java test/ProfilesTest.java \
-  test/DlProgTest.java test/TransferExtTest.java test/OrderTest.java test/DiaryTest.java test/DataCodecTest.java
+  test/DlProgTest.java test/TransferExtTest.java test/OrderTest.java test/DiaryTest.java test/DataCodecTest.java test/MarkdownNotesTest.java \
+  test/MeaningsTest.java
 
 CP=test/out:libs/zxing-core.jar
 echo "== EngineTest（刷词引擎 + 回炉区间断言）"
@@ -55,6 +59,10 @@ echo "== DiaryTest（每日日志：目标量程单一真相源、只读视图�
 java -cp "$CP" DiaryTest
 echo "== DataCodecTest（用户数据固定位置：文件格式全类型往返 + 行级容错）"
 java -cp "$CP" DataCodecTest
+echo "== MarkdownNotesTest（更新说明 Markdown 渲染 + HTML/链接安全转义）"
+java -cp "$CP" MarkdownNotesTest
+echo "== MeaningsTest（跨词书释义合并：所有词书聚合去重、顺序稳定、长释义不顶出卡片）"
+java -cp "$CP" MeaningsTest
 echo "== WrongBookTest（错题本：错一次就进 / 连对 3 次才出 / 再错多加一次）"
 java -cp "$CP" WrongBookTest
 # ⚠️ 只有文件末尾那一个 node 测试需要门控。
@@ -63,9 +71,9 @@ java -cp "$CP" WrongBookTest
 # 没装 node 的机器上它们被静默跳过，屏幕上只留一行「跳过 SharePageTest」，看着像全绿。
 echo "== ShareGeomTest（战绩图版面：网格不压标签、二维码不出画布）"
 java -cp "$CP" ShareGeomTest
-echo "== VersTest（版本号/更新通道：测试包默认盯自己的分支坑位）"
+echo "== VersTest（版本号/更新源：正规版只认正式发布、测试包只认自己那条分支，没得选）"
 java -cp "$CP" VersTest
-echo "== UpChTest（更新源第 3 档「分支」：坑位 id 清洗 / 直链拼装 / channels 名单解析）"
+echo "== UpChTest（更新源：坑位 id 清洗 / 构建标识 → 本包自己的坑位 / 直链拼装）"
 java -cp "$CP" UpChTest
 echo "== ProfilesTest（多用户档案：数据归属、删号清理、全局设置不动）"
 java -cp "$CP" ProfilesTest

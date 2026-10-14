@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <gradient android:angle="0" android:startColor="?attr/wpGreen1" android:endColor="?attr/wpGreen2"/>
+    <!-- 不再用浅绿渐变；日间深绿、夜间亮绿，由主题提供高对比成功色。 -->
+    <solid android:color="?attr/wpGoalGreen"/>
     <corners android:radius="100dp"/>
 </shape>
