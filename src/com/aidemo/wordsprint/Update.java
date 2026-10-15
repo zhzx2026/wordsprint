@@ -154,8 +154,8 @@ public class Update {
             } else {
                 raw = c.getString(R.string.update_default_src).trim();
             }
-            if (raw.contains("YOUR_GITHUB")) { r.err = "GitHub 源未配置"; return r; }
-            if (raw.isEmpty()) { r.err = "未设置更新源地址"; return r; }
+            if (raw.contains("YOUR_GITHUB")) { r.err = "更新源没配置（还是 GitHub 占位地址）"; return r; }
+            if (raw.isEmpty()) { r.err = "没设置更新源地址"; return r; }
             String u = raw.toLowerCase().endsWith(".json") ? raw
                     : raw + (raw.endsWith("/") ? "" : "/") + "update.json";
             r.url = u;
@@ -532,8 +532,8 @@ public class Update {
             stage = DlProg.VERIFY;
             pct = 100;
             line = a.getString(R.string.update_verifying);
-            if (total > 0 && got != total) throw new Exception("下载不完整（" + got + "/" + total + " 字节）");
-            if (!looksLikeApk(f)) throw new Exception("文件不完整，缺少安装清单");
+            if (total > 0 && got != total) throw new Exception("下载没下全（" + got + "/" + total + " 字节）");
+            if (!looksLikeApk(f)) throw new Exception("文件不完整，里面缺了安装清单");
         } finally {
             if (c != null) try { c.disconnect(); } catch (Exception ignored) {}
         }

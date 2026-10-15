@@ -272,7 +272,7 @@ public class Transfer {
             byte[] id = new byte[5];
             in.readFully(id);
             int n = in.readUnsignedShort();
-            if (n > 100000) throw new IOException("进度码结构不对（单册错题 " + n + " 条不合理）");
+            if (n > 100000) throw new IOException("进度码结构不对（单册错题 " + n + " 条不正常）");
             int[] idx = new int[n], left = new int[n];
             for (int k = 0; k < n; k++) { idx[k] = in.readUnsignedShort(); left[k] = in.readUnsignedByte(); }
             o.wrongs.add(new WrongRec(bytesToHex(id), idx, left));
@@ -281,7 +281,7 @@ public class Transfer {
 
     private static void readDiary(DataInputStream in, Decoded o) throws IOException {
         int n = in.readUnsignedShort();
-        if (n > 40000) throw new IOException("进度码结构不对（日记 " + n + " 天不合理）");
+        if (n > 40000) throw new IOException("进度码结构不对（日记 " + n + " 天不正常）");
         for (int i = 0; i < n; i++) {
             o.diary.add(new DiaryRec(in.readInt(), in.readUnsignedShort(), in.readUnsignedShort(),
                     in.readUnsignedShort(), in.readUnsignedShort(), in.readUnsignedShort(),

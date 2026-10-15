@@ -35,13 +35,13 @@ public final class BookEdit {
      */
     public static Range parseRange(String text, int n) {
         Range r = new Range();
-        if (n <= 0) { r.why = "这个词表是空的"; return r; }
+        if (n <= 0) { r.why = "这本书里一个词都没有"; return r; }
         String s = norm(text);
         if (s.isEmpty()) { r.from = 0; r.to = n - 1; r.ok = true; return r; }   // 空 = 整个词表
         boolean openStart = s.startsWith("-");       // "-50" = 从第一个词到第 50 个
         boolean openEnd = s.endsWith("-");           // "100-" = 从第 100 个到最后一个
         int[] pair = numbers(s);
-        if (pair.length == 0) { r.why = "没看懂这个范围（写成 100-300 这样）"; return r; }
+        if (pair.length == 0) { r.why = "没看懂这个范围，写成 100-300 这样试试"; return r; }
         int a, b;
         if (openStart && openEnd) { a = 1; b = n; }
         else if (openEnd) { a = pair[0]; b = n; }
@@ -49,7 +49,7 @@ public final class BookEdit {
         else { a = pair[0]; b = pair.length > 1 ? pair[1] : a; }
         r.askedMax = Math.max(a, b);
         if (a > b) { int t = a; a = b; b = t; }                            // 写反了也认
-        if (a > n) { r.why = "这个词表只有 " + n + " 个词"; return r; }
+        if (a > n) { r.why = "这本书一共只有 " + n + " 个词，范围填小一点"; return r; }
         if (a < 1) a = 1;                                                  // "0" 当成第 1 个
         if (b < 1) b = 1;
         if (b > n) b = n;

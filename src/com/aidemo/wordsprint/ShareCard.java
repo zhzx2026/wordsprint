@@ -304,7 +304,7 @@ public final class ShareCard {
             tp.setColor(text2);
             tp.setTextSize(22);
             tp.setTextAlign(Paint.Align.RIGHT);
-            c.drawText("(二维码生成失败)", textR, qy + 150, tp);
+            c.drawText("（二维码没能生成）", textR, qy + 150, tp);
             tp.setTextAlign(Paint.Align.LEFT);
         }
 

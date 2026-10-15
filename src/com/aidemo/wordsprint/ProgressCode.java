@@ -64,8 +64,8 @@ public class ProgressCode {
         Out o = new Out();
         if (raw == null || raw.length() == 0) {
             o.stage = "读剪贴板";
-            o.detail = "剪贴板是空的：先在对方手机「导出进度」点复制（或长按那条消息→复制），再回来点导入。";
-            throw new IOException("剪贴板里没东西");
+            o.detail = "剪贴板是空的：先在对方手机的「导出进度」页点「复制文本码」（或长按那条消息复制），再回来点导入。";
+            throw new IOException("剪贴板是空的，没东西可导");
         }
         o.totalChars = raw.length();
 
@@ -98,19 +98,19 @@ public class ProgressCode {
             o.chars = Math.max(o.chars, emptyChars);
             o.stage = "空码";
             o.detail = describe(o, raw);
-            throw new IOException("这个进度码是空的：对方手机上还没学过（0 本词书、0 天记录），先刷几个词再导出。\n· " + describe(o, raw));
+            throw new IOException("这个进度码是空的：对方手机上还没开始学（0 本词书、0 天记录），先刷几个词再导出。\n· " + describe(o, raw));
         }
 
         o.stage = lastWhy.length() > 0 ? lastWhy : "没找到可用的码";
         o.detail = describe(o, raw);
         String msg;
         if (o.chars == 0)
-            msg = "这里面的文字不像进度码（一个 base64 字符都没找到）。请整段复制，不要手敲。";
+            msg = "这段文字里没找到进度码（一个有效字符都没有）。整段复制过来试试，别手敲。";
         else if (o.chars < 8)
-            msg = "只找到 " + o.chars + " 个有效字符，太短了：多半是复制时只选中了一小段。回「导出进度」页点「复制」。";
+            msg = "只找到 " + o.chars + " 个有效字符，太短了——多半是复制时只选中了一小段。回「导出进度」页再点一次「复制文本码」。";
         else
             msg = "找到 " + o.chars + " 个字符，但解不出来（" + whyText(lastWhy) + "）。"
-                    + "可能是复制被截断、被输入法改写过字符，或对方 App 版本过旧。";
+                    + "可能是复制时被截断、被输入法改了字，或者对方 App 版本太旧。";
         throw new IOException(msg + "\n· " + describe(o, raw));
     }
 
@@ -124,11 +124,11 @@ public class ProgressCode {
     }
 
     private static String whyText(String why) {
-        if ("b64".equals(why)) return "字符集不是合法 Base64";
-        if ("inflate".equals(why)) return "解压失败，内容有字符被改掉";
-        if ("ver".equals(why)) return "版本号不对，App 需要更新";
-        if ("payload".equals(why)) return "负载结构不对";
-        if ("short".equals(why)) return "可用字符太少";
+        if ("b64".equals(why)) return "字符不是合法的 Base64";
+        if ("inflate".equals(why)) return "解压失败，内容里有字符被改过";
+        if ("ver".equals(why)) return "版本对不上，App 需要更新";
+        if ("payload".equals(why)) return "内容结构不对";
+        if ("short".equals(why)) return "有效的字符太少";
         return why.length() == 0 ? "未知原因" : why;
     }
 
@@ -385,9 +385,9 @@ public class ProgressCode {
         try {
             d.version = in.readUnsignedByte();
             if (d.version < MIN_VER || d.version > MAX_VER)
-                throw new IOException("进度码版本 v" + d.version + " 与本机型不匹配，请先更新 App");
+                throw new IOException("进度码版本 v" + d.version + " 和当前 App 不配套，先更新 App 再导入");
             int nb = in.readUnsignedByte();
-            if (nb > 200) throw new IOException("进度码结构不对（词书数量 " + nb + " 不合理）");
+            if (nb > 200) throw new IOException("进度码结构不对（词书数量 " + nb + " 不正常）");
             for (int i = 0; i < nb; i++) {
                 byte[] id = new byte[5];
                 in.readFully(id);
@@ -400,7 +400,7 @@ public class ProgressCode {
                 d.books.add(new Transfer.BookRec(Transfer.bytesToHex(id), pos, bits));
             }
             int nd = in.readUnsignedByte();
-            if (nd > 30000) throw new IOException("进度码结构不对（打卡天数 " + nd + " 不合理）");
+            if (nd > 30000) throw new IOException("进度码结构不对（打卡天数 " + nd + " 不正常）");
             for (int i = 0; i < nd; i++) d.days.add(new Transfer.DayRec(in.readInt(), in.readUnsignedShort()));
             // v7.1+ 扩展区（错题本/完整日记/设置/档案名）：读一半断了，已读完的段照收 + 标截断
             if (Transfer.readExt(in, d, lenient)) o.truncated = true;

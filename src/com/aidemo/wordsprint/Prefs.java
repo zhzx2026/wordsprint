@@ -765,9 +765,9 @@ public class Prefs {
             if (a != mine[i]) { gesDiff = true; break; }
         }
         if (gesDiff) parts.add("手势");
-        if (s.goalDef > 0 && s.goalDef != DiaryStore.goalDefault()) parts.add("每日目标" + s.goalDef);
-        if (s.sizeDef > 0 && s.sizeDef != i(K_SIZE_DEF, DEF_SIZE)) parts.add("每组" + s.sizeDef + "词");
-        if (s.lag > 0 && s.lag != i(K_LAG_DEF, DEF_LAG)) parts.add("回炉" + s.lag + "张");
+        if (s.goalDef > 0 && s.goalDef != DiaryStore.goalDefault()) parts.add("每日目标 " + s.goalDef);
+        if (s.sizeDef > 0 && s.sizeDef != i(K_SIZE_DEF, DEF_SIZE)) parts.add("每组 " + s.sizeDef + " 词");
+        if (s.lag > 0 && s.lag != i(K_LAG_DEF, DEF_LAG)) parts.add("回炉隔 " + s.lag + " 张");
         int sd = 0;
         if (Db.ready() && s.setups != null) {
             for (Transfer.BookSetup bs : s.setups) {
@@ -777,7 +777,7 @@ public class Prefs {
                 if ((bs.groupSize > 0 && bs.groupSize != gv) || (bs.order >= 0 && bs.order != ov)) sd++;
             }
         }
-        if (sd > 0) parts.add(sd + "本分组");
+        if (sd > 0) parts.add(sd + " 本的分组设置");
         if (parts.isEmpty()) return null;
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < parts.size(); i++) {
